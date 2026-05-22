@@ -1,0 +1,52 @@
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import settings
+from app.core.websocket import ws_manager
+from app.api.v1 import auth, users, attendance, dashboard, faces
+
+app = FastAPI(
+    title="SISKA API",
+    description="Sistem Kehadiran - Backend API",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
+
+# CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include REST routers
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
+app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
+app.include_router(attendance.router, prefix="/api/v1/attendance", tags=["Attendance"])
+app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
+app.include_router(faces.router, prefix="/api/v1/faces", tags=["Face Data"])
+
+
+# WebSocket endpoint for realtime attendance updates
+@app.websocket("/ws/attendance")
+async def websocket_attendance(websocket: WebSocket):
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            # Keep connection alive, listen for any client messages
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+
+
+@app.get("/", tags=["Root"])
+async def root():
+    return {"message": "SISKA API is running", "version": "1.0.0"}
+
+
+@app.get("/health", tags=["Root"])
+async def health_check():
+    return {"status": "healthy"}
