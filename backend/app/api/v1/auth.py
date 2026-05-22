@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -14,6 +15,7 @@ from app.core.security import (
 )
 
 router = APIRouter()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -78,9 +80,7 @@ async def logout():
 @router.get("/me")
 async def get_current_admin_info(
     db: AsyncSession = Depends(get_db),
-    token: str = Depends(
-        __import__("fastapi.security", fromlist=["OAuth2PasswordBearer"]).OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
-    ),
+    token: str = Depends(oauth2_scheme),
 ):
     """Get current admin info from JWT token."""
     payload = decode_token(token)
@@ -101,3 +101,4 @@ async def get_current_admin_info(
         "email": admin.email,
         "full_name": admin.full_name,
     }
+

@@ -5,6 +5,13 @@ from app.core.config import settings
 from app.core.websocket import ws_manager
 from app.api.v1 import auth, users, attendance, dashboard, faces
 
+# Import all models so SQLAlchemy resolves relationships at startup
+import app.models.admin  # noqa: F401
+import app.models.user  # noqa: F401
+import app.models.face  # noqa: F401
+import app.models.attendance  # noqa: F401
+import app.models.activity_log  # noqa: F401
+
 app = FastAPI(
     title="SISKA API",
     description="Sistem Kehadiran - Backend API",

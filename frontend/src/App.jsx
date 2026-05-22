@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import { useAuthStore } from '@shared/store/authStore'
 
 // Lazy load modules for code splitting
 const AttendancePage = lazy(() => import('@modules/attendance/AttendancePage'))
@@ -13,17 +14,46 @@ const FaceManagementPage = lazy(() => import('@modules/admin/pages/FaceManagemen
 // Shared
 import ProtectedRoute from '@shared/components/ProtectedRoute'
 
-// Loading fallback
+// Loading fallback (dark themed)
 const PageLoader = () => (
-  <div className="flex items-center justify-center h-screen bg-[var(--color-bg)]">
+  <div className="flex items-center justify-center h-screen bg-[#0f1117]">
     <div className="flex flex-col items-center gap-3">
-      <div className="w-10 h-10 border-3 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
-      <p className="text-sm text-[var(--color-text-secondary)]">Memuat...</p>
+      <div className="w-10 h-10 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <p className="text-sm text-slate-400">Memuat...</p>
     </div>
   </div>
 )
 
 export default function App() {
+  const { refreshToken, setTokens, setAdmin, logout } = useAuthStore()
+  const [initializing, setInitializing] = useState(!!refreshToken)
+
+  // Auto-login: if refreshToken exists in localStorage, try to get a new access token
+  useEffect(() => {
+    const tryAutoLogin = async () => {
+      if (!refreshToken) {
+        setInitializing(false)
+        return
+      }
+      try {
+        const { default: authApi } = await import('@modules/auth/services/authApi')
+        const tokenRes = await authApi.refresh(refreshToken)
+        setTokens(tokenRes.data.access_token, tokenRes.data.refresh_token)
+
+        const meRes = await authApi.getMe()
+        setAdmin(meRes.data)
+      } catch {
+        // Refresh token invalid — clean up
+        logout()
+      } finally {
+        setInitializing(false)
+      }
+    }
+    tryAutoLogin()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (initializing) return <PageLoader />
+
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>

@@ -7,6 +7,10 @@ from sqlalchemy import select
 
 from app.db.database import async_session, engine, Base
 from app.models.admin import Admin
+from app.models.user import User
+from app.models.face import FaceData
+from app.models.attendance import AttendanceLog
+from app.models.activity_log import ActivityLog
 from app.core.security import get_password_hash
 
 
@@ -35,10 +39,10 @@ async def seed():
         )
         session.add(admin)
         await session.commit()
-        print("✅ Default admin created:")
+        print("[OK] Default admin created:")
         print("   Username: admin")
         print("   Password: admin123")
-        print("   ⚠️  Change this password in production!")
+        print("   [!] Change this password in production!")
 
 
 if __name__ == "__main__":

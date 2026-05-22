@@ -11,15 +11,19 @@ from app.schemas.user import UserCreate, UserUpdate, UserResponse, UserListRespo
 router = APIRouter()
 
 
-@router.get("/", response_model=UserListResponse)
+@router.get("/")
 async def list_users(
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(None, ge=1, le=100),
+    limit: int = Query(None, ge=1, le=100),
     search: str = Query(None),
     db: AsyncSession = Depends(get_db),
     _admin=Depends(get_current_admin),
 ):
     """List all users with pagination and search."""
+    # Accept both 'limit' and 'per_page' (frontend uses 'limit')
+    actual_limit = limit or per_page or 20
+
     query = select(User).where(User.is_active == True)
 
     # Search filter
@@ -36,16 +40,16 @@ async def list_users(
     total = total_result.scalar()
 
     # Paginate
-    query = query.offset((page - 1) * per_page).limit(per_page).order_by(User.created_at.desc())
+    query = query.offset((page - 1) * actual_limit).limit(actual_limit).order_by(User.created_at.desc())
     result = await db.execute(query)
     users = result.scalars().all()
 
-    return UserListResponse(
-        users=[UserResponse.model_validate(u) for u in users],
-        total=total,
-        page=page,
-        per_page=per_page,
-    )
+    return {
+        "items": [UserResponse.model_validate(u) for u in users],
+        "total": total,
+        "page": page,
+        "per_page": actual_limit,
+    }
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
