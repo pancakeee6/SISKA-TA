@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
-import { Users, UserCheck, Clock, UserX, TrendingUp, TrendingDown, Activity } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Users, UserCheck, Clock, UserX, TrendingUp, TrendingDown, Activity, LogIn, LogOut, Wifi, WifiOff } from 'lucide-react'
 import dashboardApi from '../services/dashboardApi'
 import userApi from '../services/userApi'
+import useWebSocket from '@shared/hooks/useWebSocket'
 
 const statCards = [
   {
@@ -38,6 +39,23 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({ total: 0, present: 0, late: 0, absent: 0 })
   const [weeklyStats, setWeeklyStats] = useState([])
   const [loading, setLoading] = useState(true)
+  const [activities, setActivities] = useState([])
+
+  // WebSocket for realtime attendance updates
+  const handleWsMessage = useCallback((message) => {
+    if (message.type === 'attendance_marked') {
+      // Add to activity feed (keep last 10)
+      setActivities((prev) => [message.data, ...prev].slice(0, 10))
+
+      // Refresh stats when new attendance arrives
+      fetchDashboardData()
+    }
+  }, [])
+
+  const { isConnected } = useWebSocket({
+    enabled: true,
+    onMessage: handleWsMessage,
+  })
 
   useEffect(() => {
     fetchDashboardData()
@@ -199,22 +217,80 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Recent Activity */}
+        {/* Recent Activity — Live Feed */}
         <div className="lg:col-span-2 bg-[#1a1d2e] rounded-2xl border border-white/[0.06] p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-lg font-semibold text-white">Aktivitas Terkini</h2>
               <p className="text-xs text-slate-500 mt-0.5">Kehadiran real-time</p>
             </div>
+            <div className="flex items-center gap-1.5">
+              {isConnected ? (
+                <>
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                  <span className="text-[10px] text-emerald-400">Live</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-2 h-2 bg-slate-600 rounded-full" />
+                  <span className="text-[10px] text-slate-500">Offline</span>
+                </>
+              )}
+            </div>
           </div>
 
-          <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-            <div className="w-12 h-12 rounded-full bg-white/[0.03] flex items-center justify-center mb-3">
-              <UserCheck className="w-5 h-5 opacity-30" />
+          {activities.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+              <div className="w-12 h-12 rounded-full bg-white/[0.03] flex items-center justify-center mb-3">
+                <UserCheck className="w-5 h-5 opacity-30" />
+              </div>
+              <p className="text-sm text-center">Belum ada aktivitas</p>
+              <p className="text-xs text-slate-600 mt-1">Data akan muncul saat karyawan absen</p>
             </div>
-            <p className="text-sm text-center">Belum ada aktivitas</p>
-            <p className="text-xs text-slate-600 mt-1">Data akan muncul saat karyawan absen</p>
-          </div>
+          ) : (
+            <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+              {activities.map((act, i) => (
+                <div
+                  key={`${act.timestamp}-${i}`}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all
+                             ${i === 0 ? 'bg-indigo-500/8 border border-indigo-500/15 animate-fade-in' : 'bg-white/[0.02]'}`}
+                >
+                  {/* Avatar */}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                    act.late
+                      ? 'bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/20'
+                      : 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20'
+                  }`}>
+                    {act.user_name?.[0]?.toUpperCase() || '?'}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-white font-medium truncate">{act.user_name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-medium ${
+                        act.event_type === 'IN' ? 'text-emerald-400' : 'text-blue-400'
+                      }`}>
+                        {act.event_type === 'IN' ? <LogIn className="w-2.5 h-2.5" /> : <LogOut className="w-2.5 h-2.5" />}
+                        {act.event_type === 'IN' ? 'Masuk' : 'Keluar'}
+                      </span>
+                      {act.late && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-400">
+                          <Clock className="w-2.5 h-2.5" />
+                          Terlambat
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Time */}
+                  <span className="text-[10px] text-slate-500 font-mono shrink-0">
+                    {new Date(act.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
