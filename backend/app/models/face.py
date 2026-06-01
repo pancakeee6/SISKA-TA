@@ -12,7 +12,7 @@ class FaceData(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    embedding_json = Column(Text, nullable=False)  # JSON string of embedding vector from AI API
+    embedding_json = Column(Text, nullable=True)   # Nullable: embedding dikelola ML API
     image_path = Column(String(500), nullable=True)  # Path to original face image
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 

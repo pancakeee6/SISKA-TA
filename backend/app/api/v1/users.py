@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +8,9 @@ from app.db.database import get_db
 from app.api.deps import get_current_admin
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate, UserResponse, UserListResponse
+from app.services import ai_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -73,6 +77,17 @@ async def create_user(
     db.add(user)
     await db.flush()
     await db.refresh(user)
+
+    # Sync to ML API — create person for face recognition
+    try:
+        ml_person_id = await ai_service.create_person(user.full_name)
+        user.ml_person_id = ml_person_id
+        await db.flush()
+        logger.info(f"User '{user.full_name}' synced to ML API: person_id={ml_person_id}")
+    except Exception as e:
+        # Log warning but don't fail user creation
+        logger.warning(f"ML API sync gagal untuk user '{user.full_name}': {e}")
+
     return UserResponse.model_validate(user)
 
 
@@ -128,6 +143,13 @@ async def delete_user(
 
     if not user:
         raise HTTPException(status_code=404, detail="User tidak ditemukan")
+
+    # Cleanup ML API person (best-effort)
+    if user.ml_person_id:
+        try:
+            await ai_service.delete_person(user.ml_person_id)
+        except Exception as e:
+            logger.warning(f"ML API delete gagal untuk person_id={user.ml_person_id}: {e}")
 
     user.is_active = False
     await db.flush()

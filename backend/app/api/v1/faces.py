@@ -1,4 +1,4 @@
-import json
+import logging
 import os
 import uuid as uuid_lib
 from uuid import UUID
@@ -14,6 +14,8 @@ from app.models.user import User
 from app.services import ai_service
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
@@ -24,12 +26,27 @@ async def upload_face(
     db: AsyncSession = Depends(get_db),
     _admin=Depends(get_current_admin),
 ):
-    """Upload face image, extract embedding via AI API, store in DB."""
+    """Upload face image, enroll via ML API, store record in SISKA DB."""
     # Validate user exists
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User tidak ditemukan")
+
+    # Check user has ML person mapping
+    if not user.ml_person_id:
+        # Try to create person in ML API if not yet mapped
+        try:
+            ml_person_id = await ai_service.create_person(user.full_name)
+            user.ml_person_id = ml_person_id
+            await db.flush()
+            logger.info(f"Auto-created ML person for '{user.full_name}': id={ml_person_id}")
+        except Exception as e:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Gagal membuat person di ML API: {str(e)}. "
+                       f"Pastikan ML API aktif dan user sudah tersinkron.",
+            )
 
     # Validate file type
     if file.content_type not in ["image/jpeg", "image/png", "image/webp"]:
@@ -44,21 +61,22 @@ async def upload_face(
         content = await file.read()
         f.write(content)
 
-    # Reset file for AI API
+    # Reset file position for ML API
     await file.seek(0)
 
-    # Extract embedding via AI API
+    # Enroll face via ML API (embedding managed by ML)
     try:
-        embedding = await ai_service.extract_embedding(file)
+        await ai_service.enroll_face(user.ml_person_id, file)
     except Exception as e:
         # Clean up saved file on error
-        os.remove(filepath)
-        raise HTTPException(status_code=502, detail=f"AI API error: {str(e)}")
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        raise HTTPException(status_code=502, detail=f"ML API enrollment error: {str(e)}")
 
-    # Save to DB
+    # Save record in SISKA DB (without embedding — managed by ML API)
     face_data = FaceData(
         user_id=user_id,
-        embedding_json=json.dumps(embedding),
+        embedding_json=None,  # Embedding dikelola oleh ML API
         image_path=filepath,
     )
     db.add(face_data)
@@ -69,7 +87,7 @@ async def upload_face(
         "id": str(face_data.id),
         "user_id": str(user_id),
         "image_path": filepath,
-        "message": "Data wajah berhasil disimpan",
+        "message": "Data wajah berhasil disimpan dan di-enroll ke ML API",
     }
 
 
