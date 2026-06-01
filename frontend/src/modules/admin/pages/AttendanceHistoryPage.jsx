@@ -22,6 +22,12 @@ export default function AttendanceHistoryPage() {
   const [search, setSearch] = useState('')
   const [activeFilters, setActiveFilters] = useState(0)
 
+  // Export state
+  const [showExport, setShowExport] = useState(false)
+  const [exportFrom, setExportFrom] = useState('')
+  const [exportTo, setExportTo] = useState('')
+  const [exporting, setExporting] = useState(false)
+
   // Fetch logs
   const fetchLogs = useCallback(async () => {
     setLoading(true)
@@ -63,6 +69,34 @@ export default function AttendanceHistoryPage() {
   const clearFilters = () => {
     setFilterDate('')
     setSearch('')
+  }
+
+  // Export CSV handler
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const params = {}
+      if (exportFrom) params.date_from = exportFrom
+      if (exportTo) params.date_to = exportTo
+
+      const res = await attendanceAdminApi.export(params)
+      // Create download link from blob
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', res.headers['content-disposition']?.split('filename=')[1] || 'kehadiran.csv')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+
+      toast.success('File CSV berhasil diunduh')
+      setShowExport(false)
+    } catch {
+      toast.error('Gagal mengunduh data')
+    } finally {
+      setExporting(false)
+    }
   }
 
   // Format timestamp
@@ -115,10 +149,10 @@ export default function AttendanceHistoryPage() {
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/[0.04] border border-white/[0.08]
                      hover:bg-white/[0.08] text-slate-300 text-sm font-medium rounded-xl
                      transition-all cursor-pointer active:scale-[0.98]"
-          onClick={() => toast('Export CSV segera hadir', { icon: '📋' })}
+          onClick={() => setShowExport(true)}
         >
           <Download className="w-4 h-4" />
-          Export
+          Export CSV
         </button>
       </div>
 
@@ -344,6 +378,68 @@ export default function AttendanceHistoryPage() {
           </div>
         )}
       </div>
+
+      {/* Export Modal */}
+      {showExport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowExport(false)} />
+          <div className="relative w-full max-w-sm bg-[#1a1d2e] rounded-2xl border border-white/[0.08] shadow-2xl p-6 animate-fade-in">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2.5 rounded-xl bg-indigo-500/10">
+                <Download className="w-5 h-5 text-indigo-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-white">Export CSV</h3>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Dari Tanggal</label>
+                <input
+                  type="date"
+                  value={exportFrom}
+                  onChange={(e) => setExportFrom(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06]
+                             text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50
+                             [color-scheme:dark]"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Sampai Tanggal</label>
+                <input
+                  type="date"
+                  value={exportTo}
+                  onChange={(e) => setExportTo(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06]
+                             text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50
+                             [color-scheme:dark]"
+                />
+              </div>
+              <p className="text-[11px] text-slate-600">Kosongkan untuk export semua data</p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowExport(false)}
+                className="flex-1 py-2.5 rounded-xl border border-white/[0.1] text-slate-300 text-sm
+                           hover:bg-white/[0.04] transition-all cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="flex-1 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600
+                           hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-medium
+                           rounded-xl transition-all disabled:opacity-50 cursor-pointer
+                           inline-flex items-center justify-center gap-2"
+              >
+                {exporting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {exporting ? 'Mengunduh...' : 'Download CSV'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

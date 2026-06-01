@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import Webcam from 'react-webcam'
-import { Camera, CheckCircle, XCircle, Scan, Clock, User, Wifi, WifiOff } from 'lucide-react'
+import { Camera, CheckCircle, XCircle, Scan, Clock, User, Wifi, WifiOff, Maximize, Minimize } from 'lucide-react'
 import attendanceApi from './services/attendanceApi'
 
 const STATUS = {
@@ -26,6 +26,35 @@ export default function AttendancePage() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [cameraReady, setCameraReady] = useState(false)
   const [isCapturing, setIsCapturing] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  // Fullscreen toggle
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {})
+    } else {
+      document.exitFullscreen().catch(() => {})
+    }
+  }, [])
+
+  // Track fullscreen state
+  useEffect(() => {
+    const handleChange = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', handleChange)
+    return () => document.removeEventListener('fullscreenchange', handleChange)
+  }, [])
+
+  // F11 keyboard shortcut
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === 'F11') {
+        e.preventDefault()
+        toggleFullscreen()
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [toggleFullscreen])
 
   // Clock update
   useEffect(() => {
@@ -162,9 +191,18 @@ export default function AttendancePage() {
           </div>
         </div>
 
-        <div className="text-right">
-          <p className="text-3xl font-mono font-bold text-white tracking-wider">{timeStr}</p>
-          <p className="text-slate-500 text-xs mt-0.5">{dateStr}</p>
+        <div className="text-right flex items-center gap-4">
+          <button
+            onClick={toggleFullscreen}
+            className="p-2 rounded-lg hover:bg-white/[0.06] text-slate-500 hover:text-white transition-all cursor-pointer"
+            title={isFullscreen ? 'Keluar fullscreen (F11)' : 'Fullscreen (F11)'}
+          >
+            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+          </button>
+          <div>
+            <p className="text-3xl font-mono font-bold text-white tracking-wider">{timeStr}</p>
+            <p className="text-slate-500 text-xs mt-0.5">{dateStr}</p>
+          </div>
         </div>
       </div>
 

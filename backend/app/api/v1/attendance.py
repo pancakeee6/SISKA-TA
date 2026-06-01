@@ -129,11 +129,78 @@ async def attendance_logs(
 
 @router.get("/export")
 async def export_attendance(
-    date_from: str = Query(None),
-    date_to: str = Query(None),
+    date_from: str = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: str = Query(None, description="End date (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_db),
     _admin=Depends(get_current_admin),
 ):
-    """Export attendance data (placeholder - will return JSON for now)."""
-    # TODO: Implement CSV/Excel export
-    return {"message": "Export endpoint - CSV/Excel export to be implemented"}
+    """Export attendance data as CSV file."""
+    import csv
+    import io
+    from fastapi.responses import StreamingResponse
+
+    query = select(AttendanceLog).join(User).order_by(AttendanceLog.timestamp.desc())
+
+    # Date range filter
+    if date_from:
+        try:
+            d_from = datetime.strptime(date_from, "%Y-%m-%d").date()
+            query = query.where(func.date(AttendanceLog.timestamp) >= d_from)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Format date_from harus YYYY-MM-DD")
+
+    if date_to:
+        try:
+            d_to = datetime.strptime(date_to, "%Y-%m-%d").date()
+            query = query.where(func.date(AttendanceLog.timestamp) <= d_to)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Format date_to harus YYYY-MM-DD")
+
+    result = await db.execute(query)
+    logs = result.scalars().all()
+
+    # Build CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Header row
+    writer.writerow([
+        "No", "Nama", "NIP", "Tipe", "Tanggal", "Waktu", "Status", "Terlambat", "Device"
+    ])
+
+    for idx, log in enumerate(logs, 1):
+        # Get user info
+        user_result = await db.execute(
+            select(User.full_name, User.employee_id).where(User.id == log.user_id)
+        )
+        user_row = user_result.one_or_none()
+        user_name = user_row[0] if user_row else "Unknown"
+        employee_id = user_row[1] if user_row else "-"
+
+        writer.writerow([
+            idx,
+            user_name,
+            employee_id,
+            "Masuk" if log.event_type == "IN" else "Keluar",
+            log.timestamp.strftime("%Y-%m-%d"),
+            log.timestamp.strftime("%H:%M:%S"),
+            log.status or "-",
+            "Ya" if log.late else "Tidak",
+            log.device_id or "-",
+        ])
+
+    output.seek(0)
+
+    # Generate filename with date range
+    filename = "kehadiran"
+    if date_from:
+        filename += f"_{date_from}"
+    if date_to:
+        filename += f"_sd_{date_to}"
+    filename += ".csv"
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
