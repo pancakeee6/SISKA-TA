@@ -18,6 +18,15 @@ const attendanceApi = {
       timeout: 15000,
     })
   },
+
+  /**
+   * Reset attendance logs (Debug only)
+   * This endpoint is PROTECTED (requires admin auth).
+   * @returns {Promise}
+   */
+  resetLogs: () => {
+    return api.post('/api/v1/attendance/reset')
+  },
 }
 
 export default attendanceApi

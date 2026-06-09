@@ -47,32 +47,42 @@ async def recognize_attendance(
         user = user_result.scalars().first()
 
         if user:
-            # Log attendance
-            log = AttendanceLog(
-                user_id=user.id,
-                event_type=face.get("event_type", "IN"),
-                status="late" if face.get("late") else "present",
-                late=face.get("late", False),
-                device_id=settings.DEVICE_ID,
-            )
-            db.add(log)
-            await db.flush()
+            # Check if this face event should actually be recorded in local DB
+            # We skip DB insertion for cooldowns, duplicates, etc.
+            if face.get("status") == "ok":
+                # Log attendance
+                log = AttendanceLog(
+                    user_id=user.id,
+                    event_type=face.get("event_type") or "IN",
+                    status="late" if face.get("is_late") else "present",
+                    late=face.get("is_late", False),
+                    device_id=settings.DEVICE_ID,
+                )
+                db.add(log)
+                await db.flush()
 
-            event_data = {
-                "type": "attendance_marked",
-                "data": {
-                    "user_name": user.full_name,
-                    "event_type": face.get("event_type", "IN"),
-                    "status": "late" if face.get("late") else "present",
-                    "late": face.get("late", False),
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                },
-            }
+                event_data = {
+                    "type": "attendance_marked",
+                    "data": {
+                        "user_name": user.full_name,
+                        "event_type": face.get("event_type") or "IN",
+                        "status": "late" if face.get("is_late") else "present",
+                        "late": face.get("is_late", False),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    },
+                }
 
-            # Broadcast to admin dashboard via WebSocket
-            await ws_manager.broadcast(event_data)
-
-            results.append(event_data["data"])
+                # Broadcast to admin dashboard via WebSocket
+                await ws_manager.broadcast(event_data)
+            
+            # Append result for the frontend (whether ok or cooldown)
+            results.append({
+                "user_name": user.full_name,
+                "event_type": face.get("event_type") or "IN", # fallback for UI
+                "status": face.get("status", "ok"),
+                "late": face.get("is_late", False),
+                "audio_text": face.get("audio_text"),
+            })
 
     return {
         "status": "recognized",
@@ -237,3 +247,22 @@ async def export_attendance(
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+@router.post("/reset")
+async def reset_attendance_logs(
+    db: AsyncSession = Depends(get_db),
+    _admin=Depends(get_current_admin),
+):
+    """Reset attendance logs (DEBUG ONLY)"""
+    from sqlalchemy import delete
+    # Clear local logs
+    await db.execute(delete(AttendanceLog))
+    await db.commit()
+    
+    # Forward to AI API
+    try:
+        await ai_service.reset_attendance()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"AI API error: {str(e)}")
+        
+    return {"status": "ok", "message": "Attendance logs reset"}

@@ -146,3 +146,11 @@ async def enroll_face(person_id: int, image_file: UploadFile) -> dict:
     data = res.json()
     logger.info(f"[ML API] Face enrolled for person_id={person_id}")
     return data
+
+
+async def reset_attendance() -> dict:
+    """Reset attendance in ML API (Debug)."""
+    res = await _ml_request("post", "/admin/reset_attendance")
+    logger.info("[ML API] Attendance reset triggered via admin")
+    return res.json()
+
