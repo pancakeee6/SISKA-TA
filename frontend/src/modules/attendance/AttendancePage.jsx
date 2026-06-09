@@ -173,8 +173,12 @@ export default function AttendancePage() {
     const name = face.user_name || 'Karyawan'
     let text = ''
 
+    // Handle cooldown or other non-ok statuses
+    if (face.status && face.status !== 'ok') {
+      text = face.audio_text || `Halo ${name}, mohon tunggu sebentar sebelum absen kembali.`
+    }
     // Randomized greetings arrays
-    if (face.event_type === 'IN') {
+    else if (face.event_type === 'IN') {
       if (face.late) {
         const lateGreetings = [
           `${timeGreeting} ${name}. Absen berhasil, namun Anda tercatat terlambat hari ini.`,
@@ -891,11 +895,18 @@ export default function AttendancePage() {
                 padding: '20px', borderRadius: '18px',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <CheckCircle size={24} style={{ color: '#34d399' }} />
+                  {result.status === 'ok' ? (
+                    <CheckCircle size={24} style={{ color: '#34d399' }} />
+                  ) : (
+                    <Clock size={24} style={{ color: '#fbbf24' }} />
+                  )}
                   <div>
                     <p style={{ color: '#fff', fontSize: '18px', fontWeight: 700, margin: 0 }}>{result.user_name}</p>
                     <p style={{ color: '#94a3b8', fontSize: '12px', margin: '2px 0 0 0' }}>
-                      {result.event_type === 'IN' ? 'Check In' : 'Check Out'} — {timeStr}
+                      {result.status === 'cooldown' ? 'Cooldown (Harap Tunggu)' : 
+                       result.status === 'duplicate' ? 'Sudah Lengkap' :
+                       result.status !== 'ok' ? 'Ditolak' :
+                       result.event_type === 'IN' ? 'Check In' : 'Check Out'} — {timeStr}
                       {result.late && ' • Terlambat'}
                     </p>
                   </div>

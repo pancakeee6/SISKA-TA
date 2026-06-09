@@ -2,6 +2,10 @@ import asyncio
 from sqlalchemy import select
 from app.db.database import async_session
 from app.models.admin import Admin
+from app.models.activity_log import ActivityLog
+from app.models.attendance import AttendanceLog
+from app.models.user import User
+from app.models.face import FaceData
 from app.core.security import get_password_hash
 
 async def reset_pw():
