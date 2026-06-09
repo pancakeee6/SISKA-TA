@@ -37,11 +37,14 @@ async def recognize_attendance(
     # Process each recognized face
     results = []
     for face in ai_result["faces"]:
-        # Find user by name
+        # Find user by name (case-insensitive)
         user_result = await db.execute(
-            select(User).where(User.full_name == face["name"], User.is_active == True)
+            select(User).where(
+                func.lower(User.full_name) == func.lower(face.get("name", "")),
+                User.is_active == True
+            )
         )
-        user = user_result.scalar_one_or_none()
+        user = user_result.scalars().first()
 
         if user:
             # Log attendance
@@ -82,6 +85,9 @@ async def attendance_logs(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     date: str = Query(None, description="Filter by date (YYYY-MM-DD)"),
+    date_from: str = Query(None),
+    date_to: str = Query(None),
+    status: str = Query(None),
     search: str = Query(None),
     db: AsyncSession = Depends(get_db),
     _admin=Depends(get_current_admin),
@@ -97,26 +103,53 @@ async def attendance_logs(
         except ValueError:
             raise HTTPException(status_code=400, detail="Format tanggal harus YYYY-MM-DD")
 
-    # Search by user name
+    # Date range filters
+    if date_from:
+        try:
+            d_from = datetime.strptime(date_from, "%Y-%m-%d").date()
+            query = query.where(func.date(AttendanceLog.timestamp) >= d_from)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Format date_from harus YYYY-MM-DD")
+
+    if date_to:
+        try:
+            d_to = datetime.strptime(date_to, "%Y-%m-%d").date()
+            query = query.where(func.date(AttendanceLog.timestamp) <= d_to)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Format date_to harus YYYY-MM-DD")
+
+    # Status filter
+    if status == "late":
+        query = query.where(AttendanceLog.late == True)
+    elif status == "present":
+        query = query.where(AttendanceLog.late == False)
+
+    # Search by user name or employee_id
     if search:
-        query = query.where(User.full_name.ilike(f"%{search}%"))
+        query = query.where(User.full_name.ilike(f"%{search}%") | User.employee_id.ilike(f"%{search}%"))
 
     # Count
     count_query = select(func.count()).select_from(query.subquery())
-    total = (await db.execute(count_query)).scalar()
+    total = (await db.execute(count_query)).scalar() or 0
 
     # Paginate
     query = query.offset((page - 1) * per_page).limit(per_page).order_by(AttendanceLog.timestamp.desc())
     result = await db.execute(query)
     logs = result.scalars().all()
 
-    # Map with user names
+    # Map with user names and employee IDs
     log_responses = []
     for log in logs:
-        user_result = await db.execute(select(User.full_name).where(User.id == log.user_id))
-        user_name = user_result.scalar_one_or_none()
+        user_result = await db.execute(
+            select(User.full_name, User.employee_id).where(User.id == log.user_id)
+        )
+        user_row = user_result.one_or_none()
+        user_name = user_row[0] if user_row else "Unknown"
+        employee_id = user_row[1] if user_row else "-"
+
         resp = AttendanceLogResponse.model_validate(log)
         resp.user_name = user_name
+        resp.employee_id = employee_id
         log_responses.append(resp)
 
     return AttendanceListResponse(

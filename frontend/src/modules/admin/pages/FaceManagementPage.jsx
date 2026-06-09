@@ -1,13 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
-  ScanFace, Search, Upload, Trash2, X, ChevronDown,
+  ScanFace, Search, Upload, Trash2, X,
   Image, Loader2, AlertCircle, CheckCircle, User,
+  Plus, Check
 } from 'lucide-react'
 import userApi from '../services/userApi'
 import faceApi from '../services/faceApi'
 import toast from 'react-hot-toast'
 
 export default function FaceManagementPage() {
+  const [searchParams] = useSearchParams()
+  const userIdParam = searchParams.get('userId') || searchParams.get('user')
+
   // Users list
   const [users, setUsers] = useState([])
   const [loadingUsers, setLoadingUsers] = useState(true)
@@ -17,6 +22,7 @@ export default function FaceManagementPage() {
   const [selectedUser, setSelectedUser] = useState(null)
   const [faces, setFaces] = useState([])
   const [loadingFaces, setLoadingFaces] = useState(false)
+  const [dragActive, setDragActive] = useState(false)
 
   // Upload state
   const [uploading, setUploading] = useState(false)
@@ -64,9 +70,18 @@ export default function FaceManagementPage() {
     fetchFaces(user.id)
   }
 
-  // File upload handler
-  const handleUpload = async (e) => {
-    const file = e.target.files?.[0]
+  // Pre-select user from query params
+  useEffect(() => {
+    if (userIdParam && users.length > 0 && !selectedUser) {
+      const found = users.find(u => u.id === userIdParam)
+      if (found) {
+        handleSelectUser(found)
+      }
+    }
+  }, [userIdParam, users, selectedUser])
+
+  // Shared file upload function
+  const uploadFile = async (file) => {
     if (!file || !selectedUser) return
 
     // Validate file type
@@ -90,6 +105,9 @@ export default function FaceManagementPage() {
       await faceApi.upload(selectedUser.id, file)
       toast.success('Data wajah berhasil disimpan')
       fetchFaces(selectedUser.id)
+      
+      // Update local user's face count
+      setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, face_count: (u.face_count || 0) + 1 } : u))
     } catch (err) {
       const detail = err.response?.data?.detail
       if (detail?.includes('AI API')) {
@@ -100,9 +118,14 @@ export default function FaceManagementPage() {
     } finally {
       setUploading(false)
       setUploadProgress('')
-      // Reset file input
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
+  }
+
+  // File input change handler
+  const handleUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (file) uploadFile(file)
   }
 
   // Delete face
@@ -113,7 +136,11 @@ export default function FaceManagementPage() {
       await faceApi.delete(deleteTarget.id)
       toast.success('Data wajah berhasil dihapus')
       setDeleteTarget(null)
-      if (selectedUser) fetchFaces(selectedUser.id)
+      if (selectedUser) {
+        fetchFaces(selectedUser.id)
+        // Update local user's face count
+        setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, face_count: Math.max(0, (u.face_count || 0) - 1) } : u))
+      }
     } catch {
       toast.error('Gagal menghapus data wajah')
     } finally {
@@ -129,233 +156,443 @@ export default function FaceManagementPage() {
   )
 
   return (
-    <div className="animate-fade-in space-y-6">
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <ScanFace className="w-6 h-6 text-indigo-400" />
-          Manajemen Data Wajah
-        </h1>
-        <p className="text-slate-400 text-sm mt-1">
-          Upload dan kelola data wajah untuk AI face recognition
-        </p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#ffffff', margin: 0 }}>
+            Manajemen Wajah
+          </h1>
+          <p style={{ fontSize: '14px', color: '#8494a7', margin: '4px 0 0 0' }}>
+            Kelola data wajah pengguna untuk pengenalan AI
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            if (!selectedUser) {
+              toast.error('Pilih pengguna terlebih dahulu!')
+            } else {
+              fileInputRef.current?.click()
+            }
+          }}
+          disabled={uploading}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 18px',
+            borderRadius: '10px',
+            background: '#3b82f6',
+            color: '#ffffff',
+            fontWeight: 500,
+            fontSize: '14px',
+            border: 'none',
+            cursor: uploading ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s',
+            opacity: uploading ? 0.7 : 1,
+            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)',
+          }}
+          onMouseEnter={(e) => {
+            if (!uploading) {
+              e.currentTarget.style.background = '#2563eb';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!uploading) {
+              e.currentTarget.style.background = '#3b82f6';
+              e.currentTarget.style.transform = 'none';
+            }
+          }}
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>{uploadProgress || 'Mengunggah...'}</span>
+            </>
+          ) : (
+            <>
+              <Plus size={16} />
+              <span>Upload Wajah</span>
+            </>
+          )}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={handleUpload}
+          className="hidden"
+          id="face-upload"
+        />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: User selector */}
-        <div className="lg:col-span-1">
-          <div className="bg-[#1a1d2e] rounded-2xl border border-white/[0.06] overflow-hidden">
-            <div className="p-4 border-b border-white/[0.06]">
-              <h3 className="text-sm font-semibold text-white mb-3">Pilih User</h3>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                <input
-                  type="text"
-                  value={searchUser}
-                  onChange={(e) => setSearchUser(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06]
-                             text-white placeholder-slate-500 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
-                  placeholder="Cari nama atau NIP..."
-                />
-              </div>
+      <div className="grid grid-cols-1 xl:grid-cols-[300px_1fr_340px] gap-6 items-start">
+        {/* Left Column: Daftar Pengguna */}
+        <div style={{
+          background: '#0d1a2d',
+          border: '1px solid rgba(56, 189, 248, 0.08)',
+          borderRadius: '16px',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          height: 'calc(100vh - 200px)',
+          minHeight: '500px',
+        }}>
+          <div style={{ padding: '16px', borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', margin: '0 0 12px 0' }}>
+              Daftar Pengguna
+            </h3>
+            <div style={{ position: 'relative' }}>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input
+                type="text"
+                value={searchUser}
+                onChange={(e) => setSearchUser(e.target.value)}
+                placeholder="Cari pengguna..."
+                style={{
+                  width: '100%',
+                  padding: '8px 12px 8px 36px',
+                  borderRadius: '8px',
+                  background: 'rgba(15, 23, 42, 0.3)',
+                  border: '1px solid rgba(56, 189, 248, 0.08)',
+                  color: '#ffffff',
+                  fontSize: '13px',
+                  outline: 'none',
+                }}
+              />
             </div>
+          </div>
 
-            <div className="max-h-[500px] overflow-y-auto">
-              {loadingUsers ? (
-                <div className="p-6 flex justify-center">
-                  <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
-                </div>
-              ) : filteredUsers.length === 0 ? (
-                <div className="p-6 text-center">
-                  <User className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-                  <p className="text-slate-500 text-sm">
-                    {searchUser ? 'Tidak ada user cocok' : 'Belum ada user'}
-                  </p>
-                </div>
-              ) : (
-                filteredUsers.map((user) => (
+          <div style={{ overflowY: 'auto', flex: 1 }}>
+            {loadingUsers ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '32px' }}>
+                <Loader2 className="w-5 h-5 text-sky-400 animate-spin" />
+              </div>
+            ) : filteredUsers.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px' }}>
+                <User className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>
+                  {searchUser ? 'Tidak ada user cocok' : 'Belum ada user'}
+                </p>
+              </div>
+            ) : (
+              filteredUsers.map((user) => {
+                const isActive = selectedUser?.id === user.id;
+                return (
                   <button
                     key={user.id}
                     onClick={() => handleSelectUser(user)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left
-                               transition-all cursor-pointer border-b border-white/[0.03] last:border-0
-                               ${selectedUser?.id === user.id
-                                 ? 'bg-indigo-600/15 border-l-2 !border-l-indigo-500'
-                                 : 'hover:bg-white/[0.03]'
-                               }`}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '12px 16px',
+                      border: 'none',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.02)',
+                      background: isActive ? '#3b82f6' : 'transparent',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) e.currentTarget.style.background = 'transparent';
+                    }}
                   >
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      selectedUser?.id === user.id
-                        ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'
-                        : 'bg-white/[0.06] text-slate-400'
-                    }`}>
-                      {user.full_name?.[0]?.toUpperCase() || '?'}
+                    <div style={{ position: 'relative', width: '36px', height: '36px', flexShrink: 0 }}>
+                      <img
+                        src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user.full_name)}`}
+                        alt={user.full_name}
+                        style={{
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                        }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          if (e.currentTarget.nextSibling) {
+                            e.currentTarget.nextSibling.style.display = 'flex';
+                          }
+                        }}
+                      />
+                      <div
+                        style={{
+                          display: 'none',
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '50%',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '13px',
+                          fontWeight: 'bold',
+                          color: '#ffffff',
+                          background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                        }}
+                      >
+                        {user.full_name?.[0]?.toUpperCase() || '?'}
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className={`text-sm font-medium truncate ${
-                        selectedUser?.id === user.id ? 'text-white' : 'text-slate-300'
-                      }`}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <p style={{
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        color: '#ffffff',
+                        margin: 0,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
                         {user.full_name}
                       </p>
-                      <p className="text-xs text-slate-500 truncate">{user.employee_id}</p>
+                      <p style={{
+                        fontSize: '12px',
+                        color: isActive ? '#cbd5e1' : '#64748b',
+                        margin: '2px 0 0 0',
+                      }}>
+                        {user.face_count || 0} foto
+                      </p>
                     </div>
                   </button>
-                ))
-              )}
-            </div>
+                );
+              })
+            )}
           </div>
         </div>
 
-        {/* Right: Face data panel */}
-        <div className="lg:col-span-2">
-          {!selectedUser ? (
-            /* No user selected */
-            <div className="bg-[#1a1d2e] rounded-2xl border border-white/[0.06] p-12 text-center">
-              <ScanFace className="w-14 h-14 text-slate-700 mx-auto mb-4" />
-              <p className="text-slate-400 text-lg font-medium mb-1">Pilih User</p>
-              <p className="text-slate-600 text-sm">
-                Pilih user dari daftar di sebelah kiri untuk mengelola data wajah
-              </p>
+        {/* Middle & Right columns display depending on selectedUser */}
+        {!selectedUser ? (
+          /* Empty state spans both middle and right columns for clean look */
+          <div className="xl:col-span-2" style={{
+            background: '#0d1a2d',
+            border: '1px solid rgba(56, 189, 248, 0.08)',
+            borderRadius: '16px',
+            padding: '64px 24px',
+            textAlign: 'center',
+          }}>
+            <div style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '20px',
+              background: 'rgba(56, 189, 248, 0.06)',
+              border: '1px solid rgba(56, 189, 248, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px auto',
+              fontSize: '40px',
+            }}>
+              🐱
             </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Selected user header + upload */}
-              <div className="bg-[#1a1d2e] rounded-2xl border border-white/[0.06] p-5">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-indigo-500/20">
-                      {selectedUser.full_name?.[0]?.toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-white font-semibold">{selectedUser.full_name}</p>
-                      <p className="text-slate-500 text-xs">{selectedUser.employee_id} · {selectedUser.department || 'No dept'}</p>
-                    </div>
-                  </div>
-
-                  {/* Upload button */}
-                  <div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={handleUpload}
-                      className="hidden"
-                      id="face-upload"
-                    />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploading}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600
-                                 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-medium rounded-xl
-                                 transition-all shadow-lg shadow-indigo-500/20 cursor-pointer active:scale-[0.98]
-                                 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {uploading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          {uploadProgress}
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="w-4 h-4" />
-                          Upload Wajah
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Upload tips */}
-                <div className="mt-4 px-4 py-3 bg-indigo-500/5 rounded-xl border border-indigo-500/10">
-                  <p className="text-xs text-indigo-300 font-medium mb-1">Tips Upload:</p>
-                  <ul className="text-xs text-slate-500 space-y-0.5">
-                    <li>• Format: JPEG, PNG, atau WebP (max 5MB)</li>
-                    <li>• Pastikan wajah terlihat jelas dan menghadap kamera</li>
-                    <li>• Pencahayaan yang baik akan meningkatkan akurasi</li>
-                    <li>• Disarankan minimal 2-3 foto dari sudut berbeda</li>
-                  </ul>
-                </div>
-              </div>
-
-              {/* Face data grid */}
-              <div className="bg-[#1a1d2e] rounded-2xl border border-white/[0.06] p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-white">
-                    Data Wajah Terdaftar
+            <h3 style={{ color: '#ffffff', fontSize: '18px', fontWeight: 600, margin: '0 0 8px 0' }}>
+              Belum Ada Pengguna Terpilih
+            </h3>
+            <p style={{ color: '#64748b', fontSize: '14px', maxWidth: '360px', margin: '0 auto' }}>
+              Silakan pilih salah satu pengguna di panel sebelah kiri untuk mengelola data foto wajah mereka.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Middle Column: Data Wajah */}
+            <div style={{
+              background: '#0d1a2d',
+              border: '1px solid rgba(56, 189, 248, 0.08)',
+              borderRadius: '16px',
+              padding: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px',
+            }}>
+              {/* Header Title with stats */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#ffffff', margin: 0 }}>
+                    Data Wajah - {selectedUser.full_name}
                   </h3>
-                  <span className="text-xs text-slate-500">
-                    {faces.length} foto
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    padding: '3px 8px',
+                    borderRadius: '20px',
+                    background: 'rgba(167, 139, 250, 0.15)',
+                    color: '#a78bfa',
+                  }}>
+                    {faces.length} / 3 foto
                   </span>
                 </div>
+                
+                {faces.length >= 3 ? (
+                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#10b981' }}>
+                    Siap untuk pengenalan
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#fbbf24' }}>
+                    Belum siap (min. 3 foto)
+                  </span>
+                )}
+              </div>
 
+              {/* Drag & Drop Area */}
+              <div
+                onDragEnter={(e) => { e.preventDefault(); setDragActive(true); }}
+                onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                onDragLeave={(e) => { e.preventDefault(); setDragActive(false); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragActive(false);
+                  if (e.dataTransfer.files?.[0]) {
+                    uploadFile(e.dataTransfer.files[0]);
+                  }
+                }}
+                style={{
+                  border: dragActive ? '2px dashed #3b82f6' : '1px dashed rgba(167, 139, 250, 0.3)',
+                  background: dragActive ? 'rgba(59, 130, 246, 0.05)' : 'rgba(15, 23, 42, 0.2)',
+                  borderRadius: '12px',
+                  padding: '36px 20px',
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s',
+                  cursor: 'pointer',
+                }}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <span style={{ fontSize: '14px', color: '#cbd5e1', fontWeight: 500 }}>
+                  Drag & drop foto di sini
+                </span>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>atau</span>
+                <button
+                  type="button"
+                  style={{
+                    padding: '8px 16px',
+                    background: '#3b82f6',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(59, 130, 246, 0.2)',
+                    transition: 'all 0.2s',
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#2563eb'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#3b82f6'}
+                >
+                  Pilih File
+                </button>
+                <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                  JPG, PNG, WebP - Maks. 5MB
+                </span>
+              </div>
+
+              {/* Uploaded Portraits Grid */}
+              <div>
+                <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', margin: '0 0 12px 0' }}>
+                  Foto Wajah Terdaftar ({faces.length})
+                </h4>
                 {loadingFaces ? (
-                  <div className="flex justify-center py-12">
-                    <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '36px' }}>
+                    <Loader2 className="w-6 h-6 text-sky-400 animate-spin" />
                   </div>
                 ) : faces.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Image className="w-12 h-12 text-slate-700 mx-auto mb-3" />
-                    <p className="text-slate-400 text-sm mb-1">Belum ada data wajah</p>
-                    <p className="text-slate-600 text-xs">Upload foto wajah untuk registrasi face recognition</p>
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="mt-4 text-indigo-400 text-sm hover:underline cursor-pointer"
-                    >
-                      + Upload foto pertama
-                    </button>
+                  <div style={{
+                    padding: '36px',
+                    textAlign: 'center',
+                    background: 'rgba(15, 23, 42, 0.1)',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255, 255, 255, 0.02)',
+                  }}>
+                    <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>
+                      Belum ada data foto wajah untuk pengguna ini.
+                    </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '12px',
+                  }}>
                     {faces.map((face) => (
                       <div
                         key={face.id}
-                        className="group relative bg-white/[0.03] rounded-xl border border-white/[0.06]
-                                   overflow-hidden hover:border-white/[0.12] transition-all"
+                        style={{
+                          position: 'relative',
+                          aspectRatio: '3/4',
+                          borderRadius: '10px',
+                          overflow: 'hidden',
+                          background: 'rgba(15, 23, 42, 0.4)',
+                          border: '1px solid rgba(255, 255, 255, 0.04)',
+                        }}
+                        className="group"
                       >
-                        {/* Face image */}
-                        <div className="aspect-square bg-black/30 flex items-center justify-center">
-                          {face.image_path ? (
-                            <img
-                              src={`/api/v1/uploads/${face.image_path.split(/[/\\]/).pop()}`}
-                              alt="Face data"
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.style.display = 'none'
-                                e.target.nextSibling.style.display = 'flex'
-                              }}
-                            />
-                          ) : null}
-                          <div className="w-full h-full items-center justify-center text-slate-600 hidden">
-                            <ScanFace className="w-8 h-8" />
-                          </div>
-                          {!face.image_path && (
-                            <ScanFace className="w-8 h-8 text-slate-600" />
-                          )}
+                        {face.image_path ? (
+                          <img
+                            src={`/api/v1/uploads/${face.image_path.split(/[/\\]/).pop()}`}
+                            alt="Face data portrait"
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none'
+                              if (e.currentTarget.nextSibling) {
+                                e.currentTarget.nextSibling.style.display = 'flex'
+                              }
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          style={{
+                            display: !face.image_path ? 'flex' : 'none',
+                            width: '100%',
+                            height: '100%',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#475569',
+                          }}
+                        >
+                          <ScanFace size={32} />
                         </div>
 
-                        {/* Info overlay */}
-                        <div className="p-2.5">
-                          <div className="flex items-center gap-1.5">
-                            <CheckCircle className="w-3 h-3 text-emerald-400" />
-                            <span className="text-[10px] text-emerald-400 font-medium">Terdaftar</span>
-                          </div>
-                          <p className="text-[10px] text-slate-600 mt-0.5">
-                            {new Date(face.created_at).toLocaleDateString('id-ID', {
-                              day: 'numeric', month: 'short', year: 'numeric'
-                            })}
-                          </p>
-                        </div>
-
-                        {/* Delete button (hover) */}
+                        {/* Delete Button overlay */}
                         <button
                           onClick={() => setDeleteTarget(face)}
-                          className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-slate-400
-                                     hover:text-red-400 hover:bg-red-500/20 transition-all cursor-pointer
-                                     opacity-0 group-hover:opacity-100"
-                          title="Hapus"
+                          title="Hapus foto"
+                          style={{
+                            position: 'absolute',
+                            bottom: '8px',
+                            right: '8px',
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '50%',
+                            background: '#ef4444',
+                            border: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#ffffff',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 6px rgba(239, 68, 68, 0.4)',
+                            transition: 'all 0.2s',
+                            zIndex: 10,
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#dc2626'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#ef4444'}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 size={13} />
                         </button>
                       </div>
                     ))}
@@ -363,15 +600,108 @@ export default function FaceManagementPage() {
                 )}
               </div>
             </div>
-          )}
-        </div>
+
+            {/* Right Column: Tips & Progress */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Card 1: Tips Foto Wajah */}
+              <div style={{
+                background: '#0d1a2d',
+                border: '1px solid rgba(56, 189, 248, 0.08)',
+                borderRadius: '16px',
+                padding: '24px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '18px' }}>💡</span>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', margin: 0 }}>
+                    Tips Foto Wajah
+                  </h3>
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {[
+                    'Gunakan pencahayaan yang baik',
+                    'Posisi wajah menghadap depan',
+                    'Jangan gunakan kacamata hitam',
+                    'Ekspresi wajah natural',
+                    'Disarankan minimal 3 foto',
+                  ].map((tip) => (
+                    <div key={tip} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        background: 'rgba(16, 185, 129, 0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}>
+                        <Check size={11} style={{ color: '#10b981' }} />
+                      </div>
+                      <span style={{ fontSize: '13px', color: '#cbd5e1' }}>{tip}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Card 2: Progress */}
+              <div style={{
+                background: '#0d1a2d',
+                border: '1px solid rgba(56, 189, 248, 0.08)',
+                borderRadius: '16px',
+                padding: '24px',
+              }}>
+                <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', margin: '0 0 16px 0' }}>
+                  Progress
+                </h3>
+                
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '13px', color: '#cbd5e1', fontWeight: 500 }}>
+                    {faces.length} dari 3 foto
+                  </span>
+                  <span style={{ fontSize: '13px', color: '#10b981', fontWeight: 700 }}>
+                    {Math.min(100, Math.round((faces.length / 3) * 100))}%
+                  </span>
+                </div>
+
+                {/* Progress bar line */}
+                <div style={{
+                  height: '8px',
+                  borderRadius: '4px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  overflow: 'hidden',
+                  marginBottom: '12px',
+                }}>
+                  <div style={{
+                    width: `${Math.min(100, (faces.length / 3) * 100)}%`,
+                    height: '100%',
+                    background: faces.length >= 3 ? '#10b981' : '#3b82f6',
+                    borderRadius: '4px',
+                    transition: 'width 0.4s ease-out',
+                  }} />
+                </div>
+
+                <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
+                  {faces.length >= 3
+                    ? 'Data wajah siap digunakan untuk absensi'
+                    : `Unggah ${3 - faces.length} foto lagi untuk dapat digunakan untuk absensi.`}
+                </p>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Delete confirmation modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
-          <div className="relative w-full max-w-sm bg-[#1a1d2e] rounded-2xl border border-white/[0.08] shadow-2xl p-6 animate-fade-in">
+          <div className="relative w-full max-w-sm rounded-2xl shadow-2xl p-6 animate-fade-up"
+            style={{
+              background: 'linear-gradient(180deg, #111d35, #0f1a30)',
+              border: '1px solid rgba(248, 113, 113, 0.15)',
+            }}
+          >
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 rounded-xl bg-red-500/10">
                 <AlertCircle className="w-5 h-5 text-red-400" />
@@ -384,8 +714,9 @@ export default function FaceManagementPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteTarget(null)}
-                className="flex-1 py-2.5 rounded-xl border border-white/[0.1] text-slate-300 text-sm
+                className="flex-1 py-2.5 rounded-xl text-slate-300 text-sm
                            hover:bg-white/[0.04] transition-all cursor-pointer"
+                style={{ border: '1px solid rgba(255, 255, 255, 0.08)' }}
               >
                 Batal
               </button>

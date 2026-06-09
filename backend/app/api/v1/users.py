@@ -3,10 +3,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 
 from app.db.database import get_db
 from app.api.deps import get_current_admin
 from app.models.user import User
+from app.models.face import FaceData
 from app.schemas.user import UserCreate, UserUpdate, UserResponse, UserListResponse
 from app.services import ai_service
 
@@ -21,6 +23,7 @@ async def list_users(
     per_page: int = Query(None, ge=1, le=100),
     limit: int = Query(None, ge=1, le=100),
     search: str = Query(None),
+    status: str = Query(None),
     db: AsyncSession = Depends(get_db),
     _admin=Depends(get_current_admin),
 ):
@@ -28,7 +31,13 @@ async def list_users(
     # Accept both 'limit' and 'per_page' (frontend uses 'limit')
     actual_limit = limit or per_page or 20
 
-    query = select(User).where(User.is_active == True)
+    query = select(User).options(selectinload(User.face_data))
+
+    # Apply status filter
+    if status == "aktif":
+        query = query.where(User.is_active == True)
+    elif status == "nonaktif":
+        query = query.where(User.is_active == False)
 
     # Search filter
     if search:
@@ -41,18 +50,37 @@ async def list_users(
     # Count total
     count_query = select(func.count()).select_from(query.subquery())
     total_result = await db.execute(count_query)
-    total = total_result.scalar()
+    total = total_result.scalar() or 0
 
     # Paginate
     query = query.offset((page - 1) * actual_limit).limit(actual_limit).order_by(User.created_at.desc())
     result = await db.execute(query)
     users = result.scalars().all()
 
+    # Calculate global stats (for stats cards)
+    total_users_res = await db.execute(select(func.count(User.id)))
+    total_users = total_users_res.scalar() or 0
+
+    active_users_res = await db.execute(select(func.count(User.id)).where(User.is_active == True))
+    active_users = active_users_res.scalar() or 0
+
+    inactive_users_res = await db.execute(select(func.count(User.id)).where(User.is_active == False))
+    inactive_users = inactive_users_res.scalar() or 0
+
+    face_users_res = await db.execute(select(func.count(func.distinct(FaceData.user_id))))
+    has_face_users = face_users_res.scalar() or 0
+
     return {
         "items": [UserResponse.model_validate(u) for u in users],
         "total": total,
         "page": page,
         "per_page": actual_limit,
+        "stats": {
+            "total": total_users,
+            "active": active_users,
+            "inactive": inactive_users,
+            "has_face": has_face_users,
+        }
     }
 
 
@@ -98,7 +126,7 @@ async def get_user(
     _admin=Depends(get_current_admin),
 ):
     """Get user detail by ID."""
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(select(User).where(User.id == user_id).options(selectinload(User.face_data)))
     user = result.scalar_one_or_none()
 
     if not user:
@@ -115,7 +143,7 @@ async def update_user(
     _admin=Depends(get_current_admin),
 ):
     """Update user data."""
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(select(User).where(User.id == user_id).options(selectinload(User.face_data)))
     user = result.scalar_one_or_none()
 
     if not user:

@@ -24,5 +24,12 @@ class User(Base):
     face_data = relationship("FaceData", back_populates="user", cascade="all, delete-orphan")
     attendance_logs = relationship("AttendanceLog", back_populates="user")
 
+    @property
+    def face_count(self) -> int:
+        try:
+            return len(self.face_data)
+        except Exception:
+            return 0
+
     def __repr__(self):
         return f"<User {self.full_name}>"

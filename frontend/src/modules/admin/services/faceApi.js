@@ -15,8 +15,10 @@ const faceApi = {
   upload: (userId, file) => {
     const formData = new FormData()
     formData.append('file', file)
+    // NOTE: Jangan set Content-Type manual saat pakai FormData!
+    // Axios otomatis set "multipart/form-data; boundary=..." yang benar.
+    // Kalau di-override manual, boundary hilang → FastAPI 422 error.
     return api.post(`/faces/users/${userId}/upload`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 30000, // AI extraction may take time
     })
   },

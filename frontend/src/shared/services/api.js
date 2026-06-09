@@ -16,6 +16,14 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+
+    // Jika body adalah FormData, hapus Content-Type bawaan (application/json)
+    // supaya axios otomatis set multipart/form-data + boundary yang benar.
+    // Kalau Content-Type dipaksa, boundary hilang → FastAPI 422 error.
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
+    }
+
     return config
   },
   (error) => Promise.reject(error)

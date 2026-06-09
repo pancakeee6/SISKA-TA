@@ -13,8 +13,8 @@ const attendanceApi = {
     formData.append('file', imageBlob, 'capture.jpg')
 
     // Use plain axios (no auth interceptor) since this is a public kiosk endpoint
+    // NOTE: Do not set Content-Type manually so axios auto-generates the boundary
     return axios.post('/api/v1/attendance/recognize', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 15000,
     })
   },

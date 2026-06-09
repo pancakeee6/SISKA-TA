@@ -1,5 +1,7 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
 
 from app.core.config import settings
 from app.core.websocket import ws_manager
@@ -35,6 +37,10 @@ app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
 app.include_router(attendance.router, prefix="/api/v1/attendance", tags=["Attendance"])
 app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
 app.include_router(faces.router, prefix="/api/v1/faces", tags=["Face Data"])
+
+# Serve uploaded face images as static files
+os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+app.mount("/api/v1/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 
 # WebSocket endpoint for realtime attendance updates

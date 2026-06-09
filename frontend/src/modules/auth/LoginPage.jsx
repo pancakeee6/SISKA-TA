@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@shared/store/authStore'
 import authApi from './services/authApi'
 import toast from 'react-hot-toast'
-import { Eye, EyeOff, LogIn } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
+import siskaMascot from '@/assets/siska-mascot.png'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -37,112 +38,414 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#0f172a] px-4">
-      {/* Background animated grid */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)',
-            backgroundSize: '64px 64px',
-          }}
-        />
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      background: '#080e1e',
+      fontFamily: "'Inter', 'Segoe UI', sans-serif",
+    }}>
+      {/* Inline keyframes */}
+      <style>{`
+        @keyframes loginFloat {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-12px); }
+        }
+        @keyframes loginPulseGlow {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.1); }
+        }
+        @keyframes loginFadeUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes loginParticle {
+          0% { opacity: 0; transform: translateY(0) scale(0); }
+          50% { opacity: 1; }
+          100% { opacity: 0; transform: translateY(-60px) scale(1); }
+        }
+        .login-input:focus {
+          border-color: rgba(56, 189, 248, 0.4) !important;
+          box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.08);
+        }
+        .login-btn:hover:not(:disabled) {
+          box-shadow: 0 6px 25px rgba(56, 189, 248, 0.4) !important;
+          transform: translateY(-1px);
+        }
+        .login-btn:active:not(:disabled) {
+          transform: translateY(0) scale(0.98);
+        }
+      `}</style>
+
+      {/* LEFT SIDE — Branding */}
+      <div style={{
+        flex: '1',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+        background: 'linear-gradient(160deg, #0b1628 0%, #0d1f3c 40%, #091428 100%)',
+        padding: '40px 50px',
+      }}>
+        {/* Decorative glowing orbs */}
+        <div style={{
+          position: 'absolute',
+          width: '350px',
+          height: '350px',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(56,189,248,0.12) 0%, transparent 70%)',
+          top: '-80px',
+          right: '-60px',
+          animation: 'loginPulseGlow 6s ease-in-out infinite',
+        }} />
+        <div style={{
+          position: 'absolute',
+          width: '250px',
+          height: '250px',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)',
+          bottom: '5%',
+          left: '-40px',
+          animation: 'loginPulseGlow 8s ease-in-out infinite',
+          animationDelay: '2s',
+        }} />
+        <div style={{
+          position: 'absolute',
+          width: '200px',
+          height: '200px',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(56,189,248,0.06) 0%, transparent 70%)',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          animation: 'loginPulseGlow 7s ease-in-out infinite',
+          animationDelay: '4s',
+        }} />
+
+        {/* Tiny star dots */}
+        {[
+          { top: '10%', left: '15%', size: 3, delay: '0s' },
+          { top: '20%', left: '75%', size: 2, delay: '1s' },
+          { top: '55%', left: '8%', size: 2, delay: '2s' },
+          { top: '80%', left: '85%', size: 3, delay: '0.5s' },
+          { top: '35%', left: '90%', size: 2, delay: '3s' },
+          { top: '90%', left: '25%', size: 2, delay: '1.5s' },
+          { top: '12%', left: '55%', size: 3, delay: '2.5s' },
+          { top: '70%', left: '45%', size: 2, delay: '4s' },
+          { top: '45%', left: '20%', size: 2, delay: '0.8s' },
+          { top: '30%', left: '60%', size: 3, delay: '3.5s' },
+        ].map((star, i) => (
+          <div key={i} style={{
+            position: 'absolute',
+            top: star.top,
+            left: star.left,
+            width: `${star.size}px`,
+            height: `${star.size}px`,
+            borderRadius: '50%',
+            background: '#38bdf8',
+            animation: `loginPulseGlow 3s ease-in-out infinite`,
+            animationDelay: star.delay,
+          }} />
+        ))}
+
+        {/* Horizontal layout: Mascot left + Text right */}
+        <div style={{
+          position: 'relative',
+          zIndex: 2,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '40px',
+          maxWidth: '620px',
+        }}>
+          {/* Mascot — large, on the left */}
+          <div style={{
+            flexShrink: 0,
+            animation: 'loginFloat 5s ease-in-out infinite',
+            position: 'relative',
+          }}>
+            {/* Glow behind mascot */}
+            <div style={{
+              position: 'absolute',
+              bottom: '-15px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '240px',
+              height: '40px',
+              borderRadius: '50%',
+              background: 'radial-gradient(ellipse, rgba(56,189,248,0.2) 0%, transparent 70%)',
+              filter: 'blur(8px)',
+            }} />
+            <img
+              src={siskaMascot}
+              alt="SISKA Mascot"
+              style={{
+                width: '300px',
+                height: 'auto',
+                filter: 'drop-shadow(0 15px 40px rgba(56,189,248,0.2))',
+                position: 'relative',
+                zIndex: 1,
+              }}
+            />
+          </div>
+
+          {/* Brand Text — beside mascot */}
+          <div style={{
+            animation: 'loginFadeUp 0.8s ease-out',
+          }}>
+            <h1 style={{
+              fontSize: '42px',
+              fontWeight: 800,
+              color: '#ffffff',
+              letterSpacing: '4px',
+              margin: '0 0 6px 0',
+              textShadow: '0 2px 20px rgba(56,189,248,0.2)',
+            }}>SISKA</h1>
+            <p style={{
+              fontSize: '15px',
+              color: '#64748b',
+              margin: '0 0 28px 0',
+              letterSpacing: '1px',
+            }}>Sistem Kehadiran AI</p>
+
+            {/* Divider line */}
+            <div style={{
+              width: '50px',
+              height: '3px',
+              borderRadius: '2px',
+              background: 'linear-gradient(90deg, #2563eb, #38bdf8)',
+              marginBottom: '24px',
+            }} />
+
+            {/* Tagline */}
+            <p style={{
+              fontSize: '22px',
+              fontWeight: 600,
+              color: '#e2e8f0',
+              margin: 0,
+              lineHeight: 1.5,
+            }}>
+              Absensi cerdas,
+            </p>
+            <p style={{
+              fontSize: '22px',
+              fontWeight: 600,
+              color: '#e2e8f0',
+              margin: 0,
+              lineHeight: 1.5,
+            }}>
+              satu pandangan saja 😺
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="w-full max-w-md animate-fade-in relative z-10">
-        {/* Logo & Branding */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mb-4 shadow-lg shadow-indigo-500/25">
-            <LogIn className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-            SISKA
-          </h1>
-          <p className="text-slate-400 mt-1 text-sm">Sistem Kehadiran — Admin Panel</p>
-        </div>
+      {/* RIGHT SIDE — Login Form */}
+      <div style={{
+        width: '460px',
+        minWidth: '400px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        padding: '60px 50px',
+        background: '#0c1426',
+        borderLeft: '1px solid rgba(56, 189, 248, 0.06)',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* Subtle top glow */}
+        <div style={{
+          position: 'absolute',
+          top: '-100px',
+          right: '-100px',
+          width: '250px',
+          height: '250px',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(56,189,248,0.04) 0%, transparent 70%)',
+        }} />
 
-        {/* Login Card */}
-        <div className="bg-white/[0.05] backdrop-blur-xl rounded-2xl border border-white/[0.08] shadow-2xl p-8">
-          <h2 className="text-xl font-semibold text-white mb-6">Login Admin</h2>
+        <div style={{
+          position: 'relative',
+          zIndex: 2,
+          animation: 'loginFadeUp 0.6s ease-out',
+        }}>
+          {/* Heading */}
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: 700,
+            color: '#ffffff',
+            margin: '0 0 6px 0',
+          }}>Selamat Datang Kembali!</h2>
+          <p style={{
+            fontSize: '14px',
+            color: '#64748b',
+            margin: '0 0 36px 0',
+          }}>Silakan masuk ke akun Anda</p>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Username */}
-            <div>
-              <label htmlFor="login-username" className="block text-sm font-medium text-slate-300 mb-1.5">
-                Username
+          {/* Form */}
+          <form onSubmit={handleSubmit}>
+            {/* Email / Username */}
+            <div style={{ marginBottom: '20px' }}>
+              <label htmlFor="login-username" style={{
+                display: 'block',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: '#94a3b8',
+                marginBottom: '8px',
+              }}>
+                Email
               </label>
               <input
                 id="login-username"
                 type="text"
                 value={form.username}
                 onChange={(e) => setForm({ ...form, username: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.1]
-                           text-white placeholder-slate-500
-                           focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50
-                           transition-all text-sm"
-                placeholder="Masukkan username"
+                className="login-input"
+                placeholder="admin@siska.ai"
                 required
                 autoFocus
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: '10px',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  color: '#e2e8f0',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'all 0.2s',
+                  boxSizing: 'border-box',
+                }}
               />
             </div>
 
             {/* Password */}
-            <div>
-              <label htmlFor="login-password" className="block text-sm font-medium text-slate-300 mb-1.5">
+            <div style={{ marginBottom: '14px' }}>
+              <label htmlFor="login-password" style={{
+                display: 'block',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: '#94a3b8',
+                marginBottom: '8px',
+              }}>
                 Password
               </label>
-              <div className="relative">
+              <div style={{ position: 'relative' }}>
                 <input
                   id="login-password"
                   type={showPassword ? 'text' : 'password'}
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="w-full px-4 py-2.5 pr-11 rounded-xl bg-white/[0.06] border border-white/[0.1]
-                             text-white placeholder-slate-500
-                             focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50
-                             transition-all text-sm"
-                  placeholder="Masukkan password"
+                  className="login-input"
+                  placeholder="••••••••••••"
                   required
+                  style={{
+                    width: '100%',
+                    padding: '12px 44px 12px 16px',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    color: '#e2e8f0',
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    boxSizing: 'border-box',
+                  }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors cursor-pointer"
                   tabIndex={-1}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#64748b',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    transition: 'color 0.15s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = '#38bdf8'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = '#64748b'; }}
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
 
-            {/* Submit */}
+            {/* Forgot Password */}
+            <div style={{ textAlign: 'right', marginBottom: '28px' }}>
+              <button
+                type="button"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#6366f1',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  padding: 0,
+                  transition: 'color 0.15s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#818cf8'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = '#6366f1'; }}
+                onClick={() => toast('Hubungi administrator untuk reset password', { icon: 'ℹ️' })}
+              >
+                Lupa password?
+              </button>
+            </div>
+
+            {/* Submit Button */}
             <button
               id="login-submit"
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600
-                         hover:from-indigo-500 hover:to-purple-500
-                         text-white font-medium rounded-xl transition-all duration-200
-                         disabled:opacity-50 disabled:cursor-not-allowed text-sm cursor-pointer
-                         shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40
-                         active:scale-[0.98]"
+              className="login-btn"
+              style={{
+                width: '100%',
+                padding: '13px',
+                borderRadius: '10px',
+                fontSize: '15px',
+                fontWeight: 600,
+                color: '#ffffff',
+                background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                border: 'none',
+                cursor: loading ? 'wait' : 'pointer',
+                opacity: loading ? 0.6 : 1,
+                transition: 'all 0.2s',
+                boxShadow: '0 4px 15px rgba(37, 99, 235, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+              }}
             >
               {loading ? (
-                <span className="inline-flex items-center gap-2">
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                <>
+                  <svg style={{ animation: 'spin 1s linear infinite', width: '16px', height: '16px' }} viewBox="0 0 24 24">
+                    <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
                   Memproses...
-                </span>
+                </>
               ) : 'Masuk'}
             </button>
           </form>
-        </div>
 
-        {/* Footer */}
-        <p className="text-center text-slate-500 text-xs mt-6">
-          © 2026 SISKA — Sistem Kehadiran
-        </p>
+          {/* Footer */}
+          <p style={{
+            textAlign: 'center',
+            fontSize: '12px',
+            color: '#475569',
+            marginTop: '40px',
+          }}>
+            © 2026 SISKA. All rights reserved.
+          </p>
+        </div>
       </div>
     </div>
   )

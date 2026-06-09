@@ -24,6 +24,7 @@ class AttendanceLogResponse(BaseModel):
     id: int
     user_id: UUID
     user_name: Optional[str] = None
+    employee_id: Optional[str] = None
     event_type: str
     timestamp: datetime
     status: str

@@ -83,10 +83,15 @@ async def recognize_face(image_file: UploadFile) -> dict:
 
     Calls POST /v1/recognize_multi with device headers.
     """
+    # Baca seluruh file ke memory (bytes) agar httpx tidak bermasalah
+    # saat membaca SpooledTemporaryFile secara async.
+    content = await image_file.read()
+    await image_file.seek(0)
+    
     async with httpx.AsyncClient(timeout=15.0) as client:
         response = await client.post(
             f"{settings.AI_API_URL}/v1/recognize_multi",
-            files={"file": (image_file.filename, image_file.file, image_file.content_type)},
+            files={"file": (image_file.filename, content, image_file.content_type)},
             headers={
                 "x-device-id": settings.DEVICE_ID,
                 "x-device-token": settings.DEVICE_TOKEN,
