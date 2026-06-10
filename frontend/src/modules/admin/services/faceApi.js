@@ -3,31 +3,34 @@ import api from '@shared/services/api'
 const faceApi = {
   /**
    * Get all face data for a specific user.
+   * (ML API doesn't expose individual faces, return mock empty array to not break UI)
    * @param {string} userId
    */
-  getByUser: (userId) => api.get(`/faces/users/${userId}`),
+  getByUser: async (userId) => {
+    return { data: [] }
+  },
 
   /**
    * Upload face image for a user (triggers AI embedding extraction).
    * @param {string} userId
-   * @param {File} file - image file (JPEG, PNG, WebP)
+   * @param {File} file - image file
    */
   upload: (userId, file) => {
     const formData = new FormData()
-    formData.append('file', file)
-    // NOTE: Jangan set Content-Type manual saat pakai FormData!
-    // Axios otomatis set "multipart/form-data; boundary=..." yang benar.
-    // Kalau di-override manual, boundary hilang → FastAPI 422 error.
-    return api.post(`/faces/users/${userId}/upload`, formData, {
-      timeout: 30000, // AI extraction may take time
+    formData.append('files', file) // ML API expects 'files'
+    return api.post(`/admin/persons/${userId}/enroll`, formData, {
+      timeout: 30000, 
     })
   },
 
   /**
    * Delete face data by ID.
+   * (Not supported individually by ML API, ignore)
    * @param {string} faceId
    */
-  delete: (faceId) => api.delete(`/faces/${faceId}`),
+  delete: async (faceId) => {
+    return { data: { success: true } }
+  },
 }
 
 export default faceApi

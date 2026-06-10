@@ -2,23 +2,29 @@ import { create } from 'zustand'
 
 export const useAuthStore = create((set) => ({
   // State
-  accessToken: null,
+  accessToken: localStorage.getItem('accessToken') || null,
   refreshToken: localStorage.getItem('refreshToken') || null,
   admin: null,
-  isAuthenticated: false,
+  isAuthenticated: !!localStorage.getItem('accessToken'),
 
   // Actions
   setTokens: (accessToken, refreshToken) => {
-    localStorage.setItem('refreshToken', refreshToken)
+    if (accessToken) localStorage.setItem('accessToken', accessToken)
+    if (refreshToken) localStorage.setItem('refreshToken', refreshToken)
     set({
       accessToken,
       refreshToken,
-      isAuthenticated: true,
+      isAuthenticated: !!accessToken,
     })
   },
 
   setAccessToken: (accessToken) => {
-    set({ accessToken })
+    if (accessToken) {
+      localStorage.setItem('accessToken', accessToken)
+    } else {
+      localStorage.removeItem('accessToken')
+    }
+    set({ accessToken, isAuthenticated: !!accessToken })
   },
 
   setAdmin: (admin) => {
@@ -26,6 +32,7 @@ export const useAuthStore = create((set) => ({
   },
 
   logout: () => {
+    localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
     set({
       accessToken: null,

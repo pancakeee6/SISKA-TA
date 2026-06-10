@@ -28,29 +28,13 @@ export default function App() {
   const { refreshToken, setTokens, setAdmin, logout } = useAuthStore()
   const [initializing, setInitializing] = useState(!!refreshToken)
 
-  // Auto-login: if refreshToken exists in localStorage, try to get a new access token
   useEffect(() => {
-    const tryAutoLogin = async () => {
-      if (!refreshToken) {
-        setInitializing(false)
-        return
-      }
-      try {
-        const { default: authApi } = await import('@modules/auth/services/authApi')
-        const tokenRes = await authApi.refresh(refreshToken)
-        setTokens(tokenRes.data.access_token, tokenRes.data.refresh_token)
-
-        const meRes = await authApi.getMe()
-        setAdmin(meRes.data)
-      } catch {
-        // Refresh token invalid — clean up
-        logout()
-      } finally {
-        setInitializing(false)
-      }
+    // If authenticated but no admin data, mock admin data (since ML API doesn't have /me)
+    if (useAuthStore.getState().isAuthenticated && !useAuthStore.getState().admin) {
+      setAdmin({ id: "1", username: "admin", full_name: "Administrator" })
     }
-    tryAutoLogin()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    setInitializing(false)
+  }, [setAdmin])
 
   if (initializing) return <PageLoader />
 

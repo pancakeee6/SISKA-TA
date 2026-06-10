@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Search, Calendar, ChevronLeft, ChevronRight,
   Clock, Loader2,
-  Download, X, XCircle, TrendingUp, TrendingDown, CheckCircle2
+  Download, X, XCircle, TrendingUp, TrendingDown, CheckCircle2,
+  Trash2
 } from 'lucide-react'
 import attendanceAdminApi from '../services/attendanceAdminApi'
 import dashboardApi from '../services/dashboardApi'
+import api from '@shared/services/api'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import { id as localeID } from 'date-fns/locale'
@@ -130,6 +132,28 @@ export default function AttendanceHistoryPage() {
     }
   }
 
+  // Reset Logs handler
+  const handleResetLogs = async () => {
+    if (!window.confirm('Yakin ingin mereset seluruh log absensi? Ini akan menghapus data kehadiran hari ini dan riwayat yang tersimpan di ML API.')) {
+      return
+    }
+    
+    setLoading(true)
+    try {
+      await api.post('/admin/reset_attendance')
+      toast.success('Log absensi berhasil di-reset!')
+      setLogs([])
+      setTotal(0)
+      setPage(1)
+      setStats(prev => ({ ...prev, present: 0, late: 0, absent: prev.total }))
+    } catch (err) {
+      console.error(err)
+      toast.error('Gagal mereset log absensi.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Format timestamp
   const formatTime = (ts) => {
     try {
@@ -223,29 +247,54 @@ export default function AttendanceHistoryPage() {
             Lihat dan kelola riwayat kehadiran
           </p>
         </div>
-        <button
-          onClick={() => setShowExport(true)}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 20px',
-            borderRadius: '12px',
-            fontSize: '13px',
-            fontWeight: 600,
-            color: '#fff',
-            cursor: 'pointer',
-            background: 'linear-gradient(135deg, #0ea5e9, #38bdf8)',
-            border: 'none',
-            boxShadow: '0 4px 15px rgba(14,165,233,0.25)',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(14,165,233,0.35)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(14,165,233,0.25)'; }}
-        >
-          <Download className="w-4 h-4" />
-          Export CSV
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            onClick={handleResetLogs}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 20px',
+              borderRadius: '12px',
+              fontSize: '13px',
+              fontWeight: 600,
+              color: '#ef4444',
+              cursor: 'pointer',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+          >
+            <Trash2 className="w-4 h-4" />
+            Reset Log
+          </button>
+          
+          <button
+            onClick={() => setShowExport(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 20px',
+              borderRadius: '12px',
+              fontSize: '13px',
+              fontWeight: 600,
+              color: '#fff',
+              cursor: 'pointer',
+              background: 'linear-gradient(135deg, #0ea5e9, #38bdf8)',
+              border: 'none',
+              boxShadow: '0 4px 15px rgba(14,165,233,0.25)',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(14,165,233,0.35)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(14,165,233,0.25)'; }}
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
+          </button>
+        </div>
       </div>
 
       {/* Summary Stat Cards */}

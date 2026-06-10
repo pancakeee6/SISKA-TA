@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   ScanFace, Search, Trash2, Loader2, AlertCircle, User,
-  Plus, Check
+  Plus, Check, Camera
 } from 'lucide-react'
+import Webcam from 'react-webcam'
 import userApi from '../services/userApi'
 import faceApi from '../services/faceApi'
 import toast from 'react-hot-toast'
@@ -31,6 +32,23 @@ export default function FaceManagementPage() {
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
+
+  // Camera state
+  const [showCamera, setShowCamera] = useState(false)
+  const webcamRef = useRef(null)
+
+  const captureFace = useCallback(() => {
+    const imageSrc = webcamRef.current?.getScreenshot()
+    if (imageSrc) {
+      fetch(imageSrc)
+        .then(res => res.blob())
+        .then(blob => {
+          const file = new File([blob], "capture.jpg", { type: "image/jpeg" })
+          setShowCamera(false)
+          uploadFile(file)
+        })
+    }
+  }, [selectedUser])
 
   const fetchUsers = async () => {
     setLoadingUsers(true)
@@ -169,64 +187,105 @@ export default function FaceManagementPage() {
             Kelola data wajah pengguna untuk pengenalan AI
           </p>
         </div>
-        <button
-          onClick={() => {
-            if (!selectedUser) {
-              toast.error('Pilih pengguna terlebih dahulu!')
-            } else {
-              fileInputRef.current?.click()
-            }
-          }}
-          disabled={uploading}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 18px',
-            borderRadius: '10px',
-            background: '#3b82f6',
-            color: '#ffffff',
-            fontWeight: 500,
-            fontSize: '14px',
-            border: 'none',
-            cursor: uploading ? 'not-allowed' : 'pointer',
-            transition: 'all 0.2s',
-            opacity: uploading ? 0.7 : 1,
-            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)',
-          }}
-          onMouseEnter={(e) => {
-            if (!uploading) {
-              e.currentTarget.style.background = '#2563eb';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!uploading) {
-              e.currentTarget.style.background = '#3b82f6';
-              e.currentTarget.style.transform = 'none';
-            }
-          }}
-        >
-          {uploading ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>{uploadProgress || 'Mengunggah...'}</span>
-            </>
-          ) : (
-            <>
-              <Plus size={16} />
-              <span>Upload Wajah</span>
-            </>
-          )}
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={handleUpload}
-          className="hidden"
-          id="face-upload"
-        />
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            onClick={() => {
+              if (!selectedUser) {
+                toast.error('Pilih pengguna terlebih dahulu!')
+              } else {
+                setShowCamera(true)
+              }
+            }}
+            disabled={uploading}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              borderRadius: '10px',
+              background: 'rgba(56, 189, 248, 0.15)',
+              color: '#38bdf8',
+              fontWeight: 500,
+              fontSize: '14px',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              cursor: uploading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s',
+              opacity: uploading ? 0.7 : 1,
+            }}
+            onMouseEnter={(e) => {
+              if (!uploading) {
+                e.currentTarget.style.background = 'rgba(56, 189, 248, 0.25)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!uploading) {
+                e.currentTarget.style.background = 'rgba(56, 189, 248, 0.15)';
+              }
+            }}
+          >
+            <Camera size={16} />
+            <span>Ambil Foto</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              if (!selectedUser) {
+                toast.error('Pilih pengguna terlebih dahulu!')
+              } else {
+                fileInputRef.current?.click()
+              }
+            }}
+            disabled={uploading}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              borderRadius: '10px',
+              background: '#3b82f6',
+              color: '#ffffff',
+              fontWeight: 500,
+              fontSize: '14px',
+              border: 'none',
+              cursor: uploading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s',
+              opacity: uploading ? 0.7 : 1,
+              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)',
+            }}
+            onMouseEnter={(e) => {
+              if (!uploading) {
+                e.currentTarget.style.background = '#2563eb';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!uploading) {
+                e.currentTarget.style.background = '#3b82f6';
+                e.currentTarget.style.transform = 'none';
+              }
+            }}
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>{uploadProgress || 'Mengunggah...'}</span>
+              </>
+            ) : (
+              <>
+                <Plus size={16} />
+                <span>Upload Wajah</span>
+              </>
+            )}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleUpload}
+            className="hidden"
+            id="face-upload"
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[300px_1fr_340px] gap-6 items-start">
@@ -732,6 +791,45 @@ export default function FaceManagementPage() {
               >
                 {deleting && <Loader2 className="w-4 h-4 animate-spin" />}
                 Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Camera Modal */}
+      {showCamera && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowCamera(false)} />
+          <div className="relative w-full max-w-md rounded-2xl shadow-2xl p-6 animate-fade-up flex flex-col gap-4"
+            style={{
+              background: 'linear-gradient(180deg, #111d35, #0f1a30)',
+              border: '1px solid rgba(56, 189, 248, 0.15)',
+            }}
+          >
+            <h3 className="text-lg font-semibold text-white">Ambil Foto Wajah</h3>
+            <div className="rounded-xl overflow-hidden bg-black/50 aspect-video relative">
+              <Webcam
+                audio={false}
+                ref={webcamRef}
+                screenshotFormat="image/jpeg"
+                videoConstraints={{ facingMode: "user" }}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </div>
+            <div className="flex gap-3 mt-2">
+              <button
+                onClick={() => setShowCamera(false)}
+                className="flex-1 py-2.5 rounded-xl text-slate-300 text-sm hover:bg-white/[0.04] transition-all cursor-pointer"
+                style={{ border: '1px solid rgba(255, 255, 255, 0.08)' }}
+              >
+                Batal
+              </button>
+              <button
+                onClick={captureFace}
+                className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all cursor-pointer inline-flex items-center justify-center gap-2"
+              >
+                <Camera size={16} />
+                Jepret & Simpan
               </button>
             </div>
           </div>

@@ -12,10 +12,12 @@ const attendanceApi = {
     const formData = new FormData()
     formData.append('file', imageBlob, 'capture.jpg')
 
-    // Use plain axios (no auth interceptor) since this is a public kiosk endpoint
-    // NOTE: Do not set Content-Type manually so axios auto-generates the boundary
-    return axios.post('/api/v1/attendance/recognize', formData, {
+    return axios.post('/v1/recognize_multi', formData, {
       timeout: 15000,
+      headers: {
+        'x-device-id': 'stb-01',
+        'x-device-token': '87654321'
+      }
     })
   },
 
@@ -25,7 +27,7 @@ const attendanceApi = {
    * @returns {Promise}
    */
   resetLogs: () => {
-    return api.post('/api/v1/attendance/reset')
+    return api.post('/admin/reset_attendance')
   },
 }
 

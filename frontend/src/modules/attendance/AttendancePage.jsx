@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import Webcam from 'react-webcam'
-import { Camera, CheckCircle, XCircle, Scan, Clock, Wifi, WifiOff, Maximize, Minimize, RefreshCcw } from 'lucide-react'
+import { Camera, CheckCircle, XCircle, Scan, Clock, Wifi, WifiOff, Maximize, Minimize } from 'lucide-react'
 import attendanceApi from './services/attendanceApi'
 import siskaLogo from '@/assets/siska-logo.png'
 import siskaMascot from '@/assets/siska-mascot.png'
@@ -84,8 +84,9 @@ function speakGreeting(face) {
   
   // Attempt to pick a voice known to be female if possible (Gadis, Google)
   let selectedVoice = indonesianVoices.find(v => 
-    v.name.toLowerCase().includes('female') || 
     v.name.toLowerCase().includes('gadis') || 
+    v.name.toLowerCase().includes('female') || 
+    v.name.toLowerCase().includes('perempuan') ||
     v.name.includes('Google')
   )
   if (!selectedVoice && indonesianVoices.length > 0) {
@@ -94,6 +95,13 @@ function speakGreeting(face) {
 
   if (selectedVoice) {
     utterance.voice = selectedVoice
+  }
+
+  // If we can't find a specifically named female voice, increase pitch to simulate one
+  if (!selectedVoice?.name?.toLowerCase().includes('gadis') && !selectedVoice?.name?.toLowerCase().includes('female')) {
+    utterance.pitch = 1.6 
+  } else {
+    utterance.pitch = 1.2
   }
 
   speechSynthesis.speak(utterance)
@@ -193,12 +201,18 @@ export default function AttendancePage() {
       const res = await attendanceApi.recognize(blob)
       const data = res.data
 
-      if (data.status === 'recognized' && data.faces?.length > 0) {
+      if (data.status === 'ok' && data.faces?.length > 0) {
         const face = data.faces[0]
-        setResult(face)
-        setStatus(STATUS.RECOGNIZED)
-        setTodayCount(prev => prev + 1)
-        speakGreeting(face)
+        if (face.name && face.name !== "Unknown") {
+          face.user_name = face.name // map for speakGreeting and UI
+          setResult(face)
+          setStatus(STATUS.RECOGNIZED)
+          setTodayCount(prev => prev + 1)
+          speakGreeting(face)
+        } else {
+          setResult(null)
+          setStatus(STATUS.UNRECOGNIZED)
+        }
       } else {
         setResult(null)
         setStatus(STATUS.UNRECOGNIZED)
@@ -235,17 +249,6 @@ export default function AttendancePage() {
   const handleManualCapture = () => {
     if (!isCapturing) {
       captureAndRecognize()
-    }
-  }
-
-  // Debug reset logs
-  const handleResetLogs = async () => {
-    try {
-      await attendanceApi.resetLogs()
-      alert('Log absensi berhasil di-reset!')
-    } catch (err) {
-      console.error('Reset logs error:', err)
-      alert('Gagal mereset log absensi. Pastikan Anda sudah login admin di browser ini.')
     }
   }
 
@@ -659,23 +662,6 @@ export default function AttendancePage() {
 
         {/* Time + Fullscreen */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {/* Debug Reset Logs Button */}
-          <button
-            onClick={handleResetLogs}
-            style={{
-              background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)',
-              borderRadius: '8px', padding: '8px 12px', cursor: 'pointer', color: '#f87171',
-              display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s',
-              fontSize: '12px', fontWeight: 600
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)' }}
-            title="Reset semua log absensi (Debug)"
-          >
-            <RefreshCcw size={14} />
-            <span>Reset Log</span>
-          </button>
-          
           <button
             onClick={toggleFullscreen}
             style={{
