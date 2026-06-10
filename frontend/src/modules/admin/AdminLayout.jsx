@@ -1,7 +1,4 @@
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { useAuthStore } from '@shared/store/authStore'
-import authApi from '@modules/auth/services/authApi'
-import toast from 'react-hot-toast'
+import { Outlet, NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
@@ -21,35 +18,14 @@ const navItems = [
   { to: '/admin/attendance', icon: ClipboardList, label: 'Riwayat Absensi' },
 ]
 
-// Page title mapping
-const pageTitles = {
-  '/admin': 'Dashboard',
-  '/admin/users': 'Pengguna',
-  '/admin/faces': 'Manajemen Wajah',
-  '/admin/attendance': 'Riwayat Absensi',
-}
+
 
 export default function AdminLayout() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { admin, logout } = useAuthStore()
   // Mobile sidebar (overlay)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   // Desktop sidebar collapsed state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
-  const handleLogout = async () => {
-    try {
-      await authApi.logout()
-    } catch {
-      // Ignore logout API errors
-    }
-    logout()
-    toast.success('Berhasil keluar')
-    navigate('/login')
-  }
-
-  const currentTitle = pageTitles[location.pathname] || 'Dashboard'
   const sidebarWidth = sidebarCollapsed ? '72px' : '250px'
 
   return (

@@ -24,6 +24,77 @@ const CAPTURE_INTERVAL = 4000
 // How long to show result before resetting
 const RESULT_DISPLAY_MS = 5000
 
+// Helper to get time-based greeting
+const getTimeGreeting = () => {
+  const hour = new Date().getHours()
+  if (hour < 10) return 'Selamat pagi'
+  if (hour < 15) return 'Selamat siang'
+  if (hour < 18) return 'Selamat sore'
+  return 'Selamat malam'
+}
+
+// Voice greeting using Web Speech API with varied sentences
+function speakGreeting(face) {
+  if (!('speechSynthesis' in window)) return
+
+  const timeGreeting = getTimeGreeting()
+  const name = face.user_name || 'Karyawan'
+  let text;
+
+  // Handle cooldown or other non-ok statuses
+  if (face.status && face.status !== 'ok') {
+    text = face.audio_text || `Halo ${name}, mohon tunggu sebentar sebelum absen kembali.`
+  }
+  // Randomized greetings arrays
+  else if (face.event_type === 'IN') {
+    if (face.late) {
+      const lateGreetings = [
+        `${timeGreeting} ${name}. Absen berhasil, namun Anda tercatat terlambat hari ini.`,
+        `Halo ${name}. Anda datang terlambat, tolong lebih tepat waktu besok ya.`,
+        `Absen masuk berhasil. ${timeGreeting} ${name}, jangan terlambat lagi ya.`
+      ]
+      text = lateGreetings[Math.floor(Math.random() * lateGreetings.length)]
+    } else {
+      const inGreetings = [
+        `${timeGreeting} ${name}. Selamat bekerja dan semoga harimu menyenangkan!`,
+        `Halo ${name}, absen masuk berhasil dicatat. Semangat untuk hari ini!`,
+        `Selamat datang ${name}. Jangan lupa tersenyum dan selamat bertugas.`,
+        `${timeGreeting} ${name}. Absensi berhasil, mari kita mulai kerja hari ini.`
+      ]
+      text = inGreetings[Math.floor(Math.random() * inGreetings.length)]
+    }
+  } else {
+    const outGreetings = [
+      `Terima kasih atas kerja kerasnya hari ini, ${name}. Hati-hati di jalan.`,
+      `Absen pulang berhasil. Selamat beristirahat, ${name}.`,
+      `Sampai jumpa besok, ${name}. Semoga istirahatmu menyenangkan.`,
+      `Kerja bagus hari ini ${name}, silakan pulang dan beristirahat.`
+    ]
+    text = outGreetings[Math.floor(Math.random() * outGreetings.length)]
+  }
+
+  const utterance = new SpeechSynthesisUtterance(text)
+  utterance.lang = 'id-ID'
+  utterance.rate = 0.95 // Slightly slower for natural feel
+  utterance.pitch = 1.1 // Slightly higher pitch for female-like voice
+
+  // Try to find a female Indonesian voice
+  const voices = window.speechSynthesis.getVoices()
+  const indonesianVoices = voices.filter(v => v.lang.includes('id') || v.lang.includes('ID'))
+  
+  // Attempt to pick a voice known to be female if possible (Google Bahasa Indonesia is female)
+  let selectedVoice = indonesianVoices.find(v => v.name.toLowerCase().includes('female') || v.name.includes('Google') || v.name.includes('Microsoft Andika'))
+  if (!selectedVoice && indonesianVoices.length > 0) {
+    selectedVoice = indonesianVoices[0] // fallback to any Indonesian voice
+  }
+
+  if (selectedVoice) {
+    utterance.voice = selectedVoice
+  }
+
+  speechSynthesis.speak(utterance)
+}
+
 export default function AttendancePage() {
   const webcamRef = useRef(null)
   const timerRef = useRef(null)
@@ -156,77 +227,6 @@ export default function AttendancePage() {
     }
   }, [phase, cameraReady, status, isCapturing, captureAndRecognize])
 
-  // Helper to get time-based greeting
-  const getTimeGreeting = () => {
-    const hour = new Date().getHours()
-    if (hour < 10) return 'Selamat pagi'
-    if (hour < 15) return 'Selamat siang'
-    if (hour < 18) return 'Selamat sore'
-    return 'Selamat malam'
-  }
-
-  // Voice greeting using Web Speech API with varied sentences
-  const speakGreeting = (face) => {
-    if (!('speechSynthesis' in window)) return
-
-    const timeGreeting = getTimeGreeting()
-    const name = face.user_name || 'Karyawan'
-    let text = ''
-
-    // Handle cooldown or other non-ok statuses
-    if (face.status && face.status !== 'ok') {
-      text = face.audio_text || `Halo ${name}, mohon tunggu sebentar sebelum absen kembali.`
-    }
-    // Randomized greetings arrays
-    else if (face.event_type === 'IN') {
-      if (face.late) {
-        const lateGreetings = [
-          `${timeGreeting} ${name}. Absen berhasil, namun Anda tercatat terlambat hari ini.`,
-          `Halo ${name}. Anda datang terlambat, tolong lebih tepat waktu besok ya.`,
-          `Absen masuk berhasil. ${timeGreeting} ${name}, jangan terlambat lagi ya.`
-        ]
-        text = lateGreetings[Math.floor(Math.random() * lateGreetings.length)]
-      } else {
-        const inGreetings = [
-          `${timeGreeting} ${name}. Selamat bekerja dan semoga harimu menyenangkan!`,
-          `Halo ${name}, absen masuk berhasil dicatat. Semangat untuk hari ini!`,
-          `Selamat datang ${name}. Jangan lupa tersenyum dan selamat bertugas.`,
-          `${timeGreeting} ${name}. Absensi berhasil, mari kita mulai kerja hari ini.`
-        ]
-        text = inGreetings[Math.floor(Math.random() * inGreetings.length)]
-      }
-    } else {
-      const outGreetings = [
-        `Terima kasih atas kerja kerasnya hari ini, ${name}. Hati-hati di jalan.`,
-        `Absen pulang berhasil. Selamat beristirahat, ${name}.`,
-        `Sampai jumpa besok, ${name}. Semoga istirahatmu menyenangkan.`,
-        `Kerja bagus hari ini ${name}, silakan pulang dan beristirahat.`
-      ]
-      text = outGreetings[Math.floor(Math.random() * outGreetings.length)]
-    }
-
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'id-ID'
-    utterance.rate = 0.95 // Slightly slower for natural feel
-    utterance.pitch = 1.1 // Slightly higher pitch for female-like voice
-
-    // Try to find a female Indonesian voice
-    const voices = window.speechSynthesis.getVoices()
-    const indonesianVoices = voices.filter(v => v.lang.includes('id') || v.lang.includes('ID'))
-    
-    // Attempt to pick a voice known to be female if possible (Google Bahasa Indonesia is female)
-    let selectedVoice = indonesianVoices.find(v => v.name.toLowerCase().includes('female') || v.name.includes('Google') || v.name.includes('Microsoft Andika'))
-    if (!selectedVoice && indonesianVoices.length > 0) {
-      selectedVoice = indonesianVoices[0] // fallback to any Indonesian voice
-    }
-
-    if (selectedVoice) {
-      utterance.voice = selectedVoice
-    }
-
-    speechSynthesis.speak(utterance)
-  }
-
   // Manual capture button
   const handleManualCapture = () => {
     if (!isCapturing) {
@@ -250,12 +250,6 @@ export default function AttendancePage() {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-  })
-  const dateStr = currentTime.toLocaleDateString('id-ID', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
   })
   const shortDateStr = currentTime.toLocaleDateString('id-ID', {
     weekday: 'short',

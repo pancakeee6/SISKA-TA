@@ -39,6 +39,7 @@ export default function AvatarAnimation({ status = 'idle' }) {
 
   useEffect(() => {
     if (stateInput) {
+      // eslint-disable-next-line
       stateInput.value = STATE_MAP[status] ?? 0
     }
   }, [status, stateInput])

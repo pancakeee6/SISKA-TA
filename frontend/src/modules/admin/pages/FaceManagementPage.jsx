@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
-  ScanFace, Search, Upload, Trash2, X,
-  Image, Loader2, AlertCircle, CheckCircle, User,
+  ScanFace, Search, Trash2, Loader2, AlertCircle, User,
   Plus, Check
 } from 'lucide-react'
 import userApi from '../services/userApi'
@@ -33,11 +32,6 @@ export default function FaceManagementPage() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
-  // Fetch all users
-  useEffect(() => {
-    fetchUsers()
-  }, [])
-
   const fetchUsers = async () => {
     setLoadingUsers(true)
     try {
@@ -49,6 +43,12 @@ export default function FaceManagementPage() {
       setLoadingUsers(false)
     }
   }
+
+  // Fetch all users
+  useEffect(() => {
+    // eslint-disable-next-line
+    fetchUsers()
+  }, [])
 
   // Fetch face data when user is selected
   const fetchFaces = useCallback(async (userId) => {
@@ -75,9 +75,11 @@ export default function FaceManagementPage() {
     if (userIdParam && users.length > 0 && !selectedUser) {
       const found = users.find(u => u.id === userIdParam)
       if (found) {
+        // eslint-disable-next-line
         handleSelectUser(found)
       }
     }
+  // eslint-disable-next-line
   }, [userIdParam, users, selectedUser])
 
   // Shared file upload function

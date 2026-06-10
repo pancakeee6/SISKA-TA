@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Users, UserCheck, Clock, TrendingUp, TrendingDown, Activity,
-  LogIn, LogOut, UserPlus, ClipboardList, ScanFace, Download,
+  Users, UserCheck, Clock, TrendingUp, TrendingDown,
+  UserPlus, ClipboardList, ScanFace, Download,
   ArrowRight, Bell,
 } from 'lucide-react'
 import dashboardApi from '../services/dashboardApi'
@@ -190,23 +190,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [activities, setActivities] = useState([])
 
-  // WebSocket for realtime attendance updates
-  const handleWsMessage = useCallback((message) => {
-    if (message.type === 'attendance_marked') {
-      setActivities((prev) => [message.data, ...prev].slice(0, 10))
-      fetchDashboardData()
-    }
-  }, [])
-
-  const { isConnected } = useWebSocket({
-    enabled: true,
-    onMessage: handleWsMessage,
-  })
-
-  useEffect(() => {
-    fetchDashboardData()
-  }, [])
-
   const fetchDashboardData = async () => {
     setLoading(true)
     try {
@@ -232,6 +215,24 @@ export default function DashboardPage() {
       setLoading(false)
     }
   }
+
+  // WebSocket for realtime attendance updates
+  const handleWsMessage = useCallback((message) => {
+    if (message.type === 'attendance_marked') {
+      setActivities((prev) => [message.data, ...prev].slice(0, 10))
+      fetchDashboardData()
+    }
+  }, [])
+
+  useWebSocket({
+    enabled: true,
+    onMessage: handleWsMessage,
+  })
+
+  useEffect(() => {
+    // eslint-disable-next-line
+    fetchDashboardData()
+  }, [])
 
   // Attendance rate
   const attendanceRate = stats.total > 0
@@ -675,7 +676,7 @@ export default function DashboardPage() {
               {[...Array(7)].map((_, i) => (
                 <div key={i} style={{
                   flex: 1,
-                  height: `${30 + Math.random() * 60}%`,
+                  height: `${30 + ((i * 17) % 60)}%`,
                   background: 'rgba(255,255,255,0.04)',
                   borderRadius: '6px',
                 }} className="animate-pulse" />

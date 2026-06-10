@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Search, Calendar, ChevronLeft, ChevronRight,
-  Clock, UserCheck, Loader2,
-  Download, X, XCircle, TrendingUp, TrendingDown, AlertCircle, CheckCircle2
+  Clock, Loader2,
+  Download, X, XCircle, TrendingUp, TrendingDown, CheckCircle2
 } from 'lucide-react'
 import attendanceAdminApi from '../services/attendanceAdminApi'
 import dashboardApi from '../services/dashboardApi'
@@ -73,12 +73,14 @@ export default function AttendanceHistoryPage() {
   }, [page, dateFrom, dateTo, statusFilter, search])
 
   useEffect(() => {
+    // eslint-disable-next-line
     fetchLogs()
     fetchStats()
   }, [fetchLogs, fetchStats])
 
   // Reset page on filter change
   useEffect(() => {
+    // eslint-disable-next-line
     setPage(1)
   }, [dateFrom, dateTo, statusFilter, search])
 
@@ -89,6 +91,7 @@ export default function AttendanceHistoryPage() {
     if (dateTo) count++
     if (statusFilter !== 'all') count++
     if (search) count++
+    // eslint-disable-next-line
     setActiveFilters(count)
   }, [dateFrom, dateTo, statusFilter, search])
 

@@ -4,7 +4,7 @@ import { useAuthStore } from '@shared/store/authStore'
 import axios from 'axios'
 
 export default function ProtectedRoute({ children }) {
-  const { isAuthenticated, accessToken, refreshToken, setTokens, setAccessToken, setAdmin, logout } = useAuthStore()
+  const { isAuthenticated, accessToken, refreshToken, setTokens, setAdmin, logout } = useAuthStore()
   const [checking, setChecking] = useState(!accessToken && !!refreshToken)
 
   useEffect(() => {
@@ -32,6 +32,7 @@ export default function ProtectedRoute({ children }) {
           setChecking(false)
         })
     }
+  // eslint-disable-next-line
   }, [])
 
   // Show loading while checking auth

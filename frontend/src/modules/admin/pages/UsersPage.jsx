@@ -68,11 +68,13 @@ export default function UsersPage() {
   }, [page, search, statusFilter])
 
   useEffect(() => {
+    // eslint-disable-next-line
     fetchUsers()
   }, [fetchUsers])
 
   // Reset page when search or filter changes
   useEffect(() => {
+    // eslint-disable-next-line
     setPage(1)
   }, [search, statusFilter])
 

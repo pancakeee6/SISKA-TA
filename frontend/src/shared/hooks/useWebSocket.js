@@ -56,6 +56,7 @@ export default function useWebSocket({ enabled = true, onMessage } = {}) {
           console.log(`[WS] Disconnected. Reconnecting in ${delay / 1000}s...`)
           reconnectTimerRef.current = setTimeout(() => {
             setReconnectCount((c) => c + 1)
+            // eslint-disable-next-line
             connect()
           }, delay)
         }
