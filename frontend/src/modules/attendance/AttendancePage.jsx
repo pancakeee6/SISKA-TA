@@ -76,14 +76,18 @@ function speakGreeting(face) {
   const utterance = new SpeechSynthesisUtterance(text)
   utterance.lang = 'id-ID'
   utterance.rate = 0.95 // Slightly slower for natural feel
-  utterance.pitch = 1.1 // Slightly higher pitch for female-like voice
+  utterance.pitch = 1.2 // Slightly higher pitch for female-like voice
 
   // Try to find a female Indonesian voice
   const voices = window.speechSynthesis.getVoices()
   const indonesianVoices = voices.filter(v => v.lang.includes('id') || v.lang.includes('ID'))
   
-  // Attempt to pick a voice known to be female if possible (Google Bahasa Indonesia is female)
-  let selectedVoice = indonesianVoices.find(v => v.name.toLowerCase().includes('female') || v.name.includes('Google') || v.name.includes('Microsoft Andika'))
+  // Attempt to pick a voice known to be female if possible (Gadis, Google)
+  let selectedVoice = indonesianVoices.find(v => 
+    v.name.toLowerCase().includes('female') || 
+    v.name.toLowerCase().includes('gadis') || 
+    v.name.includes('Google')
+  )
   if (!selectedVoice && indonesianVoices.length > 0) {
     selectedVoice = indonesianVoices[0] // fallback to any Indonesian voice
   }
