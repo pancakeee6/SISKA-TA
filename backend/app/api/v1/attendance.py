@@ -37,14 +37,28 @@ async def recognize_attendance(
     # Process each recognized face
     results = []
     for face in ai_result["faces"]:
-        # Find user by name (case-insensitive)
-        user_result = await db.execute(
-            select(User).where(
-                func.lower(User.full_name) == func.lower(face.get("name", "")),
-                User.is_active == True
+        # Find user by ml_person_id first
+        ml_person_id = face.get("id") or face.get("person_id")
+        user = None
+        
+        if ml_person_id is not None:
+            user_result = await db.execute(
+                select(User).where(
+                    User.ml_person_id == ml_person_id,
+                    User.is_active == True
+                )
             )
-        )
-        user = user_result.scalars().first()
+            user = user_result.scalars().first()
+            
+        # Fallback to name if ml_person_id not found or failed
+        if not user:
+            user_result = await db.execute(
+                select(User).where(
+                    func.lower(User.full_name) == func.lower(face.get("name", "")),
+                    User.is_active == True
+                )
+            )
+            user = user_result.scalars().first()
 
         if user:
             # Log attendance locally regardless of ML API cooldown status

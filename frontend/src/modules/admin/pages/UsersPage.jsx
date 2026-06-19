@@ -23,7 +23,7 @@ export default function UsersPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all') // all | aktif | nonaktif
+  const [statusFilter, setStatusFilter] = useState('aktif') // all | aktif | nonaktif
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
     total: 0,

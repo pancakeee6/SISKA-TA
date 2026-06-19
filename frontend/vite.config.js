@@ -19,13 +19,13 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/admin': {
-        target: 'https://elsann-api-absensi.hf.space',
+      '/api': {
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
-      '/v1': {
-        target: 'https://elsann-api-absensi.hf.space',
-        changeOrigin: true,
+      '/ws': {
+        target: 'ws://localhost:8000',
+        ws: true,
       },
     },
   },

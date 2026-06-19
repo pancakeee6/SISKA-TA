@@ -8,6 +8,7 @@ import {
 import dashboardApi from '../services/dashboardApi'
 import userApi from '../services/userApi'
 import api from '@shared/services/api'
+import useWebSocket from '@shared/hooks/useWebSocket'
 import siskaMascot from '@/assets/siska-mascot.png'
 
 // --- Greeting helper ---
@@ -190,45 +191,26 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [activities, setActivities] = useState([])
 
-  const fetchDashboardData = async (isPolling = false) => {
+  // WebSocket for realtime attendance updates
+  const handleWsMessage = useCallback((message) => {
+    if (message.type === 'attendance_marked') {
+      setActivities((prev) => [message.data, ...prev].slice(0, 10))
+      fetchDashboardData()
+    }
+  }, [])
+
+  const { isConnected } = useWebSocket({
+    enabled: true,
+    onMessage: handleWsMessage,
+  })
+
+  const fetchDashboardData = async () => {
     try {
-      // If polling, we only need events and daily stats (not total users/weekly)
-      if (isPolling) {
-        const today = new Date().toLocaleDateString('en-CA')
-        const [dailyRes, eventsRes] = await Promise.allSettled([
-          api.get('/admin/daily', { params: { day: today, limit: 1000 } }),
-          api.get('/admin/events', { params: { limit: 5 } })
-        ])
-
-        if (dailyRes.status === 'fulfilled') {
-          const present = dailyRes.value.data.length
-          const late = dailyRes.value.data.filter(d => d.in_is_late).length
-          setStats(prev => ({
-            ...prev,
-            present,
-            late,
-            absent: Math.max(0, prev.total - present)
-          }))
-        }
-        
-        if (eventsRes.status === 'fulfilled') {
-          const latestEvents = eventsRes.value.data.map(r => ({
-            user_name: r.final_name || r.predicted_name || 'Unknown',
-            event_type: r.event_type || 'IN',
-            timestamp: r.ts,
-            late: r.is_late
-          }))
-          setActivities(latestEvents)
-        }
-        return
-      }
-
-      // Initial full fetch
       const [statsRes, weeklyRes, usersRes, eventsRes] = await Promise.allSettled([
         dashboardApi.getStats(),
         dashboardApi.getWeekly(),
         userApi.list({ limit: 1 }),
-        api.get('/admin/events', { params: { limit: 5 } })
+        api.get('/api/v1/attendance/logs', { params: { per_page: 5 } })
       ])
 
       if (statsRes.status === 'fulfilled') {
@@ -242,29 +224,23 @@ export default function DashboardPage() {
         setWeeklyStats(weeklyRes.value.data)
       }
       if (eventsRes.status === 'fulfilled') {
-        const latestEvents = eventsRes.value.data.map(r => ({
-          user_name: r.final_name || r.predicted_name || 'Unknown',
+        const latestEvents = eventsRes.value.data.items.map(r => ({
+          user_name: r.user_name || 'Unknown',
           event_type: r.event_type || 'IN',
-          timestamp: r.ts,
-          late: r.is_late
+          timestamp: r.timestamp,
+          late: r.late
         }))
         setActivities(latestEvents)
       }
     } catch {
       // Silently fail
     } finally {
-      if (loading && !isPolling) setLoading(false)
+      if (loading) setLoading(false)
     }
   }
 
-  // Polling for realtime updates (since ML API doesn't have WebSockets)
   useEffect(() => {
-    fetchDashboardData(false) // initial load
-    const interval = setInterval(() => {
-      fetchDashboardData(true) // polling load
-    }, 5000) // Poll every 5 seconds
-    
-    return () => clearInterval(interval)
+    fetchDashboardData()
   }, [])
 
   // Attendance rate

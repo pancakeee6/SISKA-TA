@@ -75,35 +75,32 @@ function speakGreeting(face) {
 
   const utterance = new SpeechSynthesisUtterance(text)
   utterance.lang = 'id-ID'
-  utterance.rate = 0.95 // Slightly slower for natural feel
-  utterance.pitch = 1.2 // Slightly higher pitch for female-like voice
+  utterance.rate = 0.9 // Sedikit lebih lambat agar terdengar natural dan ramah
+  utterance.pitch = 1.2 // Nada sedikit lebih tinggi khas suara wanita
 
-  // Try to find a female Indonesian voice
   const voices = window.speechSynthesis.getVoices()
   const indonesianVoices = voices.filter(v => v.lang.includes('id') || v.lang.includes('ID'))
   
-  // Attempt to pick a voice known to be female if possible (Gadis, Google)
-  let selectedVoice = indonesianVoices.find(v => 
-    v.name.toLowerCase().includes('gadis') || 
-    v.name.toLowerCase().includes('female') || 
-    v.name.toLowerCase().includes('perempuan') ||
-    v.name.includes('Google')
-  )
+  const savedVoiceUri = localStorage.getItem('siska_voice_uri')
+  let selectedVoice = indonesianVoices.find(v => v.voiceURI === savedVoiceUri)
+
   if (!selectedVoice && indonesianVoices.length > 0) {
-    selectedVoice = indonesianVoices[0] // fallback to any Indonesian voice
+     selectedVoice = indonesianVoices.find(v => v.name.toLowerCase().includes('gadis online')) ||
+                     indonesianVoices.find(v => v.name.toLowerCase().includes('gadis')) ||
+                     indonesianVoices.find(v => v.name.toLowerCase().includes('ayu')) ||
+                     indonesianVoices.find(v => v.name.toLowerCase().includes('google')) ||
+                     indonesianVoices.find(v => !/andika|ardi|male|pria/i.test(v.name)) ||
+                     indonesianVoices[0];
   }
 
   if (selectedVoice) {
     utterance.voice = selectedVoice
   }
 
-  // If we can't find a specifically named female voice, increase pitch to simulate one
-  if (!selectedVoice?.name?.toLowerCase().includes('gadis') && !selectedVoice?.name?.toLowerCase().includes('female')) {
-    utterance.pitch = 1.6 
-  } else {
-    utterance.pitch = 1.2
-  }
+  // Debug log
+  console.log("Speaking with:", selectedVoice ? selectedVoice.name : "Default OS");
 
+  window.speechSynthesis.cancel(); // Cancel any ongoing speech
   speechSynthesis.speak(utterance)
 }
 
@@ -121,6 +118,34 @@ export default function AttendancePage() {
   const [isCapturing, setIsCapturing] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [todayCount, setTodayCount] = useState(0)
+
+  // Voice selector state
+  const [availableVoices, setAvailableVoices] = useState([])
+  const [selectedVoiceUri, setSelectedVoiceUri] = useState(localStorage.getItem('siska_voice_uri') || '')
+
+  // Force load voices on mount (crucial for Edge/Chrome)
+  useEffect(() => {
+    if ('speechSynthesis' in window) {
+      const loadVoices = () => {
+        const voices = window.speechSynthesis.getVoices().filter(v => v.lang.includes('id') || v.lang.includes('ID'));
+        setAvailableVoices(voices);
+        if (voices.length > 0 && !localStorage.getItem('siska_voice_uri')) {
+           const autoVoice = voices.find(v => v.name.toLowerCase().includes('gadis online')) ||
+                             voices.find(v => v.name.toLowerCase().includes('gadis')) ||
+                             voices.find(v => v.name.toLowerCase().includes('ayu')) ||
+                             voices.find(v => v.name.toLowerCase().includes('google')) ||
+                             voices.find(v => !/andika|ardi|male|pria/i.test(v.name)) ||
+                             voices[0];
+           if (autoVoice) {
+             setSelectedVoiceUri(autoVoice.voiceURI);
+             localStorage.setItem('siska_voice_uri', autoVoice.voiceURI);
+           }
+        }
+      }
+      loadVoices()
+      window.speechSynthesis.onvoiceschanged = loadVoices
+    }
+  }, [])
 
   // Welcome progress animation
   useEffect(() => {
@@ -201,10 +226,11 @@ export default function AttendancePage() {
       const res = await attendanceApi.recognize(blob)
       const data = res.data
 
-      if (data.status === 'ok' && data.faces?.length > 0) {
+      if ((data.status === 'ok' || data.status === 'recognized') && data.faces?.length > 0) {
         const face = data.faces[0]
-        if (face.name && face.name !== "Unknown") {
-          face.user_name = face.name // map for speakGreeting and UI
+        const displayName = face.user_name || face.name
+        if (displayName && displayName !== "Unknown") {
+          face.user_name = displayName // map for speakGreeting and UI
           setResult(face)
           setStatus(STATUS.RECOGNIZED)
           setTodayCount(prev => prev + 1)
@@ -377,6 +403,47 @@ export default function AttendancePage() {
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {/* Voice Dropdown */}
+            {availableVoices.length > 0 && (
+              <select 
+                value={selectedVoiceUri} 
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedVoiceUri(val);
+                  localStorage.setItem('siska_voice_uri', val);
+                  
+                  // Test the voice
+                  const u = new SpeechSynthesisUtterance("Halo, suara berhasil diganti.");
+                  u.lang = 'id-ID';
+                  u.rate = 0.9;
+                  u.pitch = 1.2;
+                  const v = availableVoices.find(x => x.voiceURI === val);
+                  if (v) u.voice = v;
+                  window.speechSynthesis.cancel();
+                  window.speechSynthesis.speak(u);
+                }}
+                style={{
+                  background: 'rgba(15, 23, 42, 0.6)', 
+                  color: '#94a3b8', 
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: '8px', 
+                  padding: '6px 12px', 
+                  fontSize: '12px', 
+                  outline: 'none', 
+                  cursor: 'pointer',
+                  maxWidth: '180px', 
+                  textOverflow: 'ellipsis'
+                }}
+                title="Pilih Suara"
+              >
+                {availableVoices.map(v => (
+                  <option key={v.voiceURI} value={v.voiceURI}>
+                    {v.name.replace(' - Indonesian (Indonesia)', '').replace('Microsoft ', '')}
+                  </option>
+                ))}
+              </select>
+            )}
+
             <button
               onClick={toggleFullscreen}
               style={{

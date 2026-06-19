@@ -140,7 +140,7 @@ export default function AttendanceHistoryPage() {
     
     setLoading(true)
     try {
-      await api.post('/admin/reset_attendance')
+      await api.post('/api/v1/attendance/reset')
       toast.success('Log absensi berhasil di-reset!')
       setLogs([])
       setTotal(0)
