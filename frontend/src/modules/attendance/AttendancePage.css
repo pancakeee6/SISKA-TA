@@ -1,0 +1,651 @@
+/* ==========================================================================
+   ATTENDANCE PAGE STYLES
+   ========================================================================== */
+
+/* ─── ANIMATIONS ─── */
+@keyframes att-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+
+@keyframes att-fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes att-fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes att-glow {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.15); }
+}
+
+@keyframes att-orbitDots {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes att-dotPulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes att-scanLine {
+  0% { top: 10%; }
+  50% { top: 85%; }
+  100% { top: 10%; }
+}
+
+@keyframes att-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes att-spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes att-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* ─── LAYOUT STRUCTURE ─── */
+
+.att-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  
+  /* === ATUR WARNA BACKGROUND (MODE GELAP) DI SINI === */
+  background-color: #000000; /* Hitam pekat dan clean */
+  background-image: 
+    /* Cahaya pendar di bagian tengah atas seperti referensi */
+    radial-gradient(ellipse at 50% -30%, rgb(10, 12, 148) 0%, transparent 70%); 
+    
+  position: relative;
+  overflow: hidden;
+  font-family: var(--font-sans);
+}
+
+[data-theme='light'] .att-container {
+  /* === ATUR WARNA BACKGROUND (MODE TERANG) DI SINI === */
+  background-color: #f8fafc;
+  background-image: linear-gradient(135deg, #ffffff 10%, #7997f3 90%); /* 2 warna aja: Putih bersih ke Biru muda lembut */
+} 
+
+.att-ambient-wrapper {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.att-ambient-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 700px;
+  height: 700px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 60%);
+  filter: blur(40px);
+}
+
+/* ─── HEADER ─── */
+.att-header {
+  height: 70px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 40px;
+  margin: 20px auto 0 auto;
+  width: fit-content;
+  min-width: 250px;
+  z-index: 10;
+  
+  /* === WARNA HEADER (MODE GELAP) === */
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 40px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); 
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+[data-theme='light'] .att-header {
+  /* === WARNA HEADER (MODE TERANG) === */
+  background: radial-gradient(135deg, rgb(190, 196, 250) 50%, rgba(231, 231, 241, 0.8) 50%);
+  box-shadow: 0 4px 24px rgb(133, 145, 248);
+  border: 1px solid rgba(25, 28, 187, 0.06); 
+}
+
+.att-header-logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.att-header-logo img {
+  height: 120px;
+  width: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  
+  /* === ATUR POSISI LOGO DI SINI === */
+  position: relative;
+  top: 15px;    /* Ganti angka ini: (+) untuk ke bawah, (-) untuk ke atas */
+  left: -50px;  /* Ganti angka ini: (+) untuk ke kanan, (-) untuk ke kiri */
+}
+
+.att-header-logo > div {
+  /* === ATUR POSISI TEKS SISKA DI SINI === */
+  position: relative;
+  left: -60px;  /* Ganti angka ini: (+) untuk ke kanan, (-) untuk ke kiri mengikuti logo */
+  top: 0px;     /* Ganti angka ini: (+) untuk ke bawah, (-) untuk ke atas */
+}
+
+.att-header-logo h1 {
+  color: var(--color-text);
+  /* === ATUR FONT SISKA DI SINI === */
+  font-size: 24px;   /* Ganti angka ini untuk memperbesar/memperkecil teks "SISKA" */
+  font-weight: 800;  /* Ketebalan huruf (400 normal, 600 semi-bold, 800 sangat tebal) */
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.att-header-logo p {
+  color: var(--color-text-secondary);
+  /* === ATUR FONT & JARAK TEKS BAWAH DI SINI === */
+  font-size: 14px;   /* Ganti angka ini untuk ukuran teks "Sistem Kehadiran AI" */
+  font-weight: 500;
+  margin-top: -4px;   /* GANTI ANGKA INI UNTUK MENGATUR JARAK DENGAN TEKS "SISKA" DI ATASNYA */
+  margin-bottom: 0; 
+}
+
+.att-header-clock {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.att-btn-fullscreen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-bg-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.att-btn-fullscreen:hover {
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  transform: scale(1.08);
+}
+
+/* ─── MAIN CONTENT ─── */
+.att-main-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Kamera di kanan, maskot di kiri otomatis mendorong satu sama lain */
+  padding: 0 80px;
+  z-index: 5;
+  width: 100%;
+}
+
+/* ─── LEFT: MASCOT ─── */
+.att-left-side {
+  position: relative;
+  align-self: flex-end; /* Menempel di bawah layar */
+  margin-left: -50px; /* Sedikit digeser ke kiri */
+  margin-bottom: -50px;
+  animation: att-fadeUp 0.8s ease-out;
+  z-index: 8; 
+  pointer-events: none; 
+}
+
+.att-mascot-wrapper {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.att-orbit-circle {
+  position: absolute;
+  top: 40%;
+  transform: translateY(-50%);
+  width: 45vw;
+  max-width: 600px;
+  height: 45vw;
+  max-height: 600px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(99,102,241,0.2);
+  animation: att-orbitDots 20s linear infinite;
+  z-index: 1;
+}
+
+.att-mascot-image-wrapper {
+  position: relative;
+  z-index: 2;
+  margin-bottom: -150px; /* pull down to show half body */
+}
+
+.att-mascot-shadow {
+  position: absolute;
+  bottom: 0px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 400px;
+  height: 50px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(99,102,241,0.25) 0%, transparent 70%);
+  filter: blur(8px);
+}
+
+.att-mascot-img {
+  width: 50vw; 
+  max-width: 775px;
+  min-width: 400px;
+  height: auto;
+  filter: drop-shadow(0 16px 40px rgba(99,102,241,0.2));
+  object-fit: cover;
+  object-position: top;
+  transform: scaleX(-1);
+}
+
+/* ─── RIGHT: CAMERA ─── */
+.att-right-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: att-fadeUp 0.8s ease-out;
+  z-index: 10; /* Ensures camera is always above mascot if they overlap */
+}
+
+/* --- Camera Card Layout --- */
+.att-camera-card {
+  width: 520px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme='light'] .att-camera-card {
+  box-shadow: 0 8px 35px rgba(0, 0, 0, 0.1);
+}
+
+.att-camera-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 200px; 
+  background: linear-gradient(180deg, var(--color-primary-glow) 0%, transparent 100%);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.att-camera-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 2;
+}
+
+.att-camera-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--color-text);
+}
+
+.att-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.att-status-dot.active {
+  color: var(--color-success);
+  background: var(--color-success);
+  animation: att-pulse 2s infinite;
+}
+
+.att-status-dot.inactive {
+  color: var(--color-warning);
+  background: var(--color-warning);
+}
+
+.att-camera-card-viewport {
+  width: 100%;
+  height: 320px;
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+  z-index: 2;
+}
+
+/* --- FACE GUIDE OVERLAY --- */
+.att-face-guide {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 200px;
+  height: 240px;
+  pointer-events: none;
+  z-index: 10;
+  transition: all 0.3s ease;
+}
+.att-face-guide.scanning {
+  transform: translate(-50%, -50%) scale(1.05);
+}
+.att-face-guide.recognized {
+  box-shadow: 0 0 15px rgba(16,185,129,0.3);
+}
+.att-face-guide .att-fg-corner {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(255,255,255,0.6);
+  transition: border-color 0.3s;
+}
+.att-face-guide.scanning .att-fg-corner { border-color: var(--color-primary); }
+.att-face-guide.recognized .att-fg-corner { border-color: var(--color-success); }
+.att-face-guide .top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 16px; }
+.att-face-guide .top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 16px; }
+.att-face-guide .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 16px; }
+.att-face-guide .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 16px; }
+
+.att-scan-line-horizontal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--color-primary);
+  box-shadow: 0 0 8px var(--color-primary);
+  animation: att-scan-vertical 1.5s infinite linear;
+}
+@keyframes att-scan-vertical {
+  0% { top: 0; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* --- Camera Footer (Toggle + Mirror) --- */
+.att-camera-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 2;
+  padding: 4px 0 0 0;
+}
+
+/* ─── iOS-STYLE TOGGLE SWITCH ─── */
+.att-toggle-switch {
+  position: relative;
+  width: 56px;
+  height: 30px;
+  border-radius: 15px;
+  background: #ccc;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  transition: background 0.3s ease;
+  flex-shrink: 0;
+}
+
+.att-toggle-switch.active {
+  background: #34d399;
+}
+
+.att-toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: transform 0.3s ease;
+}
+
+.att-toggle-switch.active::after {
+  transform: translateX(26px);
+}
+
+/* ─── Mirror Icon Button ─── */
+.att-mirror-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 22px;
+}
+
+.att-mirror-btn:hover {
+  color: var(--color-text);
+  background: var(--color-bg-surface);
+}
+
+/* ─── OVERLAYS ─── */
+.att-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  border-radius: 14px;
+}
+
+.att-overlay-recognized {
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 80%);
+  padding: 16px;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.att-overlay-unrecognized {
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 50%);
+  padding: 20px;
+}
+
+/* ─── SAPAAN / GREETING CARD ─── */
+.att-greeting-card {
+  width: 520px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 18px 22px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+  text-align: left;
+}
+
+[data-theme='light'] .att-greeting-card {
+  box-shadow: 0 8px 35px rgba(0, 0, 0, 0.1);
+}
+
+.att-greeting-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.att-greeting-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(39, 42, 211, 0.1);
+  color: #4a4de9;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+[data-theme='light'] .att-greeting-badge {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.att-greeting-badge:hover {
+  background: rgba(99, 102, 241, 0.15);
+}
+
+.att-greeting-content {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  line-height: 1.65;
+  min-height: 48px;
+}
+
+/* ─── RESPONSIVE QUERIES ─── */
+@media (max-width: 1300px) {
+  .att-mascot-img {
+    width: 750px;
+  }
+  .att-left-side {
+    left: -100px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .att-main-content {
+    justify-content: center;
+    padding: 0 20px;
+  }
+  .att-left-side {
+    left: -200px;
+    opacity: 0.4;
+    z-index: 1; /* Move behind background glow */
+  }
+}
+
+@media (max-width: 768px) {
+  .att-left-side {
+    display: none; /* Hide mascot completely on small screens */
+  }
+  .att-camera-card, .att-greeting-card {
+    width: 100%;
+    max-width: 520px;
+  }
+  .att-header {
+    margin: 16px 20px 0 20px;
+    padding: 0 20px;
+  }
+}
+
+/* --- AI CORE SPLASH ANIMATION --- */
+.ai-core-container {
+  position: relative;
+  width: 400px;
+  height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.ai-core-ring-1, .ai-core-ring-2, .ai-core-ring-3 {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+
+.ai-core-ring-1 {
+  width: 100%;
+  height: 100%;
+  border-top: 2px solid rgba(99, 102, 241, 0.8);
+  border-right: 2px solid rgba(99, 102, 241, 0.3);
+  animation: att-spin 8s linear infinite;
+}
+
+.ai-core-ring-2 {
+  width: 80%;
+  height: 80%;
+  border-bottom: 2px solid rgba(168, 85, 247, 0.8);
+  border-left: 2px solid rgba(168, 85, 247, 0.3);
+  animation: att-spin-reverse 6s linear infinite;
+}
+
+.ai-core-ring-3 {
+  width: 60%;
+  height: 60%;
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+  animation: att-spin 12s linear infinite;
+}
+
+[data-theme='light'] .ai-core-ring-3 {
+  border: 2px dashed rgba(99, 102, 241, 0.4);
+}
+
+.ai-core-center {
+  width: 25%;
+  height: 25%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.9) 0%, rgba(99, 102, 241, 0.8) 100%);
+  border-radius: 50%;
+  box-shadow: 0 0 50px rgba(168, 85, 247, 0.8), inset 0 0 20px rgba(255,255,255,0.6);
+  animation: att-pulse-core 2s ease-in-out infinite;
+}
+
+[data-theme='light'] .ai-core-center {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.9) 0%, rgba(56, 189, 248, 0.8) 100%);
+  box-shadow: 0 0 50px rgba(99, 102, 241, 0.6), inset 0 0 20px rgba(255,255,255,0.8);
+}
+
+@keyframes att-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes att-spin-reverse {
+  0% { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes att-pulse-core {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 40px rgba(168, 85, 247, 0.6); }
+  50% { transform: scale(1.2); box-shadow: 0 0 80px rgba(99, 102, 241, 1); }
+}

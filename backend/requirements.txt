@@ -11,3 +11,4 @@ httpx==0.28.*
 websockets==14.*
 Pillow==11.*
 python-dotenv==1.0.*
+edge-tts==7.*

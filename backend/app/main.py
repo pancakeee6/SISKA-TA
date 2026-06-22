@@ -5,7 +5,7 @@ import os
 
 from app.core.config import settings
 from app.core.websocket import ws_manager
-from app.api.v1 import auth, users, attendance, dashboard, faces
+from app.api.v1 import auth, users, attendance, dashboard, faces, tts
 
 # Import all models so SQLAlchemy resolves relationships at startup
 import app.models.admin  # noqa: F401
@@ -37,6 +37,7 @@ app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
 app.include_router(attendance.router, prefix="/api/v1/attendance", tags=["Attendance"])
 app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
 app.include_router(faces.router, prefix="/api/v1/faces", tags=["Face Data"])
+app.include_router(tts.router, prefix="/api/v1/tts", tags=["TTS"])
 
 # Serve uploaded face images as static files
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

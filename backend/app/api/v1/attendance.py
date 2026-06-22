@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime, timezone
+import logging
 
 from app.db.database import get_db
 from app.api.deps import get_current_admin
@@ -12,7 +13,14 @@ from app.services import ai_service
 from app.core.websocket import ws_manager
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
+
+# Threshold untuk filter confidence/distance dari AI
+# Jika AI mengembalikan confidence < threshold, dianggap tidak yakin
+MIN_CONFIDENCE = 0.6
+MAX_DISTANCE = 0.7
 
 
 @router.post("/recognize")
@@ -27,6 +35,9 @@ async def recognize_attendance(
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"AI API error: {str(e)}")
 
+    # ─── LOG RAW AI RESPONSE untuk debugging salah deteksi ───
+    logger.info(f"[AI RAW RESPONSE] {ai_result}")
+
     if ai_result.get("status") != "ok" or not ai_result.get("faces"):
         return {
             "status": "unrecognized",
@@ -37,6 +48,17 @@ async def recognize_attendance(
     # Process each recognized face
     results = []
     for face in ai_result["faces"]:
+        # ─── Filter berdasarkan confidence/distance jika AI mengembalikannya ───
+        confidence = face.get("confidence") or face.get("score") or face.get("similarity")
+        distance = face.get("distance")
+        
+        if confidence is not None and float(confidence) < MIN_CONFIDENCE:
+            logger.warning(f"[SKIP LOW CONFIDENCE] {face.get('name')} confidence={confidence} < {MIN_CONFIDENCE}")
+            continue
+        if distance is not None and float(distance) > MAX_DISTANCE:
+            logger.warning(f"[SKIP HIGH DISTANCE] {face.get('name')} distance={distance} > {MAX_DISTANCE}")
+            continue
+        
         # Find user by ml_person_id first
         ml_person_id = face.get("id") or face.get("person_id")
         user = None
@@ -94,6 +116,7 @@ async def recognize_attendance(
                 "status": face.get("status", "ok"),
                 "late": face.get("is_late", False),
                 "audio_text": face.get("audio_text"),
+                "bbox": face.get("bbox") or face.get("box") or face.get("location"),
             })
 
     return {

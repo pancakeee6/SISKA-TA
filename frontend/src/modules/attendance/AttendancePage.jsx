@@ -1,9 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Webcam from 'react-webcam'
-import { Camera, CheckCircle, XCircle, Scan, Clock, Wifi, WifiOff, Maximize, Minimize } from 'lucide-react'
+import { Camera, Maximize, Minimize, Settings, Moon, Sun, CheckCircle, XCircle, Clock, Wifi, WifiOff, RotateCcw } from 'lucide-react'
+import * as faceapi from 'face-api.js'
 import attendanceApi from './services/attendanceApi'
 import siskaLogo from '@/assets/siska-logo.png'
 import siskaMascot from '@/assets/siska-mascot.png'
+import './AttendancePage.css'
 
 const STATUS = {
   IDLE: 'idle',
@@ -22,7 +25,7 @@ const PHASE = {
 // Auto-capture interval in ms
 const CAPTURE_INTERVAL = 4000
 // How long to show result before resetting
-const RESULT_DISPLAY_MS = 5000
+const RESULT_DISPLAY_MS = 10000
 
 // Helper to get time-based greeting
 const getTimeGreeting = () => {
@@ -33,137 +36,152 @@ const getTimeGreeting = () => {
   return 'Selamat malam'
 }
 
+// Function to join names naturally: "A, B, dan C"
+const joinNames = (names) => {
+  if (!names || names.length === 0) return '';
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} dan ${names[1]}`;
+  const last = names.pop();
+  return `${names.join(', ')}, dan ${last}`;
+};
+
 // Voice greeting using Web Speech API with varied sentences
-function speakGreeting(face) {
-  if (!('speechSynthesis' in window)) return
-
-  const timeGreeting = getTimeGreeting()
-  const name = face.user_name || 'Karyawan'
-  let text;
-
-  // Handle cooldown or other non-ok statuses
-  if (face.status && face.status !== 'ok') {
-    text = face.audio_text || `Halo ${name}, mohon tunggu sebentar sebelum absen kembali.`
-  }
-  // Randomized greetings arrays
-  else if (face.event_type === 'IN') {
-    if (face.late) {
-      const lateGreetings = [
-        `${timeGreeting} ${name}. Absen berhasil, namun Anda tercatat terlambat hari ini.`,
-        `Halo ${name}. Anda datang terlambat, tolong lebih tepat waktu besok ya.`,
-        `Absen masuk berhasil. ${timeGreeting} ${name}, jangan terlambat lagi ya.`
-      ]
-      text = lateGreetings[Math.floor(Math.random() * lateGreetings.length)]
-    } else {
-      const inGreetings = [
-        `${timeGreeting} ${name}. Selamat bekerja dan semoga harimu menyenangkan!`,
-        `Halo ${name}, absen masuk berhasil dicatat. Semangat untuk hari ini!`,
-        `Selamat datang ${name}. Jangan lupa tersenyum dan selamat bertugas.`,
-        `${timeGreeting} ${name}. Absensi berhasil, mari kita mulai kerja hari ini.`
-      ]
-      text = inGreetings[Math.floor(Math.random() * inGreetings.length)]
-    }
-  } else {
-    const outGreetings = [
-      `Terima kasih atas kerja kerasnya hari ini, ${name}. Hati-hati di jalan.`,
-      `Absen pulang berhasil. Selamat beristirahat, ${name}.`,
-      `Sampai jumpa besok, ${name}. Semoga istirahatmu menyenangkan.`,
-      `Kerja bagus hari ini ${name}, silakan pulang dan beristirahat.`
-    ]
-    text = outGreetings[Math.floor(Math.random() * outGreetings.length)]
-  }
-
-  const utterance = new SpeechSynthesisUtterance(text)
-  utterance.lang = 'id-ID'
-  utterance.rate = 0.9 // Sedikit lebih lambat agar terdengar natural dan ramah
-  utterance.pitch = 1.2 // Nada sedikit lebih tinggi khas suara wanita
-
-  const voices = window.speechSynthesis.getVoices()
-  const indonesianVoices = voices.filter(v => v.lang.includes('id') || v.lang.includes('ID'))
+async function speakCombinedGreeting(faces) {
+  if (!faces || faces.length === 0) return "";
+  const timeGreeting = getTimeGreeting();
   
-  const savedVoiceUri = localStorage.getItem('siska_voice_uri')
-  let selectedVoice = indonesianVoices.find(v => v.voiceURI === savedVoiceUri)
+  // Pisahkan berdasarkan status
+  const successFaces = faces.filter(f => f.status === 'ok' || f.status === 'recognized');
+  const cooldownFaces = faces.filter(f => f.status !== 'ok' && f.status !== 'recognized');
 
-  if (!selectedVoice && indonesianVoices.length > 0) {
-     selectedVoice = indonesianVoices.find(v => v.name.toLowerCase().includes('gadis online')) ||
-                     indonesianVoices.find(v => v.name.toLowerCase().includes('gadis')) ||
-                     indonesianVoices.find(v => v.name.toLowerCase().includes('ayu')) ||
-                     indonesianVoices.find(v => v.name.toLowerCase().includes('google')) ||
-                     indonesianVoices.find(v => !/andika|ardi|male|pria/i.test(v.name)) ||
-                     indonesianVoices[0];
+  let successText = "";
+  if (successFaces.length > 0) {
+    const inFaces = successFaces.filter(f => f.event_type === 'IN');
+    const outFaces = successFaces.filter(f => f.event_type !== 'IN');
+
+    const inNames = inFaces.map(f => f.user_name || 'Karyawan');
+    const outNames = outFaces.map(f => f.user_name || 'Karyawan');
+
+    if (inNames.length > 0) {
+      const combinedInName = joinNames(inNames);
+      // Cek apakah ada minimal 1 orang yang terlambat di rombongan IN
+      const isLate = inFaces.some(f => f.late);
+      
+      if (isLate) {
+        const lateGreetings = [
+          `${timeGreeting} ${combinedInName}. Absen berhasil, namun ada yang tercatat terlambat hari ini.`,
+          `Halo ${combinedInName}. Datang terlambat, tolong lebih tepat waktu besok ya.`,
+          `Absen masuk berhasil. ${timeGreeting} ${combinedInName}, jangan terlambat lagi ya.`
+        ];
+        successText += lateGreetings[Math.floor(Math.random() * lateGreetings.length)] + " ";
+      } else {
+        const inGreetings = [
+          `${timeGreeting} ${combinedInName}. Selamat bekerja dan semoga harimu menyenangkan!`,
+          `Halo ${combinedInName}, absen masuk berhasil dicatat. Semangat untuk hari ini!`,
+          `Selamat datang ${combinedInName}. Jangan lupa tersenyum dan selamat bertugas.`,
+          `${timeGreeting} ${combinedInName}. Absensi berhasil, mari kita mulai kerja hari ini.`
+        ];
+        successText += inGreetings[Math.floor(Math.random() * inGreetings.length)] + " ";
+      }
+    }
+    if (outNames.length > 0) {
+      const combinedOutName = joinNames(outNames);
+      const outGreetings = [
+        `Terima kasih atas kerja kerasnya hari ini, ${combinedOutName}. Hati-hati di jalan.`,
+        `Absen pulang berhasil. Selamat beristirahat, ${combinedOutName}.`,
+        `Sampai jumpa besok, ${combinedOutName}. Semoga istirahatmu menyenangkan.`,
+        `Kerja bagus hari ini ${combinedOutName}, silakan pulang dan beristirahat.`
+      ];
+      successText += outGreetings[Math.floor(Math.random() * outGreetings.length)] + " ";
+    }
   }
 
-  if (selectedVoice) {
-    utterance.voice = selectedVoice
+  let cooldownText = "";
+  if (cooldownFaces.length > 0) {
+    const cooldownNames = cooldownFaces.map(f => f.user_name || 'Karyawan');
+    cooldownText += `Halo ${joinNames(cooldownNames)}, mohon tunggu sebentar sebelum absen kembali.`;
   }
 
-  // Debug log
-  console.log("Speaking with:", selectedVoice ? selectedVoice.name : "Default OS");
+  const text = (successText + " " + cooldownText).trim();
 
-  window.speechSynthesis.cancel(); // Cancel any ongoing speech
-  speechSynthesis.speak(utterance)
+  const preset = localStorage.getItem('siska_greeting_style') || 'gadis';
+  let voice = 'id-ID-GadisNeural';
+  let rateStr = "+0%";
+  let pitchStr = "+0Hz";
+
+  if (preset === 'bunda') {
+    voice = 'id-ID-GadisNeural';
+    rateStr = "-10%"; pitchStr = "-15Hz";
+  } else if (preset === 'ardi') {
+    voice = 'id-ID-ArdiNeural';
+  } else if (preset === 'bapak') {
+    voice = 'id-ID-ArdiNeural';
+    rateStr = "-10%"; pitchStr = "-15Hz";
+  } else if (preset === 'bima') {
+    voice = 'id-ID-ArdiNeural';
+    rateStr = "+10%"; pitchStr = "+15Hz";
+  } else if (preset === 'yasmin') {
+    voice = 'ms-MY-YasminNeural';
+  } else if (preset === 'osman') {
+    voice = 'ms-MY-OsmanNeural';
+  }
+
+  try {
+    const response = await fetch('/api/v1/tts/synthesize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text, voice: voice, rate: rateStr, pitch: pitchStr })
+    });
+    
+    if (response.ok) {
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      if (window.currentAudio) window.currentAudio.pause();
+      const audio = new Audio(url);
+      window.currentAudio = audio;
+      audio.play();
+    }
+  } catch (err) {
+    console.error("Error calling TTS API:", err);
+  }
+  return text;
 }
 
 export default function AttendancePage() {
   const webcamRef = useRef(null)
+  const canvasRef = useRef(null)
   const timerRef = useRef(null)
+  const apiBboxesRef = useRef([])
+  const navigate = useNavigate()
 
   const [phase, setPhase] = useState(PHASE.WELCOME)
   const [welcomeProgress, setWelcomeProgress] = useState(0)
   const [status, setStatus] = useState(STATUS.IDLE)
-  const [result, setResult] = useState(null)
+  const [results, setResults] = useState([])
   const [currentTime, setCurrentTime] = useState(new Date())
   const [cameraReady, setCameraReady] = useState(false)
   const [isCameraEnabled, setIsCameraEnabled] = useState(true)
   const [isCapturing, setIsCapturing] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [todayCount, setTodayCount] = useState(0)
+  const [greetingText, setGreetingText] = useState('')
+  const [isMirrored, setIsMirrored] = useState(true)
 
-  // Voice selector state
-  const [availableVoices, setAvailableVoices] = useState([])
-  const [selectedVoiceUri, setSelectedVoiceUri] = useState(localStorage.getItem('siska_voice_uri') || '')
+  const [greetingStyle, setGreetingStyle] = useState(localStorage.getItem('siska_greeting_style') || 'gadis')
+  const [isLightMode, setIsLightMode] = useState(() => localStorage.getItem('siska_theme') === 'light')
 
-  // Force load voices on mount (crucial for Edge/Chrome)
+  // Theme observer
   useEffect(() => {
-    if ('speechSynthesis' in window) {
-      const loadVoices = () => {
-        const voices = window.speechSynthesis.getVoices().filter(v => v.lang.includes('id') || v.lang.includes('ID'));
-        setAvailableVoices(voices);
-        if (voices.length > 0 && !localStorage.getItem('siska_voice_uri')) {
-           const autoVoice = voices.find(v => v.name.toLowerCase().includes('gadis online')) ||
-                             voices.find(v => v.name.toLowerCase().includes('gadis')) ||
-                             voices.find(v => v.name.toLowerCase().includes('ayu')) ||
-                             voices.find(v => v.name.toLowerCase().includes('google')) ||
-                             voices.find(v => !/andika|ardi|male|pria/i.test(v.name)) ||
-                             voices[0];
-           if (autoVoice) {
-             setSelectedVoiceUri(autoVoice.voiceURI);
-             localStorage.setItem('siska_voice_uri', autoVoice.voiceURI);
-           }
-        }
-      }
-      loadVoices()
-      window.speechSynthesis.onvoiceschanged = loadVoices
+    if (isLightMode) {
+      document.documentElement.setAttribute('data-theme', 'light')
+      localStorage.setItem('siska_theme', 'light')
+    } else {
+      document.documentElement.removeAttribute('data-theme')
+      localStorage.setItem('siska_theme', 'dark')
     }
-  }, [])
+  }, [isLightMode])
 
-  // Welcome progress animation
-  useEffect(() => {
-    if (phase !== PHASE.WELCOME) return
-    const interval = setInterval(() => {
-      setWelcomeProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          setTimeout(() => setPhase(PHASE.READY), 400)
-          return 100
-        }
-        // Fast at start, slow around 60-85% (simulating camera init), fast at end
-        const increment = prev < 40 ? 3 : prev < 75 ? 1.5 : prev < 90 ? 2 : 4
-        return Math.min(prev + increment, 100)
-      })
-    }, 80)
-    return () => clearInterval(interval)
-  }, [phase])
+  // Welcome progress animation dihilangkan karena user harus klik tombol secara manual
 
   // Fullscreen toggle
   const toggleFullscreen = useCallback(() => {
@@ -211,6 +229,134 @@ export default function AttendancePage() {
     return new Blob([array], { type: mime })
   }
 
+  // Load Face API Models
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        await faceapi.nets.tinyFaceDetector.loadFromUri('/models')
+      } catch (err) {
+        console.error("Error loading faceapi models:", err)
+      }
+    }
+    loadModels()
+  }, [])
+
+  // Real-time Face Tracking
+  useEffect(() => {
+    let isRunning = true
+    const trackFaces = async () => {
+      while (isRunning) {
+        if (webcamRef.current && webcamRef.current.video && cameraReady && status !== STATUS.NO_CAMERA) {
+          const video = webcamRef.current.video
+          if (video.readyState === 4) {
+            try {
+              const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 }))
+              const canvas = canvasRef.current
+              if (canvas) {
+                const displaySize = { width: video.videoWidth, height: video.videoHeight }
+                faceapi.matchDimensions(canvas, displaySize)
+                const resizedDetections = faceapi.resizeResults(detections, displaySize)
+                
+                const ctx = canvas.getContext('2d')
+                ctx.clearRect(0, 0, canvas.width, canvas.height)
+                
+                // Tentukan warna berdasarkan status
+                let color = 'rgba(99, 102, 241, 0.8)' // default indigo
+                if (status === STATUS.RECOGNIZED) color = 'rgba(16, 185, 129, 0.9)' // green
+                else if (status === STATUS.ERROR || status === STATUS.UNRECOGNIZED) color = 'rgba(239, 68, 68, 0.8)' // red
+                else if (status === STATUS.SCANNING) color = 'rgba(99, 102, 241, 1)' // bright indigo
+
+                // Gambar live tracking dari face-api.js
+                const apiBboxes = apiBboxesRef.current
+                resizedDetections.forEach(det => {
+                  let { x, y, width, height } = det.box
+                  
+                  // Flip jika mirrored
+                  if (isMirrored) {
+                    x = displaySize.width - x - width;
+                  }
+
+                  // Kotak utama
+                  ctx.strokeStyle = color
+                  ctx.lineWidth = 2.5
+                  ctx.strokeRect(x, y, width, height)
+                  
+                  // Siku-siku putih
+                  ctx.lineWidth = 4
+                  ctx.strokeStyle = '#ffffff'
+                  const l = Math.min(22, width / 4)
+                  // Top Left
+                  ctx.beginPath(); ctx.moveTo(x, y + l); ctx.lineTo(x, y); ctx.lineTo(x + l, y); ctx.stroke();
+                  // Top Right
+                  ctx.beginPath(); ctx.moveTo(x + width - l, y); ctx.lineTo(x + width, y); ctx.lineTo(x + width, y + l); ctx.stroke();
+                  // Bottom Left
+                  ctx.beginPath(); ctx.moveTo(x, y + height - l); ctx.lineTo(x, y + height); ctx.lineTo(x + l, y + height); ctx.stroke();
+                  // Bottom Right
+                  ctx.beginPath(); ctx.moveTo(x + width, y + height - l); ctx.lineTo(x + width, y + height); ctx.lineTo(x + width - l, y + height); ctx.stroke();
+
+                  // Coba pasangkan live box ini dengan nama dari API (jika status recognized)
+                  let matchedName = null
+                  if (apiBboxes.length > 0 && status === STATUS.RECOGNIZED) {
+                    let minDist = Infinity
+                    const centerX = x + width/2
+                    const centerY = y + height/2
+                    
+                    apiBboxes.forEach(({ bbox, name }) => {
+                       if(!bbox || bbox.length < 4) return
+                       let [x1, y1, x2, y2] = bbox
+                       if (isMirrored) {
+                         const tempX1 = displaySize.width - x2
+                         x2 = displaySize.width - x1
+                         x1 = tempX1
+                       }
+                       const apiCenterX = x1 + (x2 - x1)/2
+                       const apiCenterY = y1 + (y2 - y1)/2
+                       
+                       const dist = Math.hypot(centerX - apiCenterX, centerY - apiCenterY)
+                       if (dist < 150 && dist < minDist) {
+                         minDist = dist
+                         matchedName = name
+                       }
+                    })
+                    
+                    // Fallback: Kalau cuman ada 1 orang di frame, paksakan nama itu ke kotak ini
+                    if (!matchedName && apiBboxes.length === 1 && resizedDetections.length === 1) {
+                       matchedName = apiBboxes[0].name
+                    }
+                  }
+
+                  // Label nama di atas kotak live
+                  if (matchedName && status === STATUS.RECOGNIZED) {
+                      const label = matchedName.charAt(0).toUpperCase() + matchedName.slice(1)
+                      ctx.font = 'bold 14px Inter, sans-serif'
+                      const textWidth = ctx.measureText(label).width
+                      const padding = 8
+                      const labelH = 24
+                      const labelX = x
+                      const labelY = y - labelH - 4
+                      
+                      // Background label
+                      ctx.fillStyle = color
+                      ctx.beginPath()
+                      ctx.roundRect(labelX, labelY, textWidth + padding * 2, labelH, 6)
+                      ctx.fill()
+                      
+                      // Teks label
+                      ctx.fillStyle = '#ffffff'
+                      ctx.fillText(label, labelX + padding, labelY + 17)
+                  }
+                })
+              }
+            } catch (_) {}
+          }
+        }
+        await new Promise(r => setTimeout(r, 100)) // 10 fps
+      }
+    }
+    trackFaces()
+    return () => { isRunning = false }
+  }, [cameraReady, status, isMirrored])
+
   // Capture and send to API
   const captureAndRecognize = useCallback(async () => {
     if (!webcamRef.current || isCapturing) return
@@ -226,34 +372,50 @@ export default function AttendancePage() {
       const res = await attendanceApi.recognize(blob)
       const data = res.data
 
+      // ─── DEBUG: Log respons mentah dari API ───
+      console.log('[SISKA DEBUG] Raw API Response:', JSON.stringify(data, null, 2))
+
       if ((data.status === 'ok' || data.status === 'recognized') && data.faces?.length > 0) {
-        const face = data.faces[0]
-        const displayName = face.user_name || face.name
-        if (displayName && displayName !== "Unknown") {
-          face.user_name = displayName // map for speakGreeting and UI
-          setResult(face)
+        // Simpan bbox dari API untuk digambar di canvas
+        apiBboxesRef.current = data.faces
+          .filter(f => f.bbox)
+          .map(f => ({ bbox: f.bbox, name: f.user_name || f.name }))
+
+        // Ambil maksimal 5 wajah teratas yang valid
+        const validFaces = data.faces
+          .map(f => {
+            f.user_name = f.user_name || f.name;
+            return f;
+          })
+          .filter(f => f.user_name && f.user_name !== "Unknown")
+          .slice(0, 5);
+          
+        if (validFaces.length > 0) {
+          setResults(validFaces)
           setStatus(STATUS.RECOGNIZED)
-          setTodayCount(prev => prev + 1)
-          speakGreeting(face)
+          setTodayCount(prev => prev + validFaces.filter(f => f.status === 'ok').length)
+          speakCombinedGreeting(validFaces).then(text => setGreetingText(text))
         } else {
-          setResult(null)
+          setResults([])
           setStatus(STATUS.UNRECOGNIZED)
         }
       } else {
-        setResult(null)
+        setResults([])
         setStatus(STATUS.UNRECOGNIZED)
       }
     } catch (err) {
       console.error('Recognition error:', err)
-      setResult(null)
+      setResults([])
       setStatus(STATUS.ERROR)
     }
 
     // Auto-reset after showing result
     setTimeout(() => {
       setStatus(STATUS.IDLE)
-      setResult(null)
+      setResults([])
       setIsCapturing(false)
+      setGreetingText('')
+      apiBboxesRef.current = [] // Bersihkan bbox setelah reset
     }, RESULT_DISPLAY_MS)
   }, [isCapturing])
 
@@ -270,13 +432,6 @@ export default function AttendancePage() {
       if (timerRef.current) clearInterval(timerRef.current)
     }
   }, [phase, cameraReady, status, isCapturing, captureAndRecognize])
-
-  // Manual capture button
-  const handleManualCapture = () => {
-    if (!isCapturing) {
-      captureAndRecognize()
-    }
-  }
 
   // Format time
   const timeStr = currentTime.toLocaleTimeString('id-ID', {
@@ -297,329 +452,268 @@ export default function AttendancePage() {
       <div style={{
         width: '100vw',
         height: '100vh',
-        background: 'linear-gradient(160deg, #070b18 0%, #0d1a33 50%, #080e1e 100%)',
+        background: isLightMode ? '#f8fafc' : '#020617',
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'column',  
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
         overflow: 'hidden',
-        fontFamily: "'Inter', 'Segoe UI', sans-serif",
+        fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
       }}>
-        <style>{`
-          @keyframes att-float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-14px); }
-          }
-          @keyframes att-fadeUp {
-            from { opacity: 0; transform: translateY(24px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes att-glow {
-            0%, 100% { opacity: 0.3; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.15); }
-          }
-          @keyframes att-progressShine {
-            0% { left: -40%; }
-            100% { left: 140%; }
-          }
-          @keyframes att-orbitDots {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-          @keyframes att-dotPulse {
-            0%, 100% { opacity: 0.4; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.2); }
-          }
-          @keyframes att-scanLine {
-            0% { top: 0; }
-            50% { top: calc(100% - 2px); }
-            100% { top: 0; }
-          }
-          .welcome-content {
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            justify-content: center;
-            gap: 80px;
-            width: 100%;
-            max-width: 1200px;
-            padding: 0 40px;
-            margin-top: 60px;
-          }
-          @media (max-width: 900px) {
-            .welcome-content {
-              flex-direction: column !important;
-              gap: 40px !important;
-              text-align: center;
-              margin-top: 100px;
-            }
-            .welcome-right {
-              align-items: center !important;
-            }
-          }
-        `}</style>
-
-        {/* Glowing orbs */}
+        {/* === HEADER BAR === */}
         <div style={{
-          position: 'absolute', width: '400px', height: '400px', borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)',
-          top: '-100px', left: '-80px',
-          animation: 'att-glow 6s ease-in-out infinite',
-        }} />
-        <div style={{
-          position: 'absolute', width: '350px', height: '350px', borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(56,189,248,0.06) 0%, transparent 70%)',
-          bottom: '-50px', right: '-60px',
-          animation: 'att-glow 8s ease-in-out infinite', animationDelay: '2s',
-        }} />
-
-        {/* Star dots */}
-        {[
-          { top: '8%', left: '12%', s: 3, d: '0s' }, { top: '15%', left: '78%', s: 2, d: '1s' },
-          { top: '72%', left: '15%', s: 2, d: '2s' }, { top: '82%', left: '80%', s: 3, d: '0.5s' },
-          { top: '45%', left: '5%', s: 2, d: '3s' }, { top: '30%', left: '88%', s: 2, d: '1.5s' },
-        ].map((s, i) => (
-          <div key={i} style={{
-            position: 'absolute', top: s.top, left: s.left,
-            width: `${s.s}px`, height: `${s.s}px`, borderRadius: '50%',
-            background: '#6366f1', animation: 'att-glow 3s ease-in-out infinite', animationDelay: s.d,
-          }} />
-        ))}
-
-        {/* Top bar */}
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0,
+          position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 30,
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '24px 36px',
-          zIndex: 10,
+          padding: '12px 60px', // Ketebalan vertikal dikurangi dari 24px ke 12px
+          background: isLightMode ? 'rgba(255,255,255,0.95)' : 'rgba(15, 23, 42, 0.95)',
+          borderBottom: isLightMode ? '1px solid rgba(14, 165, 233, 0.2)' : '1px solid rgba(255, 255, 255, 0.1)', // Garis header dimunculkan kembali
+          backdropFilter: 'blur(10px)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <img src={siskaLogo} alt="SISKA" style={{ width: '36px', height: '36px', borderRadius: '50%' }} />
-            <div>
-              <p style={{ color: '#fff', fontWeight: 700, fontSize: '16px', margin: 0, lineHeight: 1.2 }}>SISKA</p>
-              <p style={{ color: '#475569', fontSize: '10px', margin: 0 }}>Sistem Kehadiran AI</p>
-            </div>
-          </div>
           
+          {/* Header Left: Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {/* Voice Dropdown */}
-            {availableVoices.length > 0 && (
-              <select 
-                value={selectedVoiceUri} 
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSelectedVoiceUri(val);
-                  localStorage.setItem('siska_voice_uri', val);
-                  
-                  // Test the voice
-                  const u = new SpeechSynthesisUtterance("Halo, suara berhasil diganti.");
-                  u.lang = 'id-ID';
-                  u.rate = 0.9;
-                  u.pitch = 1.2;
-                  const v = availableVoices.find(x => x.voiceURI === val);
-                  if (v) u.voice = v;
-                  window.speechSynthesis.cancel();
-                  window.speechSynthesis.speak(u);
-                }}
-                style={{
-                  background: 'rgba(15, 23, 42, 0.6)', 
-                  color: '#94a3b8', 
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  borderRadius: '8px', 
-                  padding: '6px 12px', 
-                  fontSize: '12px', 
-                  outline: 'none', 
-                  cursor: 'pointer',
-                  maxWidth: '180px', 
-                  textOverflow: 'ellipsis'
-                }}
-                title="Pilih Suara"
-              >
-                {availableVoices.map(v => (
-                  <option key={v.voiceURI} value={v.voiceURI}>
-                    {v.name.replace(' - Indonesian (Indonesia)', '').replace('Microsoft ', '')}
-                  </option>
-                ))}
-              </select>
-            )}
+            <div style={{ 
+              filter: isLightMode ? 'drop-shadow(0 2px 5px rgba(14,165,233,0.3))' : 'drop-shadow(0 0 10px rgba(0,242,254,0.4))' 
+            }}>
+              <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 65 15 L 35 15 A 15 15 0 0 0 20 30 A 15 15 0 0 0 35 45 L 65 45" stroke="url(#logoGrad1)" strokeWidth="14" strokeLinecap="round" />
+                <path d="M 35 85 L 65 85 A 15 15 0 0 0 80 70 A 15 15 0 0 0 65 55 L 35 55" stroke="url(#logoGrad2)" strokeWidth="14" strokeLinecap="round" />
+                <circle cx="85" cy="15" r="7" fill="#00f2fe" />
+                <circle cx="15" cy="85" r="7" fill="#00f2fe" />
+                <defs>
+                  <linearGradient id="logoGrad1" x1="20" y1="15" x2="65" y2="45" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#00f2fe" />
+                    <stop offset="100%" stopColor="#3b82f6" />
+                  </linearGradient>
+                  <linearGradient id="logoGrad2" x1="35" y1="85" x2="80" y2="55" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#00f2fe" />
+                    <stop offset="100%" stopColor="#3b82f6" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <span style={{
+              fontFamily: "'Poppins', sans-serif",
+              fontSize: '24px', fontWeight: 800, letterSpacing: '2px',
+              color: isLightMode ? '#0f172a' : '#ffffff',
+            }}>
+              SISKA
+            </span>
+          </div>
 
+          {/* Header Right: Controls */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {/* Theme Toggle */}
+            <button
+              onClick={() => setIsLightMode(!isLightMode)}
+              style={{
+                background: 'transparent', border: 'none', 
+                color: isLightMode ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.2)', 
+                cursor: 'pointer', padding: '8px', borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => { 
+                e.currentTarget.style.color = isLightMode ? '#0f172a' : '#f8fafc';
+                e.currentTarget.style.background = isLightMode ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)';
+              }}
+              onMouseLeave={(e) => { 
+                e.currentTarget.style.color = isLightMode ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.2)';
+                e.currentTarget.style.background = 'transparent';
+              }}
+              title={isLightMode ? 'Ganti ke Mode Gelap' : 'Ganti ke Mode Terang'}
+            >
+              {isLightMode ? <Moon size={20} /> : <Sun size={20} />}
+            </button>
+
+            {/* Fullscreen/Kiosk Toggle */}
             <button
               onClick={toggleFullscreen}
               style={{
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)',
-                borderRadius: '8px', padding: '8px', cursor: 'pointer', color: '#64748b',
-                display: 'flex', alignItems: 'center', transition: 'all 0.15s',
+                background: 'transparent', border: 'none', 
+                color: isLightMode ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.2)', 
+                cursor: 'pointer', padding: '8px', borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.2s'
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.1)'; e.currentTarget.style.color = '#818cf8'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = '#64748b'; }}
-              title={isFullscreen ? 'Keluar fullscreen (F11)' : 'Fullscreen (F11)'}
+              onMouseEnter={(e) => { 
+                e.currentTarget.style.color = isLightMode ? '#0f172a' : '#f8fafc';
+                e.currentTarget.style.background = isLightMode ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)';
+              }}
+              onMouseLeave={(e) => { 
+                e.currentTarget.style.color = isLightMode ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.2)';
+                e.currentTarget.style.background = 'transparent';
+              }}
+              title={isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen Kiosk Mode'}
             >
-              {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+              {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
             </button>
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ color: '#fff', fontWeight: 700, fontSize: '28px', margin: 0, fontFamily: 'monospace', letterSpacing: '2px' }}>{timeStr}</p>
-              <p style={{ color: '#475569', fontSize: '11px', margin: '2px 0 0 0' }}>{shortDateStr}</p>
-            </div>
           </div>
         </div>
 
-        {/* Center content (Split Layout) */}
-        <div className="welcome-content" style={{ animation: 'att-fadeUp 0.8s ease-out', zIndex: 2 }}>
+        {/* Decorative Background & Glows */}
+        <>
+          {/* Thin Grid Pattern (Dark Mode Only) */}
+          {!isLightMode && (
+            <div style={{
+              position: 'absolute', inset: 0,
+              backgroundImage: `
+                linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px)
+              `,
+              backgroundSize: '40px 40px', zIndex: 0
+            }} />
+          )}
+
+          {/* Top Left Glow (Muncul di Terang & Gelap) */}
+          <div style={{
+            position: 'absolute', top: '-10%', left: '-5%', width: '400px', height: '400px',
+            background: isLightMode 
+              ? 'radial-gradient(circle, rgba(85, 128, 247, 0.6) 0%, transparent 70%)' 
+              : 'radial-gradient(circle, rgba(99, 102, 241, 0.4) 0%, transparent 70%)',
+            filter: 'blur(50px)', zIndex: 0
+          }} /> 
           
-          {/* Left: Mascot */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            
-            {/* Efek Garis Orbit Belakang */}
-            <div style={{
-              position: 'absolute',
-              width: '420px',
-              height: '420px',
-              border: '1px solid rgba(168, 85, 247, 0.15)',
-              borderRadius: '50%',
-              top: '45%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 1
-            }} />
-            <div style={{
-              position: 'absolute',
-              width: '320px',
-              height: '320px',
-              border: '1px solid rgba(168, 85, 247, 0.3)',
-              borderRadius: '50%',
-              top: '45%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 1
-            }} />
+          {/* Bottom Right Glow (Muncul di Terang & Gelap) */}
+          <div style={{
+            position: 'absolute', bottom: '-15%', right: '-10%', width: '600px', height: '600px',
+            background: isLightMode
+              ? 'radial-gradient(circle, rgba(85, 128, 247, 0.6) 0%, transparent 70%)' /* Diubah agar jauh lebih terang/jelas */
+              : 'radial-gradient(circle, rgba(99, 102, 241, 0.4) 0%, transparent 70%)',
+            filter: 'blur(60px)', zIndex: 0
+          }} />
 
-            {/* Podium Cahaya Ungu di Bawah Maskot */}
-            <div style={{
-              position: 'absolute', 
-              bottom: '-15px', 
-              left: '50%', 
-              transform: 'translateX(-50%)',
-              width: '260px', 
-              height: '30px', 
-              borderRadius: '50%',
-              border: '2px solid rgba(168, 85, 247, 0.8)', // Garis tepi podium
-              background: 'radial-gradient(ellipse, rgba(168, 85, 247, 0.3) 0%, transparent 70%)',
-              boxShadow: '0 0 40px rgba(168, 85, 247, 0.6), inset 0 0 20px rgba(168, 85, 247, 0.4)',
-              zIndex: 1
-            }} />
+          {/* Center Subtle Glow (Hanya Dark Mode atau sangat tipis di Light Mode) */}
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            width: '500px', height: '500px',
+            background: isLightMode
+              ? 'radial-gradient(circle, rgba(56, 189, 248, 0.02) 0%, transparent 60%)'
+              : 'radial-gradient(circle, rgba(56, 189, 248, 0.04) 0%, transparent 60%)',
+            filter: 'blur(40px)', zIndex: 0
+          }} />
+        </>
 
-            <img src={siskaMascot} alt="SISKA Mascot" style={{
-              width: '1000px', // Ukuran diperbesar dari 380px
-              height: 'auto',
-              filter: 'drop-shadow(0 15px 40px rgba(168, 85, 247, 0.3))', // Shadow diubah jadi ungu
-              animation: 'att-float 4s ease-in-out infinite',
-              position: 'relative',
-              zIndex: 2,
-            }} />
-          </div>
-
-          {/* Right: Info and Progress */}
-          <div className="welcome-right" style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            justifyContent: 'center',
+        {/* Main Content (Split Layout) */}
+        <div style={{ 
+          position: 'relative', zIndex: 2,
+          display: 'flex', flexDirection: 'row',
+          alignItems: 'center', justifyContent: 'space-between',
+          width: '100%', maxWidth: '1500px', margin: '0 auto', 
+          padding: '180px 80px 40px 80px', // Padding atas diperbesar ke 180px agar tidak nabrak header
+          minHeight: '100vh', height: 'auto', 
+          animation: 'att-fadeUp 0.8s ease-out'
+        }}>
+          
+          {/* === LEFT SIDE (Logo, Text, Buttons) === */}
+          <div style={{
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'flex-start', textAlign: 'left',
+            flex: '1 1 50%', maxWidth: '600px'
           }}>
-            <p style={{
-              color: '#f8fafc', // Warna diubah jadi lebih putih
-              fontSize: '26px', // Ukuran font diperbesar sedikit
-              fontWeight: 500,
-              margin: '0 0 8px 0',
-              letterSpacing: '0.5px',
-              // textTransform: 'uppercase' DIHAPUS agar sesuai desain asli
+            
+            {/* Area kosong di mana logo S dulunya berada */}
+            {/* Typography */}
+            <span style={{
+              fontFamily: "'Poppins', sans-serif",
+              fontSize: '14px', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase',
+              color: isLightMode ? '#0ea5e9' : '#38bdf8', marginBottom: '16px', display: 'block'
             }}>
-              Selamat Datang di
-            </p>
+              PRESENSI AKADEMIK DIGITAL
+            </span>
+
             <h1 style={{
-              color: '#fff',
-              fontSize: '85px',
-              fontWeight: 800,
-              letterSpacing: '8px',
-              margin: '0 0 16px 0',
-              // Gradasi diubah ke tema ungu (Purple)
-              background: 'linear-gradient(135deg, #e9d5ff 0%, #c084fc 50%, #9333ea 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              filter: 'drop-shadow(0 4px 35px rgba(168, 85, 247, 0.45))', // Glow ungu
-              lineHeight: 1.1,
-            }}>
-              SISKA
-            </h1>
-            <p style={{
-              color: '#e2e8f0', // Warna diubah agar lebih terang
-              fontSize: '20px',
-              fontWeight: 400,
-              margin: '0 0 48px 0',
-              letterSpacing: '0.5px',
-              // textTransform: 'uppercase' DIHAPUS
+              fontFamily: "'Poppins', sans-serif",
+              fontSize: '72px', fontWeight: 800, letterSpacing: '-1px', // Modern Sans-Serif Look
+              margin: '0 0 32px 0', 
+              color: isLightMode ? '#4874dbff' : '#ffffff',
+              lineHeight: 1.15
             }}>
               Sistem Kehadiran AI
+            </h1>
+
+            <p style={{
+              color: isLightMode ? '#1e293b' : '#f8fafc',
+              fontSize: '24px', fontWeight: 500, margin: '0 0 24px 0', 
+              maxWidth: '600px', lineHeight: 1.4 
+            }}>
+              Solusi presensi cerdas terintegrasi untuk mendukung efisiensi kegiatan belajar mengajar.
             </p>
 
-            {/* Progress Section */}
-            <div style={{ width: '100%', minWidth: '360px', maxWidth: '420px' }}>
-              <p style={{
-                color: '#94a3b8',
-                fontSize: '15px',
-                margin: '0 0 12px 0',
-                letterSpacing: '0.5px',
-              }}>
-                Menyiapkan kamera...
-              </p>
+            <p style={{
+              fontFamily: "'Inter', sans-serif",
+              color: isLightMode ? '#64748b' : '#94a3b8',
+              fontSize: '18px', fontWeight: 400, margin: '0 0 60px 0',
+              maxWidth: '550px', lineHeight: 1.7 
+            }}>
+              Hadirkan pengalaman pencatatan kehadiran yang lebih cepat, akurat, dan aman bagi tenaga pendidik melalui teknologi pengenalan wajah mutakhir.
+            </p>
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: '20px', fontFamily: "'Poppins', sans-serif" }}>
+              <button
+                onClick={() => setPhase(PHASE.READY)}
+                style={{
+                  padding: '0 36px', height: '56px', borderRadius: '50px', // Pill Shape
+                  background: isLightMode ? '#0ea5e9' : '#ffffff',
+                  color: isLightMode ? '#ffffff' : '#0f172a',
+                  fontSize: '16px', fontWeight: 600, border: 'none',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  boxShadow: isLightMode ? '0 10px 25px rgba(14, 165, 233, 0.3)' : '0 10px 25px rgba(255, 255, 255, 0.2)', 
+                  transition: 'transform 0.2s, box-shadow 0.2s'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = isLightMode ? '0 15px 35px rgba(14, 165, 233, 0.4)' : '0 15px 35px rgba(255, 255, 255, 0.3)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = isLightMode ? '0 10px 25px rgba(14, 165, 233, 0.3)' : '0 10px 25px rgba(255, 255, 255, 0.2)'; }}
+              >
+                Mulai Presensi
+              </button>
               
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '16px',
-                width: '100%',
-              }}>
-                {/* Progress Bar Track */}
-                <div style={{
-                  flex: 1,
-                  height: '8px',
-                  borderRadius: '4px',
-                  background: 'rgba(255,255,255,0.06)',
-                  overflow: 'hidden',
-                  position: 'relative',
-                }}>
-                  {/* Progress Fill */}
-                  <div style={{
-                    height: '100%',
-                    borderRadius: '4px',
-                    background: 'linear-gradient(90deg, #6366f1, #818cf8, #c084fc)',
-                    width: `${welcomeProgress}%`,
-                    transition: 'width 0.15s ease-out',
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}>
-                    {/* Shine effect */}
-                    <div style={{
-                      position: 'absolute', top: 0, width: '40%', height: '100%',
-                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-                      animation: 'att-progressShine 1.5s ease-in-out infinite',
-                    }} />
-                  </div>
-                </div>
-                
-                {/* Percentage Text */}
-                <span style={{
-                  color: '#818cf8',
-                  fontSize: '16px',
-                  fontWeight: 700,
-                  minWidth: '45px',
-                  textAlign: 'right',
-                }}>
-                  {Math.round(welcomeProgress)}%
-                </span>
-              </div>
+              <button
+                onClick={() => navigate('/login')}
+                style={{
+                  padding: '0 36px', height: '56px', borderRadius: '50px', // Pill Shape
+                  background: 'transparent',
+                  color: isLightMode ? '#64748b' : '#f8fafc', 
+                  fontSize: '16px', fontWeight: 600,
+                  border: isLightMode ? '2px solid #cbd5e1' : '2px solid rgba(255, 255, 255, 0.3)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = isLightMode ? '#94a3b8' : 'rgba(255, 255, 255, 0.6)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = isLightMode ? '#cbd5e1' : 'rgba(255, 255, 255, 0.3)'; }}
+              >
+                Login Admin
+              </button>
+            </div>
+
+            <div style={{ marginTop: '120px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }} />
+              <span style={{ fontSize: '12px', color: isLightMode ? '#64748b' : '#64748b', fontWeight: 500 }}>Sistem Online</span>
+            </div>
+
+          </div>
+
+          {/* === RIGHT SIDE (Mascot Animation) === */}
+          <div style={{
+            flex: '1 1 50%', display: 'flex', justifyContent: 'flex-end', alignItems: 'center'
+          }}>
+            <div style={{
+              width: '100%', maxWidth: '500px', display: 'flex', justifyContent: 'center', alignItems: 'center',
+              animation: 'att-float 4s infinite ease-in-out', // Animasi melayang
+              filter: isLightMode ? 'drop-shadow(0 30px 40px rgba(14, 165, 233, 0.2))' : 'drop-shadow(0 30px 40px rgba(56, 189, 248, 0.3))'
+            }}>
+              <img 
+                src={siskaMascot} 
+                alt="SISKA AI Mascot" 
+                style={{
+                  width: '100%', height: 'auto', objectFit: 'contain',
+                  transform: 'scale(1.1)' // Memperbesar sedikit gambar mascotnya
+                }}
+              />
             </div>
           </div>
+
         </div>
       </div>
     )
@@ -627,77 +721,26 @@ export default function AttendancePage() {
 
   // ─── MAIN ATTENDANCE SCREEN (READY) ──────────────────────────
   return (
-    <div style={{
-      width: '100vw',
-      height: '100vh',
-      background: 'linear-gradient(160deg, #070b18 0%, #0d1a33 50%, #080e1e 100%)',
-      display: 'flex',
-      flexDirection: 'column',
-      position: 'relative',
-      overflow: 'hidden',
-      fontFamily: "'Inter', 'Segoe UI', sans-serif",
-    }}>
-      <style>{`
-        @keyframes att-float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-14px); }
-        }
-        @keyframes att-fadeUp {
-          from { opacity: 0; transform: translateY(24px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes att-fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes att-glow {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50% { opacity: 0.7; transform: scale(1.15); }
-        }
-        @keyframes att-orbitDots {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        @keyframes att-dotPulse {
-          0%, 100% { opacity: 0.4; transform: scale(0.8); }
-          50% { opacity: 1; transform: scale(1.2); }
-        }
-        @keyframes att-scanLine {
-          0% { top: 10%; }
-          50% { top: 85%; }
-          100% { top: 10%; }
-        }
-        @keyframes att-pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-        @keyframes att-spin-slow {
-          to { transform: rotate(360deg); }
-        }
-        @keyframes att-bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-4px); }
-        }
-      `}</style>
-
+    <div className="att-container">
       {/* Ambient background glow */}
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
-      }}>
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '700px', height: '700px', borderRadius: '50%',
-          filter: 'blur(180px)',
+      <div className="att-ambient-wrapper">
+        <div className="att-ambient-glow" style={{
           transition: 'all 1s',
           background: status === STATUS.RECOGNIZED
-            ? 'rgba(16,185,129,0.12)'
+            ? 'radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 60%)'
             : status === STATUS.UNRECOGNIZED || status === STATUS.ERROR
-              ? 'rgba(239,68,68,0.08)'
+              ? 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)'
               : status === STATUS.SCANNING
-                ? 'rgba(99,102,241,0.1)'
-                : 'rgba(99,102,241,0.04)',
+                ? 'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 60%)'
+                : 'radial-gradient(circle, rgba(99,102,241,0.04) 0%, transparent 60%)',
         }} />
+      </div>
+
+      {/* ─── DYNAMIC BACKGROUND BLOBS ─── */}
+      <div className="att-bg-blobs">
+        <div className="att-blob att-blob-1"></div>
+        <div className="att-blob att-blob-2"></div>
+        <div className="att-blob att-blob-3"></div>
       </div>
 
       {/* Star dots */}
@@ -709,68 +752,71 @@ export default function AttendancePage() {
         <div key={i} style={{
           position: 'absolute', top: s.top, left: s.left, zIndex: 0,
           width: `${s.s}px`, height: `${s.s}px`, borderRadius: '50%',
-          background: '#6366f1', animation: 'att-glow 3s ease-in-out infinite', animationDelay: s.d,
+          background: 'var(--color-primary)', animation: 'att-glow 3s ease-in-out infinite', animationDelay: s.d,
         }} />
       ))}
 
-      {/* ─── TOP BAR ─── */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '20px 32px', zIndex: 10, flexShrink: 0,
-      }}>
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <img src={siskaLogo} alt="SISKA" style={{ width: '36px', height: '36px', borderRadius: '50%' }} />
-          <div>
-            <p style={{ color: '#fff', fontWeight: 700, fontSize: '16px', margin: 0, lineHeight: 1.2 }}>SISKA</p>
-            <p style={{ color: '#475569', fontSize: '10px', margin: 0 }}>Sistem Kehadiran AI</p>
-          </div>
+      {/* ─── ABSOLUTE BUTTONS & STATUS ─── */}
+      <div style={{ position: 'absolute', top: '35px', left: '40px', zIndex: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Wifi size={16} style={{ color: status === STATUS.ERROR ? '#ef4444' : '#10b981' }} />
+          <span style={{ color: 'var(--color-text-secondary)', fontSize: '13px', fontWeight: 500 }}>
+            {status === STATUS.ERROR ? 'Server terputus' : 'Server terhubung'}
+          </span>
         </div>
+      </div>
 
-        {/* Time + Fullscreen */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div style={{ position: 'absolute', top: '35px', right: '40px', zIndex: 20 }}>
+        <button
+          onClick={toggleFullscreen}
+          style={{
+            background: 'transparent', border: 'none', color: 'var(--color-text-secondary)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}
+          title={isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen'}
+        >
+          {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+        </button>
+      </div>
+
+      {/* ─── TOP BAR ─── */}
+      <div className="att-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          
+          <p style={{ 
+            color: 'var(--color-text-secondary)', 
+            fontSize: '16px', 
+            fontWeight: 500,
+            margin: 0
+          }}>{shortDateStr}</p>
+
           <button
-            onClick={toggleFullscreen}
-            style={{
-              background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: '8px', padding: '8px', cursor: 'pointer', color: '#64748b',
-              display: 'flex', alignItems: 'center', transition: 'all 0.15s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.1)'; e.currentTarget.style.color = '#818cf8'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = '#64748b'; }}
-            title={isFullscreen ? 'Keluar fullscreen (F11)' : 'Fullscreen (F11)'}
+            onClick={() => setIsLightMode(!isLightMode)}
+            className="att-btn-fullscreen"
+            title={isLightMode ? 'Mode Gelap' : 'Mode Terang'}
           >
-            {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+            {isLightMode ? <Moon size={18} /> : <Sun size={18} />}
           </button>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ color: '#fff', fontWeight: 700, fontSize: '28px', margin: 0, fontFamily: 'monospace', letterSpacing: '2px' }}>{timeStr}</p>
-            <p style={{ color: '#475569', fontSize: '11px', margin: '2px 0 0 0' }}>{shortDateStr}</p>
-          </div>
+
+          <div style={{ height: '20px', width: '2px', background: 'var(--color-border)', borderRadius: '2px' }} />
+
+          <p style={{ 
+            color: 'var(--color-text)', 
+            fontWeight: 700, 
+            fontSize: '26px', 
+            margin: 0, 
+            letterSpacing: '1px' 
+          }}>{timeStr}</p>
         </div>
       </div>
 
       {/* ─── MAIN CONTENT ─── */}
-      <div style={{
-        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '0 40px 0 40px', gap: '60px', zIndex: 5,
-      }}>
+      <div className="att-main-content">
         {/* ─── LEFT: Mascot with orbiting dots ─── */}
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          animation: 'att-fadeUp 0.6s ease-out',
-        }}>
-          <div style={{
-            position: 'relative',
-            width: '320px', height: '320px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
+        <div className="att-left-side">
+          <div className="att-mascot-wrapper">
             {/* Orbit circle (dashed) */}
-            <div style={{
-              position: 'absolute', inset: '0',
-              borderRadius: '50%',
-              border: '1.5px dashed rgba(99,102,241,0.2)',
-              animation: 'att-orbitDots 20s linear infinite',
-            }}>
+            <div className="att-orbit-circle">
               {/* Orbiting dots */}
               {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => (
                 <div key={i} style={{
@@ -787,127 +833,153 @@ export default function AttendancePage() {
             </div>
 
             {/* Mascot image (floating) */}
-            <div style={{ animation: 'att-float 5s ease-in-out infinite', position: 'relative', zIndex: 2 }}>
-              <div style={{
-                position: 'absolute', bottom: '-10px', left: '50%', transform: 'translateX(-50%)',
-                width: '180px', height: '25px', borderRadius: '50%',
-                background: 'radial-gradient(ellipse, rgba(99,102,241,0.25) 0%, transparent 70%)',
-                filter: 'blur(6px)',
-              }} />
-              <img src={siskaMascot} alt="SISKA" style={{
-                width: '240px', height: 'auto',
-                filter: 'drop-shadow(0 12px 30px rgba(99,102,241,0.2))',
-              }} />
+            <div className="att-mascot-image-wrapper">
+              <div className="att-mascot-shadow" />
+              <img src={siskaMascot} alt="SISKA" className="att-mascot-img" />
             </div>
           </div>
         </div>
 
         {/* ─── RIGHT: Camera + Status ─── */}
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          animation: 'att-fadeUp 0.8s ease-out',
-        }}>
-          {/* Camera viewport */}
-          <div style={{
-            width: '380px', height: '285px',
-            borderRadius: '20px', overflow: 'hidden',
-            position: 'relative',
-            border: status === STATUS.RECOGNIZED
-              ? '2px solid rgba(16,185,129,0.5)'
-              : status === STATUS.UNRECOGNIZED || status === STATUS.ERROR
-                ? '2px solid rgba(239,68,68,0.4)'
-                : status === STATUS.SCANNING
-                  ? '2px solid rgba(99,102,241,0.4)'
-                  : '2px solid rgba(255,255,255,0.06)',
-            background: '#000',
-            transition: 'border-color 0.5s',
-            boxShadow: status === STATUS.RECOGNIZED
-              ? '0 0 40px rgba(16,185,129,0.15)'
-              : status === STATUS.SCANNING
-                ? '0 0 40px rgba(99,102,241,0.15)'
-                : '0 8px 30px rgba(0,0,0,0.4)',
-          }}>
-            {/* Camera Active label */}
-            <div style={{
-              position: 'absolute', top: '12px', left: '12px', zIndex: 10,
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '5px 12px', borderRadius: '20px',
-              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
-            }}>
-              <div style={{
-                width: '6px', height: '6px', borderRadius: '50%',
-                background: cameraReady ? '#34d399' : '#fbbf24',
-                animation: 'att-pulse 2s ease-in-out infinite',
-              }} />
-              <span style={{ color: '#e2e8f0', fontSize: '11px', fontWeight: 500 }}>
-                {cameraReady ? 'Kamera Aktif' : 'Menghubungkan...'}
-              </span>
+        <div className="att-right-side">
+          {/* Camera Card Container */}
+          <div className="att-camera-card">
+            
+            {/* Card Header (Voice Selector) */}
+            <div className="att-camera-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '14px' }}>🎙️</span>
+                <select
+                  value={greetingStyle}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setGreetingStyle(val);
+                    localStorage.setItem('siska_greeting_style', val);
+
+                    let voice = 'id-ID-GadisNeural';
+                    let r = "+0%", p = "+0Hz";
+
+                    if (val === 'bunda') { voice = 'id-ID-GadisNeural'; r = "-10%"; p = "-15Hz"; }
+                    else if (val === 'ardi') { voice = 'id-ID-ArdiNeural'; }
+                    else if (val === 'bapak') { voice = 'id-ID-ArdiNeural'; r = "-10%"; p = "-15Hz"; }
+                    else if (val === 'bima') { voice = 'id-ID-ArdiNeural'; r = "+10%"; p = "+15Hz"; }
+                    else if (val === 'yasmin') { voice = 'ms-MY-YasminNeural'; }
+                    else if (val === 'osman') { voice = 'ms-MY-OsmanNeural'; }
+
+                    let testText = "Halo, suara saya telah berhasil diganti. Apakah sudah terdengar pas?";
+
+                    fetch('/api/v1/tts/synthesize', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ text: testText, voice: voice, rate: r, pitch: p })
+                    }).then(res => res.blob()).then(blob => {
+                      const url = URL.createObjectURL(blob);
+                      if (window.currentAudio) window.currentAudio.pause();
+                      const audio = new Audio(url);
+                      window.currentAudio = audio;
+                      audio.play();
+                    });
+                  }}
+                  style={{
+                    background: 'transparent',
+                    color: 'var(--color-primary)',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    outline: 'none',
+                    textAlign: 'left'
+                  }}
+                  title="Pilih Karakter Suara"
+                >
+                  <option value="gadis">Gadis (Wanita Muda)</option>
+                  <option value="bunda">Bunda (Wanita Dewasa)</option>
+                  <option value="ardi">Ardi (Pria Muda)</option>
+                  <option value="bapak">Bapak (Pria Dewasa)</option>
+                  <option value="bima">Bima (Remaja Pria)</option>
+                  <option value="yasmin">Yasmin (Melayu)</option>
+                  <option value="osman">Osman (Melayu)</option>
+                </select>
+              </div>
+              
+              <div className={`att-status-dot ${cameraReady ? 'active' : 'inactive'}`} title={cameraReady ? 'Kamera Sedang Aktif' : 'Kamera Mati'} />
             </div>
 
-            {/* Camera Toggle Button */}
-            <button
-              onClick={() => {
-                setIsCameraEnabled(!isCameraEnabled)
-                if (isCameraEnabled) {
-                  setCameraReady(false)
-                  setStatus(STATUS.IDLE)
-                }
-              }}
-              style={{
-                position: 'absolute', top: '12px', right: '12px', zIndex: 10,
-                display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '6px 12px', borderRadius: '8px',
-                background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: isCameraEnabled ? '#ef4444' : '#34d399',
-                cursor: 'pointer', fontSize: '12px', fontWeight: 600,
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.8)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0.6)'}
-            >
-              {isCameraEnabled ? <Camera size={14} /> : <Camera size={14} />}
-              {isCameraEnabled ? 'Matikan Kamera' : 'Nyalakan Kamera'}
-            </button>
-
+            {/* Camera viewport */}
+            <div className="att-camera-card-viewport" style={{
+              border: status === STATUS.RECOGNIZED
+                ? '2px solid var(--color-success)'
+                : status === STATUS.UNRECOGNIZED || status === STATUS.ERROR
+                  ? '2px solid var(--color-error)'
+                  : status === STATUS.SCANNING
+                    ? '2px solid var(--color-primary)'
+                    : '2px solid transparent',
+              transition: 'border-color 0.5s',
+            }}>
             {/* Webcam */}
-            {status !== STATUS.NO_CAMERA && isCameraEnabled ? (
-              <Webcam
-                ref={webcamRef}
-                audio={false}
-                screenshotFormat="image/jpeg"
-                screenshotQuality={0.85}
-                videoConstraints={{
-                  width: 640,
-                  height: 480,
-                  facingMode: 'user',
-                }}
-                onUserMedia={() => setCameraReady(true)}
-                onUserMediaError={() => setStatus(STATUS.NO_CAMERA)}
-                mirrored
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
+            {status !== STATUS.NO_CAMERA ? (
+              <>
+                <Webcam
+                  ref={webcamRef}
+                  audio={false}
+                  screenshotFormat="image/jpeg"
+                  screenshotQuality={0.85}
+                  videoConstraints={{
+                    width: 640,
+                    height: 480,
+                    facingMode: 'user',
+                  }}
+                  onUserMedia={() => setCameraReady(true)}
+                  onUserMediaError={() => setStatus(STATUS.NO_CAMERA)}
+                  mirrored={isMirrored}
+                  style={{ 
+                    width: '100%', height: '100%', objectFit: 'cover',
+                    filter: !isCameraEnabled ? 'blur(16px)' : 'none',
+                    transition: 'filter 0.4s ease-out'
+                  }}
+                />
+                
+                {/* ─── REALTIME FACE TRACKING CANVAS ─── */}
+                {isCameraEnabled && (
+                  <canvas
+                    ref={canvasRef}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      pointerEvents: 'none',
+                      zIndex: 15
+                    }}
+                  />
+                )}
+
+                {/* OVERLAY KAMERA DIMATIKAN */}
+                {!isCameraEnabled && (
+                  <div style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center', 
+                    background: 'rgba(0, 0, 0, 0.3)', zIndex: 20
+                  }}>
+                    <Camera size={40} style={{ color: '#cbd5e1', marginBottom: '8px' }} />
+                    <p style={{ color: '#e2e8f0', fontSize: '14px', fontWeight: 500, letterSpacing: '0.5px' }}>
+                      Kamera dijeda
+                    </p>
+                  </div>
+                )}
+              </>
             ) : (
               <div style={{
                 width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center', background: '#0a0f1c'
+                alignItems: 'center', justifyContent: 'center', 
+                background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(10px)'
               }}>
-                <Camera size={40} style={{ color: '#334155', marginBottom: '8px' }} />
-                <p style={{ color: '#475569', fontSize: '13px' }}>
-                  {!isCameraEnabled ? 'Kamera dimatikan' : 'Kamera tidak tersedia'}
+                <Camera size={40} style={{ color: 'var(--color-text-secondary)', marginBottom: '8px' }} />
+                <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px' }}>
+                  Kamera tidak tersedia
                 </p>
-                {!isCameraEnabled && (
-                  <button
-                    onClick={() => setIsCameraEnabled(true)}
-                    style={{
-                      marginTop: '16px', padding: '8px 16px', borderRadius: '8px',
-                      background: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer',
-                      fontSize: '13px', fontWeight: 500
-                    }}
-                  >
-                    Nyalakan Kamera
-                  </button>
-                )}
               </div>
             )}
 
@@ -938,41 +1010,33 @@ export default function AttendancePage() {
             )}
 
             {/* Recognized overlay */}
-            {status === STATUS.RECOGNIZED && result && (
-              <div style={{
-                position: 'absolute', inset: 0,
-                background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 60%)',
-                display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-                padding: '20px', borderRadius: '18px',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  {result.status === 'ok' ? (
-                    <CheckCircle size={24} style={{ color: '#34d399' }} />
-                  ) : (
-                    <Clock size={24} style={{ color: '#fbbf24' }} />
-                  )}
-                  <div>
-                    <p style={{ color: '#fff', fontSize: '18px', fontWeight: 700, margin: 0 }}>{result.user_name}</p>
-                    <p style={{ color: '#94a3b8', fontSize: '12px', margin: '2px 0 0 0' }}>
-                      {result.status === 'cooldown' ? 'Cooldown (Harap Tunggu)' : 
-                       result.status === 'duplicate' ? 'Sudah Lengkap' :
-                       result.status !== 'ok' ? 'Ditolak' :
-                       result.event_type === 'IN' ? 'Check In' : 'Check Out'} — {timeStr}
-                      {result.late && ' • Terlambat'}
-                    </p>
+            {status === STATUS.RECOGNIZED && results.length > 0 && (
+              <div className="att-overlay att-overlay-recognized">
+                {results.map((res, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {res.status === 'ok' ? (
+                      <CheckCircle size={20} style={{ color: '#34d399' }} />
+                    ) : (
+                      <Clock size={20} style={{ color: '#fbbf24' }} />
+                    )}
+                    <div>
+                      <p style={{ color: '#fff', fontSize: '15px', fontWeight: 700, margin: 0 }}>{res.user_name}</p>
+                      <p style={{ color: '#94a3b8', fontSize: '11px', margin: '2px 0 0 0' }}>
+                        {res.status === 'cooldown' ? 'Cooldown' : 
+                         res.status === 'duplicate' ? 'Sudah Lengkap' :
+                         res.status !== 'ok' ? 'Ditolak' :
+                         res.event_type === 'IN' ? 'Check In' : 'Check Out'} — {timeStr}
+                        {res.late && ' • Terlambat'}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
             )}
 
             {/* Unrecognized overlay */}
             {status === STATUS.UNRECOGNIZED && (
-              <div style={{
-                position: 'absolute', inset: 0,
-                background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 50%)',
-                display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-                padding: '20px', borderRadius: '18px',
-              }}>
+              <div className="att-overlay att-overlay-unrecognized">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <XCircle size={20} style={{ color: '#ef4444' }} />
                   <p style={{ color: '#fca5a5', fontSize: '14px', fontWeight: 600, margin: 0 }}>Wajah tidak dikenali</p>
@@ -982,12 +1046,7 @@ export default function AttendancePage() {
 
             {/* Error overlay */}
             {status === STATUS.ERROR && (
-              <div style={{
-                position: 'absolute', inset: 0,
-                background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 50%)',
-                display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-                padding: '20px', borderRadius: '18px',
-              }}>
+              <div className="att-overlay att-overlay-unrecognized">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <WifiOff size={20} style={{ color: '#ef4444' }} />
                   <p style={{ color: '#fca5a5', fontSize: '14px', fontWeight: 600, margin: 0 }}>Koneksi gagal</p>
@@ -996,148 +1055,114 @@ export default function AttendancePage() {
             )}
           </div>
 
-          {/* Status text below camera */}
-          <div style={{ textAlign: 'center', marginTop: '20px', minHeight: '80px' }}>
-            {/* IDLE */}
-            {status === STATUS.IDLE && cameraReady && (
-              <div style={{ animation: 'att-fadeIn 0.4s ease-out' }}>
-                <p style={{ color: '#e2e8f0', fontSize: '18px', fontWeight: 600, margin: '0 0 4px 0' }}>
-                  Arahkan wajah ke kamera
-                </p>
-                <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 16px 0' }}>
-                  Deteksi otomatis setiap {CAPTURE_INTERVAL / 1000} detik
-                </p>
-                <button
-                  onClick={handleManualCapture}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '8px',
-                    padding: '12px 28px', borderRadius: '14px',
-                    background: 'linear-gradient(135deg, #6366f1, #818cf8)',
-                    color: '#fff', fontSize: '14px', fontWeight: 600,
-                    border: 'none', cursor: 'pointer',
-                    boxShadow: '0 4px 20px rgba(99,102,241,0.3)',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 25px rgba(99,102,241,0.4)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(99,102,241,0.3)'; }}
-                >
-                  <Scan size={16} />
-                  Absen Sekarang
-                </button>
-              </div>
-            )}
+          {/* Camera Card Footer (Toggle + Text + Mirror) */}
+          <div className="att-camera-card-footer">
+            <button
+              className={`att-toggle-switch ${isCameraEnabled ? 'active' : ''}`}
+              onClick={() => {
+                setIsCameraEnabled(!isCameraEnabled)
+                if (isCameraEnabled) {
+                  setCameraReady(false)
+                  setStatus(STATUS.IDLE)
+                }
+              }}
+              title={isCameraEnabled ? 'Matikan Kamera' : 'Hidupkan Kamera'}
+            />
 
-            {/* SCANNING */}
-            {status === STATUS.SCANNING && (
-              <div style={{ animation: 'att-fadeIn 0.3s ease-out' }}>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginBottom: '8px' }}>
-                  {[0, 1, 2].map(i => (
-                    <div key={i} style={{
-                      width: '8px', height: '8px', borderRadius: '50%', background: '#818cf8',
-                      animation: 'att-bounce 0.6s ease-in-out infinite',
-                      animationDelay: `${i * 0.15}s`,
-                    }} />
-                  ))}
-                </div>
-                <p style={{ color: '#818cf8', fontSize: '16px', fontWeight: 600, margin: 0 }}>Memindai wajah...</p>
-                <p style={{ color: '#475569', fontSize: '12px', margin: '4px 0 0 0' }}>Mohon tetap diam</p>
-              </div>
-            )}
-
-            {/* RECOGNIZED */}
-            {status === STATUS.RECOGNIZED && result && (
-              <div style={{ animation: 'att-fadeIn 0.4s ease-out' }}>
-                <div style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '8px',
-                  padding: '10px 24px', borderRadius: '14px',
-                  background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)',
-                }}>
-                  <CheckCircle size={20} style={{ color: '#34d399' }} />
-                  <span style={{ color: '#34d399', fontSize: '15px', fontWeight: 600 }}>
-                    {result.event_type === 'IN' ? 'Selamat datang' : 'Sampai jumpa'}, {result.user_name}!
-                  </span>
-                </div>
-                {result.late && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                    marginTop: '8px',
-                  }}>
-                    <Clock size={14} style={{ color: '#fbbf24' }} />
-                    <span style={{ color: '#fbbf24', fontSize: '13px', fontWeight: 500 }}>Terlambat</span>
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              {status === STATUS.IDLE && (
+                <span style={{ color: 'var(--color-text-muted)', fontSize: '13px', fontStyle: 'italic' }}>
+                  Menunggu wajah terdeteksi...
+                </span>
+              )}
+              {status === STATUS.SCANNING && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {[0, 1, 2].map(i => (
+                      <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-primary)', animation: 'att-bounce 0.6s ease-in-out infinite', animationDelay: `${i * 0.15}s` }} />
+                    ))}
                   </div>
-                )}
-              </div>
-            )}
+                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '13px', fontWeight: 500 }}>Memindai wajah...</span>
+                </div>
+              )}
+              {status === STATUS.UNRECOGNIZED && (
+                <span style={{ color: 'var(--color-error)', fontSize: '13px', fontWeight: 600 }}>Wajah Tidak Dikenali</span>
+              )}
+              {status === STATUS.ERROR && (
+                <span style={{ color: 'var(--color-error)', fontSize: '13px', fontWeight: 600 }}>Koneksi Gagal</span>
+              )}
+              {status === STATUS.NO_CAMERA && (
+                <span style={{ color: 'var(--color-error)', fontSize: '13px', fontWeight: 600 }}>Kamera Tidak Terdeteksi</span>
+              )}
+            </div>
 
-            {/* UNRECOGNIZED */}
-            {status === STATUS.UNRECOGNIZED && (
-              <div style={{ animation: 'att-fadeIn 0.4s ease-out' }}>
-                <p style={{ color: '#ef4444', fontSize: '15px', fontWeight: 600, margin: '0 0 4px 0' }}>Wajah Tidak Dikenali</p>
-                <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>Pastikan wajah Anda sudah terdaftar</p>
-              </div>
-            )}
+            <button
+              className="att-mirror-btn"
+              onClick={() => setIsMirrored(!isMirrored)}
+              title={isMirrored ? 'Matikan Cermin' : 'Hidupkan Cermin'}
+            >
+              <RotateCcw size={22} />
+            </button>
+          </div>
+        </div>
 
-            {/* ERROR */}
-            {status === STATUS.ERROR && (
-              <div style={{ animation: 'att-fadeIn 0.4s ease-out' }}>
-                <p style={{ color: '#ef4444', fontSize: '15px', fontWeight: 600, margin: '0 0 4px 0' }}>Koneksi Gagal</p>
-                <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>Tidak dapat terhubung ke server</p>
-              </div>
-            )}
+        {/* Sapaan Card below camera */}
+        <div className="att-greeting-card" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100px', padding: '16px' }}>
+            <div className="att-greeting-content" style={{ width: '100%', textAlign: 'center' }}>
+              {/* IDLE / DEFAULT WELCOME */}
+              {status !== STATUS.RECOGNIZED && (
+                <div style={{ animation: 'att-fadeIn 0.4s ease-out', color: 'var(--color-text)', fontSize: '16px', fontWeight: 500 }}>
+                  Selamat datang di SISKA! Silakan posisikan wajah Anda di depan kamera.
+                </div>
+              )}
 
-            {/* NO CAMERA */}
-            {status === STATUS.NO_CAMERA && (
-              <div style={{ animation: 'att-fadeIn 0.4s ease-out' }}>
-                <p style={{ color: '#ef4444', fontSize: '15px', fontWeight: 600, margin: '0 0 4px 0' }}>Kamera Tidak Terdeteksi</p>
-                <p style={{ color: '#64748b', fontSize: '12px', margin: '0 0 12px 0' }}>Pastikan kamera terhubung</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  style={{
-                    padding: '8px 20px', fontSize: '13px', color: '#94a3b8',
-                    background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '10px', cursor: 'pointer', transition: 'all 0.15s',
-                  }}
-                >
-                  Coba Lagi
-                </button>
-              </div>
-            )}
+              {/* RECOGNIZED */}
+              {status === STATUS.RECOGNIZED && results.length > 0 && (
+                <div style={{ animation: 'att-fadeIn 0.4s ease-out', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px' }}>
+                    {results.map((res, idx) => (
+                      <div key={idx} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                        padding: '6px 14px', borderRadius: '20px',
+                        background: res.status === 'ok' || res.status === 'recognized' ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
+                        border: res.status === 'ok' || res.status === 'recognized' ? '1px solid rgba(16,185,129,0.3)' : '1px solid rgba(245,158,11,0.3)',
+                      }}>
+                        {res.status === 'ok' || res.status === 'recognized' ? (
+                          <CheckCircle size={16} style={{ color: '#34d399' }} />
+                        ) : (
+                          <Clock size={16} style={{ color: '#fbbf24' }} />
+                        )}
+                        <span style={{ color: res.status === 'ok' || res.status === 'recognized' ? '#34d399' : '#fbbf24', fontSize: '14px', fontWeight: 700 }}>
+                          {res.user_name}
+                          {res.late && ' (Telat)'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {greetingText && (
+                    <div style={{ marginTop: '8px', fontSize: '16px', fontWeight: 600, color: 'var(--color-text)', lineHeight: '1.4' }}>
+                      "{greetingText}"
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* ─── BOTTOM BAR ─── */}
       <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '16px 32px', zIndex: 10, flexShrink: 0,
-        borderTop: '1px solid rgba(255,255,255,0.04)',
+        display: 'flex', justifyContent: 'center', alignItems: 'center',
+        paddingTop: '16px', paddingBottom: '16px',
+        zIndex: 10, flexShrink: 0,
       }}>
-        {/* Camera status */}
+        {/* SISKA Branding Engine */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Camera size={14} style={{ color: cameraReady ? '#34d399' : '#64748b' }} />
-          <div style={{
-            width: '6px', height: '6px', borderRadius: '50%',
-            background: cameraReady ? '#34d399' : status === STATUS.NO_CAMERA ? '#ef4444' : '#fbbf24',
-            animation: cameraReady ? 'att-pulse 2s ease-in-out infinite' : 'none',
-          }} />
-          <span style={{ color: '#64748b', fontSize: '12px' }}>
-            {cameraReady ? 'Kamera aktif' : status === STATUS.NO_CAMERA ? 'Kamera tidak tersedia' : 'Menghubungkan...'}
-          </span>
-        </div>
-
-        {/* Today count */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '14px' }}>📋</span>
-          <span style={{ color: '#64748b', fontSize: '12px' }}>
-            {todayCount} absensi hari ini
-          </span>
-        </div>
-
-        {/* Connection status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Wifi size={14} style={{ color: status === STATUS.ERROR ? '#ef4444' : '#34d399' }} />
-          <span style={{ color: '#64748b', fontSize: '12px' }}>
-            {status === STATUS.ERROR ? 'Server terputus' : 'Server terhubung'}
+          <span style={{ fontSize: '14px' }}>✨</span>
+          <span style={{ color: 'var(--color-text-muted)', fontSize: '12px', fontWeight: 500, letterSpacing: '0.5px' }}>
+            Powered by SISKA AI Engine
           </span>
         </div>
       </div>
