@@ -25,7 +25,7 @@ const PageLoader = () => (
 )
 
 export default function App() {
-  const { refreshToken, setTokens, setAdmin, logout } = useAuthStore()
+  const { refreshToken, setAdmin } = useAuthStore()
   const [initializing, setInitializing] = useState(!!refreshToken)
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export default function App() {
     if (useAuthStore.getState().isAuthenticated && !useAuthStore.getState().admin) {
       setAdmin({ id: "1", username: "admin", full_name: "Administrator" })
     }
-    setInitializing(false)
+    setTimeout(() => setInitializing(false), 0)
   }, [setAdmin])
 
   if (initializing) return <PageLoader />
