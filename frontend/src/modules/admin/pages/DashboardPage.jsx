@@ -191,20 +191,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [activities, setActivities] = useState([])
 
-  // WebSocket for realtime attendance updates
-  const handleWsMessage = useCallback((message) => {
-    if (message.type === 'attendance_marked') {
-      setActivities((prev) => [message.data, ...prev].slice(0, 10))
-      fetchDashboardData()
-    }
-  }, [])
-
-  const { isConnected } = useWebSocket({
-    enabled: true,
-    onMessage: handleWsMessage,
-  })
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       const [statsRes, weeklyRes, usersRes, eventsRes] = await Promise.allSettled([
         dashboardApi.getStats(),
@@ -237,11 +224,24 @@ export default function DashboardPage() {
     } finally {
       if (loading) setLoading(false)
     }
-  }
+  }, [loading])
+
+  // WebSocket for realtime attendance updates
+  const handleWsMessage = useCallback((message) => {
+    if (message.type === 'attendance_marked') {
+      setActivities((prev) => [message.data, ...prev].slice(0, 10))
+      fetchDashboardData()
+    }
+  }, [fetchDashboardData])
+
+  useWebSocket({
+    enabled: true,
+    onMessage: handleWsMessage,
+  })
 
   useEffect(() => {
-    fetchDashboardData()
-  }, [])
+    setTimeout(() => fetchDashboardData(), 0)
+  }, [fetchDashboardData])
 
   // Attendance rate
   const attendanceRate = stats.total > 0

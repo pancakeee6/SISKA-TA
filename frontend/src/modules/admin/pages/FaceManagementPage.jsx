@@ -37,19 +37,6 @@ export default function FaceManagementPage() {
   const [showCamera, setShowCamera] = useState(false)
   const webcamRef = useRef(null)
 
-  const captureFace = useCallback(() => {
-    const imageSrc = webcamRef.current?.getScreenshot()
-    if (imageSrc) {
-      fetch(imageSrc)
-        .then(res => res.blob())
-        .then(blob => {
-          const file = new File([blob], "capture.jpg", { type: "image/jpeg" })
-          setShowCamera(false)
-          uploadFile(file)
-        })
-    }
-  }, [selectedUser])
-
   const fetchUsers = async () => {
     setLoadingUsers(true)
     try {
@@ -101,7 +88,7 @@ export default function FaceManagementPage() {
   }, [userIdParam, users, selectedUser])
 
   // Shared file upload function
-  const uploadFile = async (file) => {
+  const uploadFile = useCallback(async (file) => {
     if (!file || !selectedUser) return
 
     // Validate file type
@@ -140,7 +127,20 @@ export default function FaceManagementPage() {
       setUploadProgress('')
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
-  }
+  }, [selectedUser, fetchFaces])
+
+  const captureFace = useCallback(() => {
+    const imageSrc = webcamRef.current?.getScreenshot()
+    if (imageSrc) {
+      fetch(imageSrc)
+        .then(res => res.blob())
+        .then(blob => {
+          const file = new File([blob], "capture.jpg", { type: "image/jpeg" })
+          setShowCamera(false)
+          uploadFile(file)
+        })
+    }
+  }, [webcamRef, uploadFile])
 
   // File input change handler
   const handleUpload = (e) => {
