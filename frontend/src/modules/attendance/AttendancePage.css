@@ -240,6 +240,10 @@
   position: relative;
   z-index: 2;
   margin-bottom: -150px; /* pull down to show half body */
+  width: 50vw;
+  max-width: 775px;
+  min-width: 400px;
+  height: 600px;
 }
 
 .att-mascot-shadow {
