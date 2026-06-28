@@ -1,11 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Webcam from 'react-webcam'
-import { Camera, Maximize, Minimize, Settings, Moon, Sun, CheckCircle, XCircle, Clock, Wifi, WifiOff, RotateCcw } from 'lucide-react'
+import { Camera, Maximize, Minimize, Moon, Sun, CheckCircle, XCircle, Clock, Wifi, WifiOff, RotateCcw } from 'lucide-react'
 import * as faceapi from 'face-api.js'
 import attendanceApi from './services/attendanceApi'
-import siskaLogo from '@/assets/siska-logo.png'
-import siskaMascot from '@/assets/siska-mascot.png'
+import SiskaMascot from './SiskaMascot'
 import './AttendancePage.css'
 
 const STATUS = {
@@ -155,15 +154,17 @@ export default function AttendancePage() {
   const navigate = useNavigate()
 
   const [phase, setPhase] = useState(PHASE.WELCOME)
-  const [welcomeProgress, setWelcomeProgress] = useState(0)
   const [status, setStatus] = useState(STATUS.IDLE)
   const [results, setResults] = useState([])
   const [currentTime, setCurrentTime] = useState(new Date())
   const [cameraReady, setCameraReady] = useState(false)
   const [isCameraEnabled, setIsCameraEnabled] = useState(true)
   const [isCapturing, setIsCapturing] = useState(false)
+  const [hasFace, setHasFace] = useState(false)
+  const hasFaceRef = useRef(false)
+  const consecDetectedRef = useRef(0)
+  const consecLostRef = useRef(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [todayCount, setTodayCount] = useState(0)
   const [greetingText, setGreetingText] = useState('')
   const [isMirrored, setIsMirrored] = useState(true)
 
@@ -251,7 +252,23 @@ export default function AttendancePage() {
           if (video.readyState === 4) {
             try {
               const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 }))
-              const canvas = canvasRef.current
+               const faceNow = detections && detections.length > 0;
+               if (faceNow) {
+                 consecDetectedRef.current = (consecDetectedRef.current || 0) + 1;
+                 consecLostRef.current = 0;
+                 if (consecDetectedRef.current >= 3 && !hasFaceRef.current) {
+                   hasFaceRef.current = true;
+                   setHasFace(true);
+                 }
+               } else {
+                 consecLostRef.current = (consecLostRef.current || 0) + 1;
+                 consecDetectedRef.current = 0;
+                 if (consecLostRef.current >= 15 && hasFaceRef.current) {
+                   hasFaceRef.current = false;
+                   setHasFace(false);
+                 }
+               }
+               const canvas = canvasRef.current
               if (canvas) {
                 const displaySize = { width: video.videoWidth, height: video.videoHeight }
                 faceapi.matchDimensions(canvas, displaySize)
@@ -347,7 +364,7 @@ export default function AttendancePage() {
                   }
                 })
               }
-            } catch (_) {}
+            } catch { /* Abaikan error deteksi wajah sementara */ }
           }
         }
         await new Promise(r => setTimeout(r, 100)) // 10 fps
@@ -355,7 +372,7 @@ export default function AttendancePage() {
     }
     trackFaces()
     return () => { isRunning = false }
-  }, [cameraReady, status, isMirrored])
+  }, [cameraReady, status, isMirrored, isCameraEnabled])
 
   // Capture and send to API
   const captureAndRecognize = useCallback(async () => {
@@ -393,7 +410,6 @@ export default function AttendancePage() {
         if (validFaces.length > 0) {
           setResults(validFaces)
           setStatus(STATUS.RECOGNIZED)
-          setTodayCount(prev => prev + validFaces.filter(f => f.status === 'ok').length)
           speakCombinedGreeting(validFaces).then(text => setGreetingText(text))
         } else {
           setResults([])
@@ -699,18 +715,11 @@ export default function AttendancePage() {
             flex: '1 1 50%', display: 'flex', justifyContent: 'flex-end', alignItems: 'center'
           }}>
             <div style={{
-              width: '100%', maxWidth: '500px', display: 'flex', justifyContent: 'center', alignItems: 'center',
+              width: '100%', maxWidth: '500px', height: '500px', display: 'flex', justifyContent: 'center', alignItems: 'center',
               animation: 'att-float 4s infinite ease-in-out', // Animasi melayang
               filter: isLightMode ? 'drop-shadow(0 30px 40px rgba(14, 165, 233, 0.2))' : 'drop-shadow(0 30px 40px rgba(56, 189, 248, 0.3))'
             }}>
-              <img 
-                src={siskaMascot} 
-                alt="SISKA AI Mascot" 
-                style={{
-                  width: '100%', height: 'auto', objectFit: 'contain',
-                  transform: 'scale(1.1)' // Memperbesar sedikit gambar mascotnya
-                }}
-              />
+              <SiskaMascot status="idle" />
             </div>
           </div>
 
@@ -835,7 +844,10 @@ export default function AttendancePage() {
             {/* Mascot image (floating) */}
             <div className="att-mascot-image-wrapper">
               <div className="att-mascot-shadow" />
-              <img src={siskaMascot} alt="SISKA" className="att-mascot-img" />
+              <SiskaMascot
+                faceDetected={(hasFace && isCameraEnabled) || isCapturing || status === STATUS.SCANNING || status === STATUS.RECOGNIZED}
+                attendanceResult={status}
+              />
             </div>
           </div>
         </div>
@@ -1060,10 +1072,21 @@ export default function AttendancePage() {
             <button
               className={`att-toggle-switch ${isCameraEnabled ? 'active' : ''}`}
               onClick={() => {
-                setIsCameraEnabled(!isCameraEnabled)
-                if (isCameraEnabled) {
-                  setCameraReady(false)
-                  setStatus(STATUS.IDLE)
+                const nextState = !isCameraEnabled;
+                setIsCameraEnabled(nextState);
+                if (!nextState) {
+                  setCameraReady(false);
+                  setStatus(STATUS.IDLE);
+                  setHasFace(false);
+                  hasFaceRef.current = false;
+                  consecDetectedRef.current = 0;
+                  consecLostRef.current = 0;
+                } else {
+                  if (webcamRef.current && webcamRef.current.video) {
+                    setCameraReady(true);
+                  } else {
+                    setTimeout(() => setCameraReady(true), 500);
+                  }
                 }
               }}
               title={isCameraEnabled ? 'Matikan Kamera' : 'Hidupkan Kamera'}
