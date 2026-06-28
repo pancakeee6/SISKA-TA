@@ -1,89 +1,114 @@
-# SISKA - Sistem Kehadiran Berbasis AI (Face Recognition)
+# SISKA - Sistem Kehadiran Berbasis Artificial Intelligence (Face Recognition)
 
-SISKA (Sistem Kehadiran AI) adalah aplikasi absensi modern yang terintegrasi dengan teknologi *Face Recognition* (pengenalan wajah) secara *real-time*. Sistem ini dirancang untuk memberikan pengalaman presensi yang cepat, aman, dan tanpa sentuhan (*contactless*), dengan dukungan suara sapaan otomatis (*Text-to-Speech*).
+SISKA (Sistem Kehadiran AI) adalah aplikasi presensi modern yang mengintegrasikan teknologi *Computer Vision* dan *Real-Time Face Recognition*. Sistem ini dirancang untuk memberikan pengalaman presensi yang cepat, akurat, dan tanpa sentuhan (*contactless*), lengkap dengan interaksi visual maskot AI dinamis dan sapaan suara otomatis (*Text-to-Speech*).
 
-## 🚀 Fitur Utama
+## Fitur Utama
 
-- **Real-time Face Recognition**: Memindai dan mengenali wajah pengguna secara instan menggunakan kamera perangkat.
-- **Contactless & Seamless**: Proses absensi terjadi tanpa sentuhan fisik. Sistem secara otomatis mendeteksi wajah dan mencatat waktu kehadiran (Masuk/Keluar).
-- **Auto-Greeting (Text-to-Speech)**: Memberikan respons audio instan saat pengguna berhasil dikenali.
-- **Admin Dashboard Terpadu**: Panel manajemen modern untuk memantau kehadiran harian, mendaftarkan wajah baru via webcam, dan mengunduh laporan (CSV).
-- **Arsitektur API Terpusat**: Frontend React terhubung secara langsung ke layanan API Machine Learning (seperti Hugging Face Spaces), menjamin proses komputasi AI yang efisien dan responsif.
+- **Real-Time Face Recognition**: Mendeteksi dan memverifikasi identitas pengguna secara langsung melalui kamera *kiosk* dengan tingkat akurasi tinggi.
+- **Dynamic AI Mascot Interaction**: Dilengkapi dengan maskot interaktif berbasis animasi Rive yang merespons status presensi secara *real-time* (mode siaga normal, tertidur saat *idle*, terbangun saat mendeteksi wajah, dan selebrasi saat presensi berhasil).
+- **Contactless Attendance**: Pengguna cukup berdiri di depan kamera tanpa memerlukan sentuhan fisik pada perangkat, mendukung higienitas dan efisiensi antrean.
+- **Automated Voice Greeting**: Memberikan konfirmasi audio secara natural (*Text-to-Speech*) setelah identitas pengguna terverifikasi.
+- **Admin Dashboard & Management**: Panel administrasi terpadu untuk memantau statistik kehadiran harian, mengelola direktori pengguna, mendaftarkan sampel wajah baru (*face enrollment*), serta mengekspor laporan riwayat presensi ke format CSV.
 
-## 🛠️ Tech Stack
+## Arsitektur Sistem & Teknologi
 
-**Frontend (SPA)**
-- React 19
-- Vite 6
-- Tailwind CSS 4
-- Zustand (State Management)
-- Lucide React (Icons)
-- React Webcam
+### Frontend (Single Page Application)
+- **Framework**: React 19 dengan Vite 6
+- **Styling**: Tailwind CSS 4 & Vanilla CSS
+- **State Management**: Zustand
+- **Animation Engine**: Rive (@rive-app/react-canvas)
+- **Computer Vision**: face-api.js & React Webcam
 
-**API & AI Engine (Repositori Terpisah)**
-- FastApi / Python API
-- Model Face Recognition (DeepFace/FaceNet)
+### Backend & Machine Learning API
+- **Framework**: FastAPI (Python REST API)
+- **AI Engine**: DeepFace / Face Recognition Embeddings
+- **Database**: SQLite / SQLAlchemy
 
-## 📂 Struktur Proyek
+## Struktur Proyek
 
 ```text
 siska/
 ├── frontend/
 │   ├── src/
+│   │   ├── assets/          # Aset visual & file biner animasi Rive (siska.riv)
 │   │   ├── modules/
-│   │   │   ├── admin/       # Dashboard, Manajemen Wajah & Riwayat Absensi
-│   │   │   ├── attendance/  # Kiosk Scanner Absensi Kamera
-│   │   │   └── auth/        # Modul Autentikasi Admin
-│   │   ├── shared/          # Komponen UI Global (Layout, Sidebar, Guard)
-│   │   └── App.jsx          # Konfigurasi Routing
-│   └── .env                 # Environment variables lokal
-└── README.md                # Dokumentasi proyek
+│   │   │   ├── admin/       # Dashboard, Manajemen Wajah & Riwayat Presensi
+│   │   │   ├── attendance/  # Kiosk Scanner Presensi & Maskot SISKA
+│   │   │   └── auth/        # Autentikasi Administrator
+│   │   ├── shared/          # Komponen UI Global & State Management
+│   │   └── App.jsx          # Konfigurasi Rute Aplikasi
+│   └── package.json
+├── backend/
+│   ├── app/                 # Layanan REST API & Pemrosesan Biometrik
+│   └── requirements.txt
+└── README.md
 ```
 
-*(Catatan: Folder `backend` versi lama telah dinonaktifkan karena logika utama telah dipindahkan ke API Machine Learning secara langsung).*
+## Panduan Instalasi dan Penggunaan
 
-## ⚙️ Cara Menjalankan Proyek (Quick Start)
+### Prasyarat Sistem
+- **Node.js**: Versi 18.x atau lebih baru (disarankan menggunakan LTS)
+- **Python**: Versi 3.10 atau lebih baru (untuk layanan backend API)
+- **Paket Manajer**: npm atau yarn
 
-### Prasyarat
-- Node.js (v18 atau lebih baru) disarankan menggunakan NVM.
-- npm atau yarn
+### 1. Konfigurasi dan Menjalankan Frontend
 
-### Langkah Instalasi
-
-1. **Clone repository ini**
+1. Masuk ke direktori `frontend`:
    ```bash
-   git clone https://github.com/eLsann/siska.git
-   cd siska/frontend
+   cd frontend
    ```
 
-2. **Konfigurasi Environment**
-   Salin file `.env.example` (jika ada) atau buat file `.env` di dalam folder `frontend`, lalu atur URL API utama Anda:
-   ```env
-   VITE_ML_API_URL=https://[ALAMAT-API-ANDA]
-   ```
-
-3. **Install Dependencies**
+2. Instal dependensi paket:
    ```bash
    npm install
    ```
 
-4. **Jalankan Server Development**
+3. Konfigurasi variabel lingkungan dengan membuat file `.env` di dalam folder `frontend`:
+   ```env
+   VITE_ML_API_URL=http://localhost:8000
+   ```
+
+4. Jalankan server pengembangan lokal:
    ```bash
    npm run dev
    ```
-   Aplikasi akan otomatis berjalan dan dapat diakses di `http://localhost:5173`.
+   Aplikasi frontend dapat diakses melalui browser di `http://localhost:5173`.
 
-## 🗺️ Struktur Routing (Frontend)
+### 2. Konfigurasi dan Menjalankan Backend Lokal
 
-| Path | Akses | Keterangan |
-|------|-------|------------|
-| `/attendance` | Publik | Halaman utama Scanner Absensi (Siap digunakan sebagai Kiosk) |
-| `/login` | Publik | Halaman otorisasi masuk untuk Administrator |
-| `/admin` | Admin | Ringkasan statistik kehadiran & log terbaru |
-| `/admin/users` | Admin | Kelola direktori pengguna / karyawan |
-| `/admin/faces` | Admin | Pendaftaran (*enrollment*) & pengelolaan data wajah pengguna |
-| `/admin/attendance`| Admin | Pemantauan riwayat log & ekspor data (CSV) |
+1. Masuk ke direktori `backend`:
+   ```bash
+   cd backend
+   ```
 
-## 📝 Lisensi
+2. Buat dan aktifkan *virtual environment*:
+   ```bash
+   python -m venv venv
+   # Pada sistem Windows:
+   .\venv\Scripts\activate
+   ```
 
-Aplikasi ini dikembangkan untuk keperluan riset/tugas akhir dan dilisensikan di bawah spesifikasi pengembang. Hak Cipta dilindungi.
+3. Instal dependensi Python:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Jalankan server FastAPI:
+   ```bash
+   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+
+## Struktur Rute Aplikasi
+
+| Rute Akses | Hak Akses | Deskripsi |
+|---|---|---|
+| `/attendance` | Publik | Layar *Kiosk* utama untuk pemindaian wajah dan presensi mandiri |
+| `/login` | Publik | Halaman otentikasi masuk bagi Administrator |
+| `/admin` | Admin | Panel statistik kehadiran harian dan pemantauan aktivitas log terbaru |
+| `/admin/users` | Admin | Manajemen direktori data pengguna / pegawai |
+| `/admin/faces` | Admin | Pendaftaran (*enrollment*) dan pembaruan sampel wajah biometrik |
+| `/admin/attendance` | Admin | Laporan riwayat kehadiran lengkap dan ekspor data (CSV) |
+
+## Lisensi
+
+Proyek ini dikembangkan untuk keperluan penelitian dan pengembangan sistem presensi biometrik modern. Seluruh hak cipta dilindungi.
