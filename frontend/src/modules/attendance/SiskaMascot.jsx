@@ -110,6 +110,14 @@ export default function SiskaMascot({
 
   const playAnimationSmooth = useCallback((name) => {
     if (!rive) return;
+
+    // Pastikan Rive canvas melanjutkan render loop jika sebelumnya di-pause saat tidur
+    try {
+      if (rive.isPlaying === false || rive.isPaused) {
+        rive.play();
+      }
+    } catch { /* abaikan error */ }
+
     if (currentPlayingRef.current === name) return; // Lewati jika sama
 
     try {
@@ -152,6 +160,20 @@ export default function SiskaMascot({
       if (isMountedRef.current) {
         isTransitioningRef.current = false;
         playAnimationSmooth('sleep');
+
+        // Optimasi STB ARM / Spesifikasi Rendah:
+        // Setelah masuk pose tidur stabil (1.5 detik), pause Rive canvas untuk menghentikan
+        // loop render 60 FPS dan menurunkan beban CPU/GPU compositing secara drastis.
+        addTimeout.current(() => {
+          if (isMountedRef.current && rive && currentPlayingRef.current === 'sleep') {
+            try {
+              console.log('[SISKA RIVE OPTIMIZATION] Pausing 60fps canvas loop during sleep');
+              rive.pause();
+            } catch (e) {
+              console.error(e);
+            }
+          }
+        }, 1500);
       }
     }, 2500);
   }, [rive, playAnimationSmooth]);
@@ -211,7 +233,19 @@ export default function SiskaMascot({
 
       idleCounterRef.current += 1;
       if (idleCounterRef.current >= 15) {
-        playAnimationSmooth('sleep');
+        if (currentPlayingRef.current !== 'sleep') {
+          playAnimationSmooth('sleep');
+          addTimeout.current(() => {
+            if (isMountedRef.current && rive && currentPlayingRef.current === 'sleep') {
+              try {
+                console.log('[SISKA RIVE OPTIMIZATION] Pausing 60fps canvas loop during idle timer sleep');
+                rive.pause();
+              } catch (e) {
+                console.error(e);
+              }
+            }
+          }, 1500);
+        }
       } else if (idleCounterRef.current >= 12) {
         playAnimationSmooth('idle sleepy');
       } else {
