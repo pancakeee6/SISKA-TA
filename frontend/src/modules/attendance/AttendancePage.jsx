@@ -480,9 +480,10 @@ export default function AttendancePage() {
     }, RESULT_DISPLAY_MS)
   }, [isCapturing])
 
-  // Auto-capture loop
+  // Auto-capture loop — HANYA berjalan saat ada wajah terdeteksi (hasFace === true)
+  // Jika tidak ada wajah, proses scanning berhenti 100% (nol beban CPU untuk API call)
   useEffect(() => {
-    if (cameraReady && status === STATUS.IDLE && !isCapturing) {
+    if (cameraReady && status === STATUS.IDLE && !isCapturing && hasFace) {
       timerRef.current = setInterval(() => {
         captureAndRecognize()
       }, CAPTURE_INTERVAL)
@@ -491,7 +492,7 @@ export default function AttendancePage() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
-  }, [cameraReady, status, isCapturing, captureAndRecognize])
+  }, [cameraReady, status, isCapturing, captureAndRecognize, hasFace])
 
   // Format time
   const timeStr = currentTime.toLocaleTimeString('id-ID', {
