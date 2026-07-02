@@ -654,6 +654,6 @@
 }
 
 @keyframes att-pulse-core {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 40px rgba(168, 85, 247, 0.6); }
-  50% { transform: scale(1.2); box-shadow: 0 0 80px rgba(99, 102, 241, 1); }
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.15); opacity: 1; }
 }
