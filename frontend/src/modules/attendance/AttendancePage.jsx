@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import Webcam from 'react-webcam'
 import { Camera, Maximize, Minimize, Moon, Sun, CheckCircle, XCircle, Clock, Wifi, WifiOff, RotateCcw } from 'lucide-react'
 import * as faceapi from 'face-api.js'
@@ -16,11 +15,6 @@ const STATUS = {
   NO_CAMERA: 'no_camera',
 }
 
-const PHASE = {
-  WELCOME: 'welcome',
-  READY: 'ready',
-}
-
 // Auto-capture interval in ms
 const CAPTURE_INTERVAL = 4000
 // How long to show result before resetting
@@ -30,7 +24,7 @@ const RESULT_DISPLAY_MS = 18000
 window.audioQueue = window.audioQueue || [];
 window.isAudioPlaying = window.isAudioPlaying || false;
 
-export const playNextAudio = () => {
+const playNextAudio = () => {
   if (window.audioQueue.length === 0) {
     window.isAudioPlaying = false;
     return;
@@ -45,7 +39,7 @@ export const playNextAudio = () => {
   };
 };
 
-export const queueAudio = (url) => {
+const queueAudio = (url) => {
   window.audioQueue.push(url);
   if (!window.isAudioPlaying) {
     playNextAudio();
@@ -178,9 +172,7 @@ export default function AttendancePage() {
   const canvasRef = useRef(null)
   const timerRef = useRef(null)
   const apiBboxesRef = useRef([])
-  const navigate = useNavigate()
 
-  const [phase, setPhase] = useState(() => sessionStorage.getItem('siska_skipped_landing') ? PHASE.READY : PHASE.WELCOME)
   const [status, setStatus] = useState(STATUS.IDLE)
   const [results, setResults] = useState([])
   const [isModelLoaded, setIsModelLoaded] = useState(false)
@@ -209,8 +201,6 @@ export default function AttendancePage() {
       localStorage.setItem('siska_theme', 'dark')
     }
   }, [isLightMode])
-
-  // Welcome progress animation dihilangkan karena user harus klik tombol secara manual
 
   // Fullscreen toggle
   const toggleFullscreen = useCallback(() => {
@@ -466,7 +456,6 @@ export default function AttendancePage() {
 
   // Auto-capture loop
   useEffect(() => {
-    if (phase !== PHASE.READY) return
     if (cameraReady && status === STATUS.IDLE && !isCapturing) {
       timerRef.current = setInterval(() => {
         captureAndRecognize()
@@ -476,7 +465,7 @@ export default function AttendancePage() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
-  }, [phase, cameraReady, status, isCapturing, captureAndRecognize])
+  }, [cameraReady, status, isCapturing, captureAndRecognize])
 
   // Format time
   const timeStr = currentTime.toLocaleTimeString('id-ID', {
@@ -491,276 +480,7 @@ export default function AttendancePage() {
     year: 'numeric',
   })
 
-  // ─── WELCOME SCREEN ─────────────────────────────────────────
-  if (phase === PHASE.WELCOME) {
-    return (
-      <div style={{
-        width: '100vw',
-        height: '100vh',
-        background: isLightMode ? '#f8fafc' : '#020617',
-        display: 'flex',
-        flexDirection: 'column',  
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        overflow: 'hidden',
-        fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
-      }}>
-        {/* === HEADER BAR === */}
-        <div style={{
-          position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 30,
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '12px 60px', // Ketebalan vertikal dikurangi dari 24px ke 12px
-          background: isLightMode ? 'rgba(255,255,255,0.95)' : 'rgba(15, 23, 42, 0.95)',
-          borderBottom: isLightMode ? '1px solid rgba(14, 165, 233, 0.2)' : '1px solid rgba(255, 255, 255, 0.1)', // Garis header dimunculkan kembali
-          backdropFilter: 'blur(10px)'
-        }}>
-          
-          {/* Header Left: Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ 
-              filter: isLightMode ? 'drop-shadow(0 2px 5px rgba(14,165,233,0.3))' : 'drop-shadow(0 0 10px rgba(0,242,254,0.4))' 
-            }}>
-              <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M 65 15 L 35 15 A 15 15 0 0 0 20 30 A 15 15 0 0 0 35 45 L 65 45" stroke="url(#logoGrad1)" strokeWidth="14" strokeLinecap="round" />
-                <path d="M 35 85 L 65 85 A 15 15 0 0 0 80 70 A 15 15 0 0 0 65 55 L 35 55" stroke="url(#logoGrad2)" strokeWidth="14" strokeLinecap="round" />
-                <circle cx="85" cy="15" r="7" fill="#00f2fe" />
-                <circle cx="15" cy="85" r="7" fill="#00f2fe" />
-                <defs>
-                  <linearGradient id="logoGrad1" x1="20" y1="15" x2="65" y2="45" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor="#00f2fe" />
-                    <stop offset="100%" stopColor="#3b82f6" />
-                  </linearGradient>
-                  <linearGradient id="logoGrad2" x1="35" y1="85" x2="80" y2="55" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor="#00f2fe" />
-                    <stop offset="100%" stopColor="#3b82f6" />
-                  </linearGradient>
-                </defs>
-              </svg>
-            </div>
-            <span style={{
-              fontFamily: "'Poppins', sans-serif",
-              fontSize: '24px', fontWeight: 800, letterSpacing: '2px',
-              color: isLightMode ? '#0f172a' : '#ffffff',
-            }}>
-              SISKA
-            </span>
-          </div>
-
-          {/* Header Right: Controls */}
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            {/* Theme Toggle */}
-            <button
-              onClick={() => setIsLightMode(!isLightMode)}
-              style={{
-                background: 'transparent', border: 'none', 
-                color: isLightMode ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.2)', 
-                cursor: 'pointer', padding: '8px', borderRadius: '50%',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => { 
-                e.currentTarget.style.color = isLightMode ? '#0f172a' : '#f8fafc';
-                e.currentTarget.style.background = isLightMode ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)';
-              }}
-              onMouseLeave={(e) => { 
-                e.currentTarget.style.color = isLightMode ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.2)';
-                e.currentTarget.style.background = 'transparent';
-              }}
-              title={isLightMode ? 'Ganti ke Mode Gelap' : 'Ganti ke Mode Terang'}
-            >
-              {isLightMode ? <Moon size={20} /> : <Sun size={20} />}
-            </button>
-
-            {/* Fullscreen/Kiosk Toggle */}
-            <button
-              onClick={toggleFullscreen}
-              style={{
-                background: 'transparent', border: 'none', 
-                color: isLightMode ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.2)', 
-                cursor: 'pointer', padding: '8px', borderRadius: '50%',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => { 
-                e.currentTarget.style.color = isLightMode ? '#0f172a' : '#f8fafc';
-                e.currentTarget.style.background = isLightMode ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)';
-              }}
-              onMouseLeave={(e) => { 
-                e.currentTarget.style.color = isLightMode ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.2)';
-                e.currentTarget.style.background = 'transparent';
-              }}
-              title={isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen Kiosk Mode'}
-            >
-              {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
-            </button>
-          </div>
-        </div>
-
-        {/* Decorative Background & Glows */}
-        <>
-          {/* Thin Grid Pattern (Dark Mode Only) */}
-          {!isLightMode && (
-            <div style={{
-              position: 'absolute', inset: 0,
-              backgroundImage: `
-                linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px)
-              `,
-              backgroundSize: '40px 40px', zIndex: 0
-            }} />
-          )}
-
-          {/* Top Left Glow (Muncul di Terang & Gelap) */}
-          <div style={{
-            position: 'absolute', top: '-10%', left: '-5%', width: '400px', height: '400px',
-            background: isLightMode 
-              ? 'radial-gradient(circle, rgba(85, 128, 247, 0.6) 0%, transparent 70%)' 
-              : 'radial-gradient(circle, rgba(99, 102, 241, 0.4) 0%, transparent 70%)',
-            filter: 'blur(50px)', zIndex: 0
-          }} /> 
-          
-          {/* Bottom Right Glow (Muncul di Terang & Gelap) */}
-          <div style={{
-            position: 'absolute', bottom: '-15%', right: '-10%', width: '600px', height: '600px',
-            background: isLightMode
-              ? 'radial-gradient(circle, rgba(85, 128, 247, 0.6) 0%, transparent 70%)' /* Diubah agar jauh lebih terang/jelas */
-              : 'radial-gradient(circle, rgba(99, 102, 241, 0.4) 0%, transparent 70%)',
-            filter: 'blur(60px)', zIndex: 0
-          }} />
-
-          {/* Center Subtle Glow (Hanya Dark Mode atau sangat tipis di Light Mode) */}
-          <div style={{
-            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            width: '500px', height: '500px',
-            background: isLightMode
-              ? 'radial-gradient(circle, rgba(56, 189, 248, 0.02) 0%, transparent 60%)'
-              : 'radial-gradient(circle, rgba(56, 189, 248, 0.04) 0%, transparent 60%)',
-            filter: 'blur(40px)', zIndex: 0
-          }} />
-        </>
-
-        {/* Main Content (Split Layout) */}
-        <div style={{ 
-          position: 'relative', zIndex: 2,
-          display: 'flex', flexDirection: 'row',
-          alignItems: 'center', justifyContent: 'space-between',
-          width: '100%', maxWidth: '1500px', margin: '0 auto', 
-          padding: '180px 80px 40px 80px', // Padding atas diperbesar ke 180px agar tidak nabrak header
-          minHeight: '100vh', height: 'auto', 
-          animation: 'att-fadeUp 0.8s ease-out'
-        }}>
-          
-          {/* === LEFT SIDE (Logo, Text, Buttons) === */}
-          <div style={{
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'flex-start', textAlign: 'left',
-            flex: '1 1 50%', maxWidth: '600px'
-          }}>
-            
-            {/* Area kosong di mana logo S dulunya berada */}
-            {/* Typography */}
-            <span style={{
-              fontFamily: "'Poppins', sans-serif",
-              fontSize: '14px', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase',
-              color: isLightMode ? '#0ea5e9' : '#38bdf8', marginBottom: '16px', display: 'block'
-            }}>
-              PRESENSI AKADEMIK DIGITAL
-            </span>
-
-            <h1 style={{
-              fontFamily: "'Poppins', sans-serif",
-              fontSize: '72px', fontWeight: 800, letterSpacing: '-1px', // Modern Sans-Serif Look
-              margin: '0 0 32px 0', 
-              color: isLightMode ? '#4874dbff' : '#ffffff',
-              lineHeight: 1.15
-            }}>
-              Sistem Kehadiran AI
-            </h1>
-
-            <p style={{
-              color: isLightMode ? '#1e293b' : '#f8fafc',
-              fontSize: '24px', fontWeight: 500, margin: '0 0 24px 0', 
-              maxWidth: '600px', lineHeight: 1.4 
-            }}>
-              Solusi presensi cerdas terintegrasi untuk mendukung efisiensi kegiatan belajar mengajar.
-            </p>
-
-            <p style={{
-              fontFamily: "'Inter', sans-serif",
-              color: isLightMode ? '#64748b' : '#94a3b8',
-              fontSize: '18px', fontWeight: 400, margin: '0 0 60px 0',
-              maxWidth: '550px', lineHeight: 1.7 
-            }}>
-              Hadirkan pengalaman pencatatan kehadiran yang lebih cepat, akurat, dan aman bagi tenaga pendidik melalui teknologi pengenalan wajah mutakhir.
-            </p>
-
-            {/* Buttons */}
-            <div style={{ display: 'flex', gap: '20px', fontFamily: "'Poppins', sans-serif" }}>
-              <button
-                onClick={() => {
-                  sessionStorage.setItem('siska_skipped_landing', 'true');
-                  setPhase(PHASE.READY);
-                }}
-                style={{
-                  padding: '0 36px', height: '56px', borderRadius: '50px', // Pill Shape
-                  background: isLightMode ? '#0ea5e9' : '#ffffff',
-                  color: isLightMode ? '#ffffff' : '#0f172a',
-                  fontSize: '16px', fontWeight: 600, border: 'none',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                  boxShadow: isLightMode ? '0 10px 25px rgba(14, 165, 233, 0.3)' : '0 10px 25px rgba(255, 255, 255, 0.2)', 
-                  transition: 'transform 0.2s, box-shadow 0.2s'
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = isLightMode ? '0 15px 35px rgba(14, 165, 233, 0.4)' : '0 15px 35px rgba(255, 255, 255, 0.3)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = isLightMode ? '0 10px 25px rgba(14, 165, 233, 0.3)' : '0 10px 25px rgba(255, 255, 255, 0.2)'; }}
-              >
-                Mulai Presensi
-              </button>
-              
-              <button
-                onClick={() => navigate('/login')}
-                style={{
-                  padding: '0 36px', height: '56px', borderRadius: '50px', // Pill Shape
-                  background: 'transparent',
-                  color: isLightMode ? '#64748b' : '#f8fafc', 
-                  fontSize: '16px', fontWeight: 600,
-                  border: isLightMode ? '2px solid #cbd5e1' : '2px solid rgba(255, 255, 255, 0.3)',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = isLightMode ? '#94a3b8' : 'rgba(255, 255, 255, 0.6)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = isLightMode ? '#cbd5e1' : 'rgba(255, 255, 255, 0.3)'; }}
-              >
-                Login Admin
-              </button>
-            </div>
-
-            <div style={{ marginTop: '120px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }} />
-              <span style={{ fontSize: '12px', color: isLightMode ? '#64748b' : '#64748b', fontWeight: 500 }}>Sistem Online</span>
-            </div>
-
-          </div>
-
-          {/* === RIGHT SIDE (Mascot Animation) === */}
-          <div style={{
-            flex: '1 1 50%', display: 'flex', justifyContent: 'flex-end', alignItems: 'center'
-          }}>
-            <div style={{
-              width: '100%', maxWidth: '500px', height: '500px', display: 'flex', justifyContent: 'center', alignItems: 'center',
-              animation: 'att-float 4s infinite ease-in-out', // Animasi melayang
-              filter: isLightMode ? 'drop-shadow(0 30px 40px rgba(14, 165, 233, 0.2))' : 'drop-shadow(0 30px 40px rgba(56, 189, 248, 0.3))'
-            }}>
-              <SiskaMascot status="idle" />
-            </div>
-          </div>
-
-        </div>
-      </div>
-    )
-  }
-
-  // ─── MAIN ATTENDANCE SCREEN (READY) ──────────────────────────
+  // ─── MAIN ATTENDANCE SCREEN ──────────────────────────
   return (
     <div className="att-container">
       {/* Ambient background glow */}
