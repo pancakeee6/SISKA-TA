@@ -17,6 +17,20 @@ from app.models.activity_log import ActivityLog
 # Alembic Config object
 config = context.config
 
+from app.core.config import settings
+db_url = settings.DATABASE_URL
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif db_url.startswith("postgresql://") and "+asyncpg" not in db_url:
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+if "sslmode=" in db_url:
+    db_url = db_url.replace("sslmode=", "ssl=")
+if "ssl-mode=" in db_url:
+    db_url = db_url.replace("ssl-mode=", "ssl=")
+
+config.set_main_option("sqlalchemy.url", db_url)
+
 # Setup logging
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
