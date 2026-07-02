@@ -94,7 +94,7 @@ function AttendanceDonut({ percentage, size = 64, strokeWidth = 6 }) {
         alignItems: 'center',
         justifyContent: 'center',
       }}>
-        <span style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff' }}>{percentage}%</span>
+        <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>{percentage}%</span>
       </div>
     </div>
   )
@@ -173,14 +173,6 @@ const statCards = [
   },
 ]
 
-// Sample activities for display (will be replaced with real data from WebSocket)
-const sampleActivities = [
-  { user_name: 'Ahmad Fauzi', action: 'melakukan check in', time: '09:28:15', status: 'Hadir', statusColor: '#34d399', statusBg: 'rgba(52, 211, 153, 0.12)' },
-  { user_name: 'Siti Nurhaliza', action: 'melakukan check in', time: '09:23:47', status: 'Hadir', statusColor: '#34d399', statusBg: 'rgba(52, 211, 153, 0.12)' },
-  { user_name: 'Budi Santoso', action: 'melakukan check in', time: '09:21:33', status: 'Terlambat', statusColor: '#fbbf24', statusBg: 'rgba(251, 191, 36, 0.12)' },
-  { user_name: 'Dewi Lestari', action: 'melakukan check out', time: '17:02:11', status: 'Keluar', statusColor: '#94a3b8', statusBg: 'rgba(148, 163, 184, 0.12)' },
-]
-
 // Day labels for chart
 const dayLabels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
 
@@ -197,13 +189,13 @@ export default function DashboardPage() {
         dashboardApi.getStats(),
         dashboardApi.getWeekly(),
         userApi.list({ limit: 1 }),
-        api.get('/api/v1/attendance/logs', { params: { per_page: 5 } })
+        api.get('/api/v1/attendance/logs', { params: { per_page: 6 } })
       ])
 
       if (statsRes.status === 'fulfilled') {
         const statsData = statsRes.value.data
         const totalUsers = usersRes.status === 'fulfilled'
-          ? (usersRes.value.data.total || usersRes.value.data.items?.length || 0)
+          ? (usersRes.value.data.total || usersRes.value.data.items?.length || usersRes.value.data.users?.length || 0)
           : 0
         setStats({ ...statsData, total: totalUsers, absent: Math.max(0, totalUsers - statsData.present) })
       }
@@ -211,7 +203,9 @@ export default function DashboardPage() {
         setWeeklyStats(weeklyRes.value.data)
       }
       if (eventsRes.status === 'fulfilled') {
-        const latestEvents = eventsRes.value.data.items.map(r => ({
+        const rawLogs = eventsRes.value.data?.logs || eventsRes.value.data?.items || []
+        const latestEvents = rawLogs.map(r => ({
+          id: r.id || `${r.timestamp}-${r.user_name}`,
           user_name: r.user_name || 'Unknown',
           event_type: r.event_type || 'IN',
           timestamp: r.timestamp,
@@ -228,8 +222,15 @@ export default function DashboardPage() {
 
   // WebSocket for realtime attendance updates
   const handleWsMessage = useCallback((message) => {
-    if (message.type === 'attendance_marked') {
-      setActivities((prev) => [message.data, ...prev].slice(0, 10))
+    if (message.type === 'attendance_marked' || message.event === 'attendance_marked') {
+      const newAct = {
+        id: `${Date.now()}-${message.data?.user_name}`,
+        user_name: message.data?.user_name || 'Unknown',
+        event_type: message.data?.event_type || 'IN',
+        timestamp: message.data?.timestamp || new Date().toISOString(),
+        late: message.data?.late || false,
+      }
+      setActivities((prev) => [newAct, ...prev].slice(0, 6))
       fetchDashboardData()
     }
   }, [fetchDashboardData])
@@ -262,17 +263,22 @@ export default function DashboardPage() {
     1
   )
 
-  // Display activities (use real if available, else sample)
-  const displayActivities = activities.length > 0
-    ? activities.map((act) => ({
-        user_name: act.user_name,
-        action: act.event_type === 'IN' ? 'melakukan check in' : 'melakukan check out',
-        time: new Date(act.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        status: act.late ? 'Terlambat' : (act.event_type === 'IN' ? 'Hadir' : 'Keluar'),
-        statusColor: act.late ? '#fbbf24' : (act.event_type === 'IN' ? '#34d399' : '#94a3b8'),
-        statusBg: act.late ? 'rgba(251, 191, 36, 0.12)' : (act.event_type === 'IN' ? 'rgba(52, 211, 153, 0.12)' : 'rgba(148, 163, 184, 0.12)'),
-      }))
-    : sampleActivities
+  // Display activities (strictly real data from API/WS)
+  const displayActivities = activities.map((act) => {
+    const isLate = act.late
+    const isCheckIn = act.event_type === 'IN'
+    return {
+      id: act.id,
+      user_name: act.user_name,
+      action: isCheckIn ? 'melakukan check in' : 'melakukan check out',
+      time: act.timestamp
+        ? new Date(act.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        : '-',
+      status: isLate ? 'Terlambat' : (isCheckIn ? 'Hadir' : 'Keluar'),
+      statusColor: isLate ? '#d97706' : (isCheckIn ? '#059669' : '#475569'),
+      statusBg: isLate ? '#fef3c7' : (isCheckIn ? '#d1fae5' : '#f1f5f9'),
+    }
+  })
 
   return (
     <div style={{ width: '100%' }} className="animate-fade-in">
@@ -345,8 +351,9 @@ export default function DashboardPage() {
           borderRadius: '24px',
           overflow: 'hidden',
           padding: '32px 36px',
-          background: 'linear-gradient(135deg, #0c1a35 0%, #132244 40%, #0f1d3a 100%)',
-          border: '1px solid rgba(56, 189, 248, 0.1)',
+          background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          boxShadow: '0 10px 30px -10px rgba(37, 99, 235, 0.3)',
           minHeight: '220px',
           marginBottom: '24px',
         }}
@@ -359,13 +366,13 @@ export default function DashboardPage() {
         <div className="blob" style={{
           width: '200px', height: '200px',
           top: '-60px', right: '200px',
-          background: 'rgba(99, 102, 241, 0.08)',
+          background: 'rgba(255, 255, 255, 0.15)',
           animation: 'glowPulse 4s ease-in-out infinite',
         }} />
         <div className="blob" style={{
           width: '150px', height: '150px',
           bottom: '-40px', left: '30%',
-          background: 'rgba(56, 189, 248, 0.06)',
+          background: 'rgba(255, 255, 255, 0.1)',
           animation: 'glowPulse 4s ease-in-out 1.5s infinite',
         }} />
 
@@ -394,7 +401,7 @@ export default function DashboardPage() {
             </h1>
             <p className="greeting-sub" style={{
               fontSize: '14px',
-              color: 'rgba(148, 211, 252, 0.6)',
+              color: 'rgba(255, 255, 255, 0.85)',
               marginTop: '6px',
             }}>
               SISKA siap membantu memantau kehadiran dengan AI
@@ -412,12 +419,12 @@ export default function DashboardPage() {
               <LiveClock />
               <button className="bell-btn" style={{
                 position: 'relative',
-                background: 'rgba(255, 255, 255, 0.06)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                background: 'rgba(255, 255, 255, 0.15)',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
                 borderRadius: '12px',
                 padding: '10px',
                 cursor: 'pointer',
-                color: '#94a3b8',
+                color: '#ffffff',
                 transition: 'all 0.2s',
               }}>
                 <Bell size={18} />
@@ -449,7 +456,7 @@ export default function DashboardPage() {
             }}>
               {quickActions.map(({ label, icon: Icon, to, color, bgColor }) => (
                 <button
-                  key={label}
+                  key={to}
                   onClick={() => navigate(to)}
                   className="card-hover qa-btn"
                   style={{
@@ -461,8 +468,9 @@ export default function DashboardPage() {
                     width: '105px',
                     height: '95px',
                     borderRadius: '16px',
-                    background: bgColor,
-                    border: `1px solid ${color}22`,
+                    background: 'rgba(255, 255, 255, 0.95)',
+                    border: '1px solid rgba(255, 255, 255, 1)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                   }}
@@ -471,7 +479,7 @@ export default function DashboardPage() {
                     width: '40px',
                     height: '40px',
                     borderRadius: '12px',
-                    background: `${color}20`,
+                    background: `${color}15`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -480,8 +488,8 @@ export default function DashboardPage() {
                   </div>
                   <span className="qa-label" style={{
                     fontSize: '11px',
-                    fontWeight: 500,
-                    color: '#cbd5e1',
+                    fontWeight: 600,
+                    color: '#334155',
                     textAlign: 'center',
                     lineHeight: 1.3,
                     whiteSpace: 'pre-line',
@@ -513,7 +521,7 @@ export default function DashboardPage() {
               width: '200px',
               height: 'auto',
               objectFit: 'contain',
-              filter: 'drop-shadow(0 8px 24px rgba(0, 0, 0, 0.4))',
+              filter: 'drop-shadow(0 8px 24px rgba(0, 0, 0, 0.3))',
               animation: 'mascotFloat 5s ease-in-out infinite',
             }}
           />
@@ -527,15 +535,16 @@ export default function DashboardPage() {
         gap: '16px',
         marginBottom: '24px',
       }}>
-        {statCards.map(({ key, label, icon: Icon, iconBg, iconColor, borderColor, bgColor }) => (
+        {statCards.map(({ key, label, icon: Icon, iconBg, iconColor, borderColor }) => (
           <div
             key={key}
             className="card-hover"
             style={{
               borderRadius: '16px',
               padding: '20px',
-              background: bgColor,
-              border: `1px solid ${borderColor}`,
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
               transition: 'all 0.3s ease',
             }}
           >
@@ -553,21 +562,21 @@ export default function DashboardPage() {
               }}>
                 <Icon size={18} style={{ color: iconColor }} />
               </div>
-              <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>{label}</p>
+              <p style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, margin: 0 }}>{label}</p>
             </div>
 
             {/* Big number */}
             {loading ? (
               <div style={{
                 height: '44px', width: '80px',
-                background: 'rgba(255,255,255,0.05)',
+                background: '#f1f5f9',
                 borderRadius: '8px',
               }} className="animate-pulse" />
             ) : (
               <p style={{
                 fontSize: '40px',
                 fontWeight: 800,
-                color: '#ffffff',
+                color: '#0f172a',
                 margin: 0,
                 lineHeight: 1,
               }}>{stats[key]}</p>
@@ -577,16 +586,16 @@ export default function DashboardPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
               {key === 'total' && (
                 <>
-                  <TrendingUp style={{ width: '12px', height: '12px', color: '#34d399' }} />
-                  <span style={{ fontSize: '11px', color: '#34d399' }}>
+                  <TrendingUp style={{ width: '12px', height: '12px', color: '#10b981' }} />
+                  <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 500 }}>
                     {stats.total > 0 ? `${stats.total} dari minggu lalu` : '—'}
                   </span>
                 </>
               )}
               {key === 'present' && (
                 <>
-                  <TrendingUp style={{ width: '12px', height: '12px', color: '#34d399' }} />
-                  <span style={{ fontSize: '11px', color: '#34d399' }}>
+                  <TrendingUp style={{ width: '12px', height: '12px', color: '#10b981' }} />
+                  <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 500 }}>
                     {stats.present > 0 ? `${stats.present} dari kemarin` : '—'}
                   </span>
                 </>
@@ -594,7 +603,7 @@ export default function DashboardPage() {
               {key === 'late' && (
                 <>
                   <TrendingDown style={{ width: '12px', height: '12px', color: '#ef4444' }} />
-                  <span style={{ fontSize: '11px', color: '#ef4444' }}>
+                  <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 500 }}>
                     {stats.late > 0 ? `${stats.late} dari kemarin` : '—'}
                   </span>
                 </>
@@ -609,24 +618,25 @@ export default function DashboardPage() {
           style={{
             borderRadius: '16px',
             padding: '20px',
-            background: 'rgba(56, 189, 248, 0.06)',
-            border: '1px solid rgba(56, 189, 248, 0.12)',
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
             transition: 'all 0.3s ease',
           }}
         >
-          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, marginBottom: '12px' }}>Tingkat Kehadiran</p>
+          <p style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, margin: 0, marginBottom: '12px' }}>Tingkat Kehadiran</p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             {loading ? (
               <div style={{
                 height: '44px', width: '80px',
-                background: 'rgba(255,255,255,0.05)',
+                background: '#f1f5f9',
                 borderRadius: '8px',
               }} className="animate-pulse" />
             ) : (
               <p style={{
                 fontSize: '40px',
                 fontWeight: 800,
-                color: '#ffffff',
+                color: '#0f172a',
                 margin: 0,
                 lineHeight: 1,
               }}>{attendanceRate}%</p>
@@ -636,7 +646,7 @@ export default function DashboardPage() {
                 <div style={{
                   width: '64px', height: '64px',
                   borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.05)',
+                  background: '#f1f5f9',
                 }} className="animate-pulse" />
               ) : (
                 <AttendanceDonut percentage={attendanceRate} />
@@ -647,11 +657,11 @@ export default function DashboardPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
               {attendanceRate >= 90 ? (
                 <>
-                  <TrendingUp style={{ width: '12px', height: '12px', color: '#34d399' }} />
-                  <span style={{ fontSize: '11px', color: '#34d399' }}>5% dari minggu lalu</span>
+                  <TrendingUp style={{ width: '12px', height: '12px', color: '#10b981' }} />
+                  <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 500 }}>5% dari minggu lalu</span>
                 </>
               ) : (
-                <span style={{ fontSize: '11px', color: '#fbbf24' }}>Perlu perhatian</span>
+                <span style={{ fontSize: '11px', color: '#d97706', fontWeight: 500 }}>Perlu perhatian</span>
               )}
             </div>
           )}
@@ -669,13 +679,14 @@ export default function DashboardPage() {
         <div style={{
           borderRadius: '16px',
           padding: '24px',
-          background: 'rgba(17, 26, 46, 0.6)',
-          border: '1px solid rgba(56, 189, 248, 0.08)',
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
         }}>
           <h2 style={{
             fontSize: '16px',
-            fontWeight: 600,
-            color: '#ffffff',
+            fontWeight: 700,
+            color: '#0f172a',
             margin: 0,
             marginBottom: '24px',
           }}>Absensi 7 Hari Terakhir</h2>
@@ -686,7 +697,7 @@ export default function DashboardPage() {
                 <div key={i} style={{
                   flex: 1,
                   height: `${30 + ((i * 17) % 60)}%`,
-                  background: 'rgba(255,255,255,0.04)',
+                  background: '#f1f5f9',
                   borderRadius: '6px',
                 }} className="animate-pulse" />
               ))}
@@ -730,7 +741,7 @@ export default function DashboardPage() {
                       right: 0,
                       bottom: `${24 + (i * (196 / 3))}px`,
                       height: '1px',
-                      background: 'rgba(255, 255, 255, 0.04)',
+                      background: '#f1f5f9',
                     }} />
                   ))}
 
@@ -778,6 +789,7 @@ export default function DashboardPage() {
                         <span style={{
                           fontSize: '11px',
                           color: '#64748b',
+                          fontWeight: 500,
                           marginTop: '8px',
                           position: 'absolute',
                           bottom: '-20px',
@@ -796,15 +808,15 @@ export default function DashboardPage() {
                 gap: '24px',
                 marginTop: '20px',
                 paddingTop: '12px',
-                borderTop: '1px solid rgba(255, 255, 255, 0.04)',
+                borderTop: '1px solid #f1f5f9',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#3b82f6' }} />
-                  <span style={{ fontSize: '12px', color: '#94a3b8' }}>Hadir</span>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#2563eb' }} />
+                  <span style={{ fontSize: '12px', color: '#475569', fontWeight: 500 }}>Hadir</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#f59e0b' }} />
-                  <span style={{ fontSize: '12px', color: '#94a3b8' }}>Terlambat</span>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#d97706' }} />
+                  <span style={{ fontSize: '12px', color: '#475569', fontWeight: 500 }}>Terlambat</span>
                 </div>
               </div>
             </div>
@@ -815,83 +827,98 @@ export default function DashboardPage() {
         <div style={{
           borderRadius: '16px',
           padding: '24px',
-          background: 'rgba(17, 26, 46, 0.6)',
-          border: '1px solid rgba(56, 189, 248, 0.08)',
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
           display: 'flex',
           flexDirection: 'column',
         }}>
           <h2 style={{
             fontSize: '16px',
-            fontWeight: 600,
-            color: '#ffffff',
+            fontWeight: 700,
+            color: '#0f172a',
             margin: 0,
             marginBottom: '20px',
           }}>Aktivitas Terbaru</h2>
 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {displayActivities.map((act, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '12px 14px',
-                  borderRadius: '12px',
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid rgba(255, 255, 255, 0.04)',
-                  transition: 'all 0.2s',
-                }}
-              >
-                {/* Avatar */}
-                <div style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  background: 'rgba(56, 189, 248, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#38bdf8',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  flexShrink: 0,
-                }}>
-                  {act.user_name?.[0]?.toUpperCase() || '?'}
-                </div>
-
-                {/* Info */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{
-                    fontSize: '13px',
-                    color: '#ffffff',
-                    fontWeight: 500,
-                    margin: 0,
-                    lineHeight: 1.3,
-                  }}>
-                    {act.user_name} <span style={{ color: '#94a3b8', fontWeight: 400 }}>{act.action}</span>
-                  </p>
-                  <p style={{
-                    fontSize: '11px',
-                    color: '#64748b',
-                    margin: 0,
-                    marginTop: '2px',
-                  }}>{act.time}</p>
-                </div>
-
-                {/* Status badge */}
-                <div style={{
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  background: act.statusBg,
-                  border: `1px solid ${act.statusColor}20`,
-                  fontSize: '11px',
-                  fontWeight: 500,
-                  color: act.statusColor,
-                  flexShrink: 0,
-                }}>{act.status}</div>
+            {displayActivities.length === 0 ? (
+              <div style={{
+                padding: '36px 20px',
+                textAlign: 'center',
+                color: '#64748b',
+                fontSize: '13px',
+                background: '#f8fafc',
+                borderRadius: '12px',
+                border: '1px dashed #cbd5e1',
+              }}>
+                Belum ada aktivitas absensi tercatat. Data akan muncul secara langsung (realtime) saat pengguna melakukan absensi.
               </div>
-            ))}
+            ) : (
+              displayActivities.map((act, i) => (
+                <div
+                  key={act.id || i}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px 14px',
+                    borderRadius: '12px',
+                    background: '#f8fafc',
+                    border: '1px solid #f1f5f9',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {/* Avatar */}
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    background: 'rgba(37, 99, 235, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#2563eb',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    flexShrink: 0,
+                  }}>
+                    {act.user_name?.[0]?.toUpperCase() || '?'}
+                  </div>
+
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{
+                      fontSize: '13px',
+                      color: '#0f172a',
+                      fontWeight: 600,
+                      margin: 0,
+                      lineHeight: 1.3,
+                    }}>
+                      {act.user_name} <span style={{ color: '#64748b', fontWeight: 400 }}>{act.action}</span>
+                    </p>
+                    <p style={{
+                      fontSize: '11px',
+                      color: '#94a3b8',
+                      margin: 0,
+                      marginTop: '2px',
+                    }}>{act.time}</p>
+                  </div>
+
+                  {/* Status badge */}
+                  <div style={{
+                    padding: '4px 12px',
+                    borderRadius: '20px',
+                    background: act.statusBg,
+                    border: `1px solid ${act.statusColor}30`,
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: act.statusColor,
+                    flexShrink: 0,
+                  }}>{act.status}</div>
+                </div>
+              ))
+            )}
           </div>
 
           {/* See all link */}
@@ -904,11 +931,12 @@ export default function DashboardPage() {
               gap: '6px',
               marginTop: '16px',
               paddingTop: '12px',
-              borderTop: '1px solid rgba(255, 255, 255, 0.04)',
+              borderTop: '1px solid #f1f5f9',
               background: 'none',
               border: 'none',
-              color: '#38bdf8',
+              color: '#2563eb',
               fontSize: '13px',
+              fontWeight: 600,
               cursor: 'pointer',
               transition: 'color 0.2s',
               width: '100%',
