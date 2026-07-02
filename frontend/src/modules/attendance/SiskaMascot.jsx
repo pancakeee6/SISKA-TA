@@ -6,7 +6,8 @@ export default function SiskaMascot({
   faceDetected: propFaceDetected,
   isCapturing,
   attendanceResult: propAttendanceResult,
-  status
+  status,
+  isCameraEnabled = true
 }) {
   const faceDetected = useMemo(
     () => propFaceDetected ?? isCapturing ?? false,
@@ -117,6 +118,14 @@ export default function SiskaMascot({
     }
   }, [playAnimationSmooth]);
 
+  // Force sleep immediately if camera is disabled
+  useEffect(() => {
+    if (!isCameraEnabled && rive && isMountedRef.current) {
+      idleCounterRef.current = 15;
+      playAnimationSmooth('sleep');
+    }
+  }, [isCameraEnabled, rive, playAnimationSmooth]);
+
   // Idle timer logic
   useEffect(() => {
     if (idleTimerIntervalRef.current) {
@@ -125,6 +134,7 @@ export default function SiskaMascot({
 
     idleTimerIntervalRef.current = setInterval(() => {
       if (!isMountedRef.current) return;
+      if (!isCameraEnabled) return; // Stay asleep if camera is disabled
       if (faceDetected) return;
       if (isTransitioningRef.current) return;
 

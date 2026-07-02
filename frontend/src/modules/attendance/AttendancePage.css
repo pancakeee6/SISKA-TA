@@ -240,10 +240,14 @@
   position: relative;
   z-index: 2;
   margin-bottom: -150px; /* pull down to show half body */
+  /* Kembalikan ukuran asli agar tata letak (flexbox) tidak mendorong kamera */
   width: 50vw;
   max-width: 775px;
   min-width: 400px;
   height: 600px;
+  /* Perbesar secara visual 35% dan geser sedikit ke kanan dari posisi sebelumnya */
+  transform: scale(1.35) translateX(-2%);
+  transform-origin: bottom center;
 }
 
 .att-mascot-shadow {

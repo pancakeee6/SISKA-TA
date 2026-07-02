@@ -24,7 +24,33 @@ const PHASE = {
 // Auto-capture interval in ms
 const CAPTURE_INTERVAL = 4000
 // How long to show result before resetting
-const RESULT_DISPLAY_MS = 10000
+const RESULT_DISPLAY_MS = 18000
+
+// Audio Queue helper to prevent collisions
+window.audioQueue = window.audioQueue || [];
+window.isAudioPlaying = window.isAudioPlaying || false;
+
+export const playNextAudio = () => {
+  if (window.audioQueue.length === 0) {
+    window.isAudioPlaying = false;
+    return;
+  }
+  window.isAudioPlaying = true;
+  const url = window.audioQueue.shift();
+  const audio = new Audio(url);
+  window.currentAudio = audio;
+  audio.play();
+  audio.onended = () => {
+    playNextAudio();
+  };
+};
+
+export const queueAudio = (url) => {
+  window.audioQueue.push(url);
+  if (!window.isAudioPlaying) {
+    playNextAudio();
+  }
+};
 
 // Helper to get time-based greeting
 const getTimeGreeting = () => {
@@ -53,7 +79,9 @@ async function speakCombinedGreeting(faces) {
   const successFaces = faces.filter(f => f.status === 'ok' || f.status === 'recognized');
   const cooldownFaces = faces.filter(f => f.status !== 'ok' && f.status !== 'recognized');
 
-  let successText = "";
+  let textId = "";
+  let textEn = "";
+
   if (successFaces.length > 0) {
     const inFaces = successFaces.filter(f => f.event_type === 'IN');
     const outFaces = successFaces.filter(f => f.event_type !== 'IN');
@@ -68,82 +96,81 @@ async function speakCombinedGreeting(faces) {
       
       if (isLate) {
         const lateGreetings = [
-          `${timeGreeting} ${combinedInName}. Absen berhasil, namun ada yang tercatat terlambat hari ini.`,
-          `Halo ${combinedInName}. Datang terlambat, tolong lebih tepat waktu besok ya.`,
-          `Absen masuk berhasil. ${timeGreeting} ${combinedInName}, jangan terlambat lagi ya.`
+          { id: `${timeGreeting} ${combinedInName}. Absen berhasil, namun ada yang tercatat terlambat hari ini.`, en: `Hello ${combinedInName}, attendance recorded. Please try to be on time tomorrow.` },
+          { id: `Halo ${combinedInName}. Datang terlambat, tolong lebih tepat waktu besok ya.`, en: `Hello ${combinedInName}, you are late today. Please be on time tomorrow.` },
+          { id: `Absen masuk berhasil. ${timeGreeting} ${combinedInName}, jangan terlambat lagi ya.`, en: `Attendance recorded, please don't be late again.` }
         ];
-        successText += lateGreetings[Math.floor(Math.random() * lateGreetings.length)] + " ";
+        const chosen = lateGreetings[Math.floor(Math.random() * lateGreetings.length)];
+        textId += chosen.id + " ";
+        textEn += chosen.en + " ";
       } else {
         const inGreetings = [
-          `${timeGreeting} ${combinedInName}. Selamat bekerja dan semoga harimu menyenangkan!`,
-          `Halo ${combinedInName}, absen masuk berhasil dicatat. Semangat untuk hari ini!`,
-          `Selamat datang ${combinedInName}. Jangan lupa tersenyum dan selamat bertugas.`,
-          `${timeGreeting} ${combinedInName}. Absensi berhasil, mari kita mulai kerja hari ini.`
+          { id: `${timeGreeting} ${combinedInName}. Selamat bekerja dan semoga harimu menyenangkan!`, en: `Have a great day at work!` },
+          { id: `Halo ${combinedInName}, absen masuk berhasil dicatat. Semangat untuk hari ini!`, en: `Welcome ${combinedInName}, let's do our best today!` },
+          { id: `Selamat datang ${combinedInName}. Jangan lupa tersenyum dan selamat bertugas.`, en: `Welcome ${combinedInName}, don't forget to smile and have a good shift.` },
+          { id: `${timeGreeting} ${combinedInName}. Absensi berhasil, mari kita mulai kerja hari ini.`, en: `Attendance successful, let's start working today.` }
         ];
-        successText += inGreetings[Math.floor(Math.random() * inGreetings.length)] + " ";
+        const chosen = inGreetings[Math.floor(Math.random() * inGreetings.length)];
+        textId += chosen.id + " ";
+        textEn += chosen.en + " ";
       }
     }
     if (outNames.length > 0) {
       const combinedOutName = joinNames(outNames);
       const outGreetings = [
-        `Terima kasih atas kerja kerasnya hari ini, ${combinedOutName}. Hati-hati di jalan.`,
-        `Absen pulang berhasil. Selamat beristirahat, ${combinedOutName}.`,
-        `Sampai jumpa besok, ${combinedOutName}. Semoga istirahatmu menyenangkan.`,
-        `Kerja bagus hari ini ${combinedOutName}, silakan pulang dan beristirahat.`
+        { id: `Terima kasih atas kerja kerasnya hari ini, ${combinedOutName}. Hati-hati di jalan.`, en: `Thank you for your hard work today, have a safe trip home.` },
+        { id: `Absen pulang berhasil. Selamat beristirahat, ${combinedOutName}.`, en: `Check-out successful, have a good rest.` },
+        { id: `Sampai jumpa besok, ${combinedOutName}. Semoga istirahatmu menyenangkan.`, en: `See you tomorrow, hope you have a pleasant rest.` },
+        { id: `Kerja bagus hari ini ${combinedOutName}, silakan pulang dan beristirahat.`, en: `Great job today ${combinedOutName}, please go home and rest.` }
       ];
-      successText += outGreetings[Math.floor(Math.random() * outGreetings.length)] + " ";
+      const chosen = outGreetings[Math.floor(Math.random() * outGreetings.length)];
+      textId += chosen.id + " ";
+      textEn += chosen.en + " ";
     }
   }
 
-  let cooldownText = "";
   if (cooldownFaces.length > 0) {
     const cooldownNames = cooldownFaces.map(f => f.user_name || 'Karyawan');
-    cooldownText += `Halo ${joinNames(cooldownNames)}, mohon tunggu sebentar sebelum absen kembali.`;
+    const cooldownGreetings = [
+      { id: `Halo ${joinNames(cooldownNames)}, mohon tunggu sebentar sebelum absen kembali.`, en: `Please wait a moment before trying again.` }
+    ];
+    const chosen = cooldownGreetings[Math.floor(Math.random() * cooldownGreetings.length)];
+    textId += chosen.id + " ";
+    textEn += chosen.en + " ";
   }
 
-  const text = (successText + " " + cooldownText).trim();
+  const combinedText = (textId + " " + textEn).trim();
+  if (!combinedText) return "";
 
-  const preset = localStorage.getItem('siska_greeting_style') || 'gadis';
-  let voice = 'id-ID-GadisNeural';
+  const preset = localStorage.getItem('siska_greeting_style') || 'ava';
+  let voice = 'en-US-AvaMultilingualNeural'; 
   let rateStr = "+0%";
   let pitchStr = "+0Hz";
 
-  if (preset === 'bunda') {
-    voice = 'id-ID-GadisNeural';
-    rateStr = "-10%"; pitchStr = "-15Hz";
-  } else if (preset === 'ardi') {
-    voice = 'id-ID-ArdiNeural';
-  } else if (preset === 'bapak') {
-    voice = 'id-ID-ArdiNeural';
-    rateStr = "-10%"; pitchStr = "-15Hz";
-  } else if (preset === 'bima') {
-    voice = 'id-ID-ArdiNeural';
-    rateStr = "+10%"; pitchStr = "+15Hz";
-  } else if (preset === 'yasmin') {
-    voice = 'ms-MY-YasminNeural';
-  } else if (preset === 'osman') {
-    voice = 'ms-MY-OsmanNeural';
+  if (preset === 'emma') {
+    voice = 'en-US-EmmaMultilingualNeural'; 
+  } else if (preset === 'andrew') {
+    voice = 'en-US-AndrewMultilingualNeural'; 
+  } else if (preset === 'brian') {
+    voice = 'en-US-BrianMultilingualNeural'; 
   }
 
   try {
     const response = await fetch('/api/v1/tts/synthesize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: text, voice: voice, rate: rateStr, pitch: pitchStr })
+      body: JSON.stringify({ text: combinedText, voice: voice, rate: rateStr, pitch: pitchStr })
     });
     
     if (response.ok) {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      if (window.currentAudio) window.currentAudio.pause();
-      const audio = new Audio(url);
-      window.currentAudio = audio;
-      audio.play();
+      queueAudio(url);
     }
   } catch (err) {
     console.error("Error calling TTS API:", err);
   }
-  return text;
+  return combinedText;
 }
 
 export default function AttendancePage() {
@@ -153,9 +180,10 @@ export default function AttendancePage() {
   const apiBboxesRef = useRef([])
   const navigate = useNavigate()
 
-  const [phase, setPhase] = useState(PHASE.WELCOME)
+  const [phase, setPhase] = useState(() => sessionStorage.getItem('siska_skipped_landing') ? PHASE.READY : PHASE.WELCOME)
   const [status, setStatus] = useState(STATUS.IDLE)
   const [results, setResults] = useState([])
+  const [isModelLoaded, setIsModelLoaded] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [cameraReady, setCameraReady] = useState(false)
   const [isCameraEnabled, setIsCameraEnabled] = useState(true)
@@ -168,7 +196,7 @@ export default function AttendancePage() {
   const [greetingText, setGreetingText] = useState('')
   const [isMirrored, setIsMirrored] = useState(true)
 
-  const [greetingStyle, setGreetingStyle] = useState(localStorage.getItem('siska_greeting_style') || 'gadis')
+  const [greetingStyle, setGreetingStyle] = useState(localStorage.getItem('siska_greeting_style') || 'ava')
   const [isLightMode, setIsLightMode] = useState(() => localStorage.getItem('siska_theme') === 'light')
 
   // Theme observer
@@ -235,6 +263,7 @@ export default function AttendancePage() {
     const loadModels = async () => {
       try {
         await faceapi.nets.tinyFaceDetector.loadFromUri('/models')
+        setIsModelLoaded(true)
       } catch (err) {
         console.error("Error loading faceapi models:", err)
       }
@@ -669,7 +698,10 @@ export default function AttendancePage() {
             {/* Buttons */}
             <div style={{ display: 'flex', gap: '20px', fontFamily: "'Poppins', sans-serif" }}>
               <button
-                onClick={() => setPhase(PHASE.READY)}
+                onClick={() => {
+                  sessionStorage.setItem('siska_skipped_landing', 'true');
+                  setPhase(PHASE.READY);
+                }}
                 style={{
                   padding: '0 36px', height: '56px', borderRadius: '50px', // Pill Shape
                   background: isLightMode ? '#0ea5e9' : '#ffffff',
@@ -847,6 +879,7 @@ export default function AttendancePage() {
               <SiskaMascot
                 faceDetected={(hasFace && isCameraEnabled) || isCapturing || status === STATUS.SCANNING || status === STATUS.RECOGNIZED}
                 attendanceResult={status}
+                isCameraEnabled={isCameraEnabled}
               />
             </div>
           </div>
@@ -868,29 +901,26 @@ export default function AttendancePage() {
                     setGreetingStyle(val);
                     localStorage.setItem('siska_greeting_style', val);
 
-                    let voice = 'id-ID-GadisNeural';
+                    let voice = 'en-US-AvaMultilingualNeural';
                     let r = "+0%", p = "+0Hz";
 
-                    if (val === 'bunda') { voice = 'id-ID-GadisNeural'; r = "-10%"; p = "-15Hz"; }
-                    else if (val === 'ardi') { voice = 'id-ID-ArdiNeural'; }
-                    else if (val === 'bapak') { voice = 'id-ID-ArdiNeural'; r = "-10%"; p = "-15Hz"; }
-                    else if (val === 'bima') { voice = 'id-ID-ArdiNeural'; r = "+10%"; p = "+15Hz"; }
-                    else if (val === 'yasmin') { voice = 'ms-MY-YasminNeural'; }
-                    else if (val === 'osman') { voice = 'ms-MY-OsmanNeural'; }
+                    if (val === 'emma') { voice = 'en-US-EmmaMultilingualNeural'; }
+                    else if (val === 'andrew') { voice = 'en-US-AndrewMultilingualNeural'; }
+                    else if (val === 'brian') { voice = 'en-US-BrianMultilingualNeural'; }
 
-                    let testText = "Halo, suara saya telah berhasil diganti. Apakah sudah terdengar pas?";
+                    // Only play test voice if camera is disabled to prevent overlapping with actual scans
+                    if (!isCameraEnabled) {
+                      let testText = "Halo, suara saya telah berhasil diganti. Voice check complete.";
 
-                    fetch('/api/v1/tts/synthesize', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ text: testText, voice: voice, rate: r, pitch: p })
-                    }).then(res => res.blob()).then(blob => {
-                      const url = URL.createObjectURL(blob);
-                      if (window.currentAudio) window.currentAudio.pause();
-                      const audio = new Audio(url);
-                      window.currentAudio = audio;
-                      audio.play();
-                    });
+                      fetch('/api/v1/tts/synthesize', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: testText, voice: voice, rate: r, pitch: p })
+                      }).then(res => res.blob()).then(blob => {
+                        const url = URL.createObjectURL(blob);
+                        queueAudio(url);
+                      });
+                    }
                   }}
                   style={{
                     background: 'transparent',
@@ -904,13 +934,10 @@ export default function AttendancePage() {
                   }}
                   title="Pilih Karakter Suara"
                 >
-                  <option value="gadis">Gadis (Wanita Muda)</option>
-                  <option value="bunda">Bunda (Wanita Dewasa)</option>
-                  <option value="ardi">Ardi (Pria Muda)</option>
-                  <option value="bapak">Bapak (Pria Dewasa)</option>
-                  <option value="bima">Bima (Remaja Pria)</option>
-                  <option value="yasmin">Yasmin (Melayu)</option>
-                  <option value="osman">Osman (Melayu)</option>
+                  <option value="ava">Ava (Wanita - Multilingual)</option>
+                  <option value="emma">Emma (Wanita - Ramah)</option>
+                  <option value="andrew">Andrew (Pria - Profesional)</option>
+                  <option value="brian">Brian (Pria - Kasual)</option>
                 </select>
               </div>
               
@@ -931,55 +958,76 @@ export default function AttendancePage() {
             {/* Webcam */}
             {status !== STATUS.NO_CAMERA ? (
               <>
-                <Webcam
-                  ref={webcamRef}
-                  audio={false}
-                  screenshotFormat="image/jpeg"
-                  screenshotQuality={0.85}
-                  videoConstraints={{
-                    width: 640,
-                    height: 480,
-                    facingMode: 'user',
-                  }}
-                  onUserMedia={() => setCameraReady(true)}
-                  onUserMediaError={() => setStatus(STATUS.NO_CAMERA)}
-                  mirrored={isMirrored}
-                  style={{ 
-                    width: '100%', height: '100%', objectFit: 'cover',
-                    filter: !isCameraEnabled ? 'blur(16px)' : 'none',
-                    transition: 'filter 0.4s ease-out'
-                  }}
-                />
-                
-                {/* ─── REALTIME FACE TRACKING CANVAS ─── */}
-                {isCameraEnabled && (
-                  <canvas
-                    ref={canvasRef}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%',
-                      pointerEvents: 'none',
-                      zIndex: 15
-                    }}
-                  />
-                )}
-
-                {/* OVERLAY KAMERA DIMATIKAN */}
-                {!isCameraEnabled && (
+                {!isModelLoaded ? (
                   <div style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                    width: '100%', height: '100%',
                     display: 'flex', flexDirection: 'column',
                     alignItems: 'center', justifyContent: 'center', 
-                    background: 'rgba(0, 0, 0, 0.3)', zIndex: 20
+                    background: 'var(--color-bg-surface)'
                   }}>
-                    <Camera size={40} style={{ color: '#cbd5e1', marginBottom: '8px' }} />
-                    <p style={{ color: '#e2e8f0', fontSize: '14px', fontWeight: 500, letterSpacing: '0.5px' }}>
-                      Kamera dijeda
-                    </p>
+                    <div style={{
+                      width: '40px', height: '40px',
+                      border: '4px solid var(--color-primary)',
+                      borderTopColor: 'transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }} />
+                    <p style={{ color: 'var(--color-text)', marginTop: '16px', fontWeight: 600 }}>Memuat Modul AI...</p>
+                    <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
                   </div>
+                ) : (
+                  <>
+                    <Webcam
+                      ref={webcamRef}
+                      audio={false}
+                      screenshotFormat="image/jpeg"
+                      screenshotQuality={0.85}
+                      videoConstraints={{
+                        width: 640,
+                        height: 480,
+                        facingMode: 'user',
+                      }}
+                      onUserMedia={() => setCameraReady(true)}
+                      onUserMediaError={() => setStatus(STATUS.NO_CAMERA)}
+                      mirrored={isMirrored}
+                      style={{ 
+                        width: '100%', height: '100%', objectFit: 'cover',
+                        filter: !isCameraEnabled ? 'blur(16px)' : 'none',
+                        transition: 'filter 0.4s ease-out'
+                      }}
+                    />
+                    
+                    {/* ─── REALTIME FACE TRACKING CANVAS ─── */}
+                    {isCameraEnabled && (
+                      <canvas
+                        ref={canvasRef}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          pointerEvents: 'none',
+                          zIndex: 15
+                        }}
+                      />
+                    )}
+
+                    {/* OVERLAY KAMERA DIMATIKAN */}
+                    {!isCameraEnabled && (
+                      <div style={{
+                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center', 
+                        background: 'rgba(0, 0, 0, 0.3)', zIndex: 20
+                      }}>
+                        <Camera size={40} style={{ color: '#cbd5e1', marginBottom: '8px' }} />
+                        <p style={{ color: '#e2e8f0', fontSize: '14px', fontWeight: 500, letterSpacing: '0.5px' }}>
+                          Kamera dijeda
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             ) : (
