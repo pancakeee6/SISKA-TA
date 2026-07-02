@@ -114,7 +114,7 @@ export default function AttendanceHistoryPage() {
 
       const res = await attendanceAdminApi.export(params)
       // Create download link from blob
-      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'text/csv;charset=utf-8;' }))
       const link = document.createElement('a')
       link.href = url
       link.setAttribute('download', res.headers['content-disposition']?.split('filename=')[1] || 'kehadiran.csv')
