@@ -6,11 +6,11 @@ import asyncio
 from sqlalchemy import select
 
 from app.db.database import async_session, engine, Base
-from app.models.admin import Admin
+from app.models.activity_log import ActivityLog
 from app.models.user import User
 from app.models.face import FaceData
 from app.models.attendance import AttendanceLog
-from app.models.activity_log import ActivityLog
+from app.models.admin import Admin
 from app.core.security import get_password_hash
 from app.core.config import settings
 
@@ -49,6 +49,8 @@ async def seed():
         print(f"   Username: {username}")
         print(f"   Password: {password}")
         print("   [!] Change this password in production!")
+
+    await engine.dispose()
 
 
 if __name__ == "__main__":
