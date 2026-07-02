@@ -237,13 +237,15 @@ async def export_attendance(
     result = await db.execute(query)
     logs = result.scalars().all()
 
-    # Build CSV in memory
+    # Build CSV in memory with UTF-8 BOM and semicolon delimiter for clean column separation in Excel
     output = io.StringIO()
-    writer = csv.writer(output)
+    output.write('\ufeff')  # UTF-8 BOM for proper character encoding in Excel
+    output.write('sep=;\r\n')  # Instruction for Excel to split columns by semicolon across all regions/locales
+    writer = csv.writer(output, delimiter=';')
 
     # Header row
     writer.writerow([
-        "No", "Nama", "NIP", "Tipe", "Tanggal", "Waktu", "Status", "Terlambat", "Device"
+        "No", "Nama Pegawai", "NIP / ID Pegawai", "Tipe Absensi", "Tanggal", "Jam / Waktu", "Status Kehadiran", "Keterangan Waktu", "ID Perangkat"
     ])
 
     for idx, log in enumerate(logs, 1):
@@ -255,22 +257,29 @@ async def export_attendance(
         user_name = user_row[0] if user_row else "Unknown"
         employee_id = user_row[1] if user_row else "-"
 
+        # Readable labels
+        tipe_absensi = "Check In (Masuk)" if log.event_type == "IN" else "Check Out (Keluar)"
+        status_label = "Terlambat" if (log.late or log.status == "late") else (
+            "Hadir" if log.event_type == "IN" else "Keluar"
+        )
+        keterangan_waktu = "Terlambat" if log.late else "Tepat Waktu"
+
         writer.writerow([
             idx,
             user_name,
             employee_id,
-            "Masuk" if log.event_type == "IN" else "Keluar",
+            tipe_absensi,
             log.timestamp.strftime("%Y-%m-%d"),
             log.timestamp.strftime("%H:%M:%S"),
-            log.status or "-",
-            "Ya" if log.late else "Tidak",
+            status_label,
+            keterangan_waktu,
             log.device_id or "-",
         ])
 
     output.seek(0)
 
     # Generate filename with date range
-    filename = "kehadiran"
+    filename = "Laporan_Kehadiran_SISKA"
     if date_from:
         filename += f"_{date_from}"
     if date_to:
@@ -279,7 +288,7 @@ async def export_attendance(
 
     return StreamingResponse(
         iter([output.getvalue()]),
-        media_type="text/csv",
+        media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
