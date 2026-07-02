@@ -12,3 +12,4 @@ websockets==14.*
 Pillow==11.*
 python-dotenv==1.0.*
 edge-tts==7.*
+bcrypt==3.2.2
