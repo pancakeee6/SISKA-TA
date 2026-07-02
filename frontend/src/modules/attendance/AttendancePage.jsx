@@ -261,18 +261,28 @@ export default function AttendancePage() {
     loadModels()
   }, [])
 
-  // Real-time Face Tracking
+  // Real-time Face Tracking (Optimized: adaptive FPS, cached dimensions)
+  const cachedDimRef = useRef(null) // Cache matchDimensions result
+  const detectorOptionsRef = useRef(null) // Reuse detector options object
+
   useEffect(() => {
     let isRunning = true
+    // Reuse detector options to avoid object allocation every frame
+    if (!detectorOptionsRef.current) {
+      detectorOptionsRef.current = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 })
+    }
+
     const trackFaces = async () => {
       while (isRunning) {
+        // Pause entirely when camera disabled, tab hidden, or no camera
         if (!isCameraEnabled || document.hidden || status === STATUS.NO_CAMERA) {
           const canvas = canvasRef.current
           if (canvas) {
             const ctx = canvas.getContext('2d')
             ctx.clearRect(0, 0, canvas.width, canvas.height)
           }
-          await new Promise(r => setTimeout(r, 350))
+          // Long sleep when paused to save CPU
+          await new Promise(r => setTimeout(r, 500))
           continue
         }
 
@@ -280,7 +290,7 @@ export default function AttendancePage() {
           const video = webcamRef.current.video
           if (video.readyState === 4) {
             try {
-              const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 }))
+              const detections = await faceapi.detectAllFaces(video, detectorOptionsRef.current)
                const faceNow = detections && detections.length > 0;
                if (faceNow) {
                  consecDetectedRef.current = (consecDetectedRef.current || 0) + 1;
@@ -300,7 +310,11 @@ export default function AttendancePage() {
                const canvas = canvasRef.current
               if (canvas) {
                 const displaySize = { width: video.videoWidth, height: video.videoHeight }
-                faceapi.matchDimensions(canvas, displaySize)
+                // Only re-match dimensions when video size actually changes (avoids expensive DOM layout)
+                if (!cachedDimRef.current || cachedDimRef.current.w !== displaySize.width || cachedDimRef.current.h !== displaySize.height) {
+                  faceapi.matchDimensions(canvas, displaySize)
+                  cachedDimRef.current = { w: displaySize.width, h: displaySize.height }
+                }
                 const resizedDetections = faceapi.resizeResults(detections, displaySize)
                 
                 const ctx = canvas.getContext('2d')
@@ -396,7 +410,9 @@ export default function AttendancePage() {
             } catch { /* Abaikan error deteksi wajah sementara */ }
           }
         }
-        await new Promise(r => setTimeout(r, 140)) // ~7 fps hemat CPU & stabil untuk device
+        // Adaptive FPS: faster when face is actively detected (for responsive tracking), slower when idle (to save CPU)
+        const delay = hasFaceRef.current ? 140 : 250
+        await new Promise(r => setTimeout(r, delay))
       }
     }
     trackFaces()
@@ -507,18 +523,10 @@ export default function AttendancePage() {
         }} />
       </div>
 
-      {/* ─── DYNAMIC BACKGROUND BLOBS ─── */}
-      <div className="att-bg-blobs">
-        <div className="att-blob att-blob-1"></div>
-        <div className="att-blob att-blob-2"></div>
-        <div className="att-blob att-blob-3"></div>
-      </div>
-
-      {/* Star dots */}
+      {/* Star dots (reduced from 6 to 4 for performance) */}
       {[
         { top: '10%', left: '8%', s: 2, d: '0s' }, { top: '20%', left: '55%', s: 3, d: '1s' },
         { top: '75%', left: '12%', s: 2, d: '2s' }, { top: '85%', left: '75%', s: 2, d: '0.5s' },
-        { top: '50%', left: '3%', s: 3, d: '3s' }, { top: '15%', left: '90%', s: 2, d: '1.5s' },
       ].map((s, i) => (
         <div key={i} style={{
           position: 'absolute', top: s.top, left: s.left, zIndex: 0,
@@ -588,8 +596,8 @@ export default function AttendancePage() {
           <div className="att-mascot-wrapper">
             {/* Orbit circle (dashed) */}
             <div className="att-orbit-circle">
-              {/* Orbiting dots */}
-              {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => (
+              {/* Orbiting dots (reduced from 8 to 4 for performance) */}
+              {[0, 90, 180, 270].map((deg, i) => (
                 <div key={i} style={{
                   position: 'absolute',
                   width: '10px', height: '10px', borderRadius: '50%',
@@ -597,8 +605,8 @@ export default function AttendancePage() {
                   top: '50%', left: '50%',
                   transform: `rotate(${deg}deg) translateX(160px) translate(-50%, -50%)`,
                   animation: `att-dotPulse 2s ease-in-out infinite`,
-                  animationDelay: `${i * 0.25}s`,
-                  boxShadow: '0 0 8px rgba(99,102,241,0.5)',
+                  animationDelay: `${i * 0.5}s`,
+                  willChange: 'transform',
                 }} />
               ))}
             </div>
@@ -711,7 +719,7 @@ export default function AttendancePage() {
                       ref={webcamRef}
                       audio={false}
                       screenshotFormat="image/jpeg"
-                      screenshotQuality={0.85}
+                      screenshotQuality={0.7}
                       videoConstraints={{
                         width: 640,
                         height: 480,
@@ -738,7 +746,8 @@ export default function AttendancePage() {
                           width: '100%',
                           height: '100%',
                           pointerEvents: 'none',
-                          zIndex: 15
+                          zIndex: 15,
+                          willChange: 'contents',
                         }}
                       />
                     )}

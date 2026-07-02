@@ -88,12 +88,12 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  width: 700px;
-  height: 700px;
+  transform: translate(-50%, -50%) translateZ(0);
+  width: 900px;
+  height: 900px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 60%);
-  filter: blur(40px);
+  background: radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 50%);
+  /* Removed filter:blur(40px) — very GPU-intensive on low-spec devices */
 }
 
 /* ─── HEADER ─── */
@@ -225,7 +225,7 @@
 .att-orbit-circle {
   position: absolute;
   top: 40%;
-  transform: translateY(-50%);
+  transform: translateY(-50%) translateZ(0);
   width: 45vw;
   max-width: 600px;
   height: 45vw;
@@ -233,6 +233,7 @@
   border-radius: 50%;
   border: 1.5px dashed rgba(99,102,241,0.2);
   animation: att-orbitDots 20s linear infinite;
+  will-change: transform;
   z-index: 1;
 }
 
@@ -352,9 +353,8 @@
   border-radius: 14px;
   overflow: hidden;
   position: relative;
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.3);
+  /* Removed backdrop-filter: blur(12px) — extremely GPU-intensive on low-spec devices */
   box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
   z-index: 2;
 }
