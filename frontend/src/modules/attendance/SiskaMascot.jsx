@@ -58,11 +58,33 @@ export default function SiskaMascot({
 
   const prevFaceDetectedRef  = useRef(false);
   const prevResultRef        = useRef('idle');
+  const prevCameraEnabledRef = useRef(isCameraEnabled);
   const currentFaceDetectedRef = useRef(faceDetected);
+
+  const activeBlendRef = useRef(null); // { id, prevName }
+
+  const stopActiveBlend = useCallback(() => {
+    if (activeBlendRef.current) {
+      clearTimeout(activeBlendRef.current.id);
+      if (rive && activeBlendRef.current.prevName) {
+        try {
+          rive.stop(activeBlendRef.current.prevName);
+        } catch { /* abaikan error */ }
+      }
+      activeBlendRef.current = null;
+    }
+  }, [rive]);
 
   const clearAllTimeouts = useRef(() => {
     timeoutRefs.current.forEach(id => clearTimeout(id));
     timeoutRefs.current = [];
+    if (activeBlendRef.current) {
+      clearTimeout(activeBlendRef.current.id);
+      if (rive && activeBlendRef.current.prevName) {
+        try { rive.stop(activeBlendRef.current.prevName); } catch { /* abaikan */ }
+      }
+      activeBlendRef.current = null;
+    }
   });
 
   const addTimeout = useRef((callback, delay) => {
@@ -91,26 +113,48 @@ export default function SiskaMascot({
     if (currentPlayingRef.current === name) return; // Lewati jika sama
 
     try {
-      console.log(`[SISKA RIVE] Play smooth blend: ${currentPlayingRef.current} -> ${name}`);
+      console.log(`[SISKA RIVE] Play smooth blend (600ms): ${currentPlayingRef.current} -> ${name}`);
       const prevName = currentPlayingRef.current;
       currentPlayingRef.current = name;
 
-      // Putar animasi baru terlebih dahulu
+      // Hentikan blend sebelumnya jika masih ada agar tidak bertumpuk
+      stopActiveBlend();
+
+      // Putar animasi baru
       rive.play(name);
 
-      // Stop animasi lama setelah overlap sangat singkat (120ms) agar transisi natural & tidak merusak kacamata
-      const tid = setTimeout(() => {
-        if (isMountedRef.current && rive) {
-          try {
-            rive.stop(prevName);
-          } catch { /* abaikan error stop animasi */ }
-        }
-      }, 120);
-      timeoutRefs.current.push(tid);
+      // Beri overlap 600ms agar pergerakan tulang/wajah berpindah secara halus dan organik (crossfade)
+      if (prevName && prevName !== name) {
+        const id = setTimeout(() => {
+          if (isMountedRef.current && rive) {
+            try {
+              rive.stop(prevName);
+            } catch { /* abaikan error */ }
+          }
+          activeBlendRef.current = null;
+        }, 600);
+
+        activeBlendRef.current = { id, prevName };
+      }
     } catch (e) {
-      console.error(`[SISKA RIVE] Failed to play smooth animation ${name}:`, e);
+      console.error(`[SISKA RIVE] Failed to play animation ${name}:`, e);
     }
-  }, [rive]);
+  }, [rive, stopActiveBlend]);
+
+  const goToSleepSequence = useCallback(() => {
+    if (!rive || !isMountedRef.current) return;
+    clearAllTimeouts.current();
+    isTransitioningRef.current = true; // Kunci transisi menuju tidur agar smooth & tidak terganggu
+    idleCounterRef.current = 15;
+    playAnimationSmooth('idle sleepy');
+
+    addTimeout.current(() => {
+      if (isMountedRef.current) {
+        isTransitioningRef.current = false;
+        playAnimationSmooth('sleep');
+      }
+    }, 2500);
+  }, [rive, playAnimationSmooth]);
 
   const setInputOrPlay = useCallback((val, animationName) => {
     if (animationName && val) {
@@ -118,13 +162,39 @@ export default function SiskaMascot({
     }
   }, [playAnimationSmooth]);
 
-  // Force sleep immediately if camera is disabled
+  // Reaksi terhadap status kamera (aktif / nonaktif)
   useEffect(() => {
-    if (!isCameraEnabled && rive && isMountedRef.current) {
-      idleCounterRef.current = 15;
-      playAnimationSmooth('sleep');
+    if (!rive || !isMountedRef.current) return;
+
+    const prev = prevCameraEnabledRef.current;
+    prevCameraEnabledRef.current = isCameraEnabled;
+
+    if (!isCameraEnabled) {
+      // Kamera dimatikan -> Jika sedang transisi gerakan penting, biarkan selesai dulu baru masuk tidur
+      if (!isTransitioningRef.current) {
+        goToSleepSequence();
+      }
+    } else if (prev === false && isCameraEnabled) {
+      // Kamera dihidupkan kembali -> Selalu mainkan animasi wake up terlebih dahulu
+      clearAllTimeouts.current();
+      isTransitioningRef.current = true;
+      idleCounterRef.current = 0;
+      playAnimationSmooth('wake up');
+
+      addTimeout.current(() => {
+        isTransitioningRef.current = false;
+        if (!prevCameraEnabledRef.current) {
+          goToSleepSequence();
+          return;
+        }
+        if (currentFaceDetectedRef.current || prevResultRef.current === 'scanning') {
+          playAnimationSmooth('scanning');
+        } else {
+          playAnimationSmooth('idle normal');
+        }
+      }, 2000);
     }
-  }, [isCameraEnabled, rive, playAnimationSmooth]);
+  }, [isCameraEnabled, rive, playAnimationSmooth, goToSleepSequence]);
 
   // Idle timer logic
   useEffect(() => {
@@ -132,9 +202,10 @@ export default function SiskaMascot({
       clearInterval(idleTimerIntervalRef.current);
     }
 
+    if (!isCameraEnabled) return; // Optimasi: jangan jalankan timer interval saat kamera mati
+
     idleTimerIntervalRef.current = setInterval(() => {
       if (!isMountedRef.current) return;
-      if (!isCameraEnabled) return; // Stay asleep if camera is disabled
       if (faceDetected) return;
       if (isTransitioningRef.current) return;
 
@@ -153,11 +224,11 @@ export default function SiskaMascot({
         clearInterval(idleTimerIntervalRef.current);
       }
     };
-  }, [faceDetected, playAnimationSmooth]);
+  }, [faceDetected, playAnimationSmooth, isCameraEnabled]);
 
   // Reaksi terhadap faceDetected
   useEffect(() => {
-    if (!rive || !isMountedRef.current) return;
+    if (!rive || !isMountedRef.current || !isCameraEnabled) return;
 
     currentFaceDetectedRef.current = faceDetected;
     const prev = prevFaceDetectedRef.current;
@@ -174,9 +245,40 @@ export default function SiskaMascot({
         hasFiredMotionRef.current = true;
 
         addTimeout.current(() => {
-          isTransitioningRef.current = false; // Buka kunci setelah gerakan selesai (1.5 detik)
-          setInputOrPlay(true, 'scanning');
-        }, 1500);
+          isTransitioningRef.current = false; // Buka kunci setelah gerakan wake up selesai penuh (2 detik)
+          if (!prevCameraEnabledRef.current) {
+            goToSleepSequence();
+            return;
+          }
+          const latestResult = prevResultRef.current;
+          if (latestResult === 'success') {
+            isTransitioningRef.current = true;
+            setInputOrPlay(true, 'success');
+            addTimeout.current(() => {
+              isTransitioningRef.current = false;
+              if (!prevCameraEnabledRef.current) {
+                goToSleepSequence();
+              } else {
+                setInputOrPlay(true, 'idle normal');
+              }
+            }, 3000);
+          } else if (latestResult === 'failed') {
+            isTransitioningRef.current = true;
+            setInputOrPlay(true, 'not recognized');
+            addTimeout.current(() => {
+              isTransitioningRef.current = false;
+              if (!prevCameraEnabledRef.current) {
+                goToSleepSequence();
+              } else {
+                setInputOrPlay(true, 'idle normal');
+              }
+            }, 3000);
+          } else if (latestResult === 'scanning') {
+            setInputOrPlay(true, 'scanning');
+          } else {
+            setInputOrPlay(true, 'idle normal');
+          }
+        }, 2000);
       } else {
         const latestResult = prevResultRef.current;
         if (latestResult === 'scanning') {
@@ -193,11 +295,11 @@ export default function SiskaMascot({
       }
       hasFiredMotionRef.current = false;
     }
-  }, [faceDetected, rive, setInputOrPlay]);
+  }, [faceDetected, rive, setInputOrPlay, goToSleepSequence]);
 
   // Reaksi terhadap attendanceResult
   useEffect(() => {
-    if (!rive || !isMountedRef.current) return;
+    if (!rive || !isMountedRef.current || !isCameraEnabled) return;
 
     const normalizedResult = 
       (attendanceResult === 'recognized' || attendanceResult === 'success') ? 'success' :
@@ -214,6 +316,10 @@ export default function SiskaMascot({
         setInputOrPlay(true, 'scanning');
       }
     } else if (normalizedResult === 'success' && prev !== 'success') {
+      if (currentPlayingRef.current === 'wake up' && isTransitioningRef.current) {
+        // Biarkan wake up selesai, penanganan dilanjutkan oleh addTimeout di useEffect faceDetected
+        return;
+      }
       clearAllTimeouts.current();
       isTransitioningRef.current = true;
       idleCounterRef.current = 0;
@@ -222,10 +328,17 @@ export default function SiskaMascot({
 
       addTimeout.current(() => {
         isTransitioningRef.current = false;
-        setInputOrPlay(true, 'idle normal');
+        if (!prevCameraEnabledRef.current) {
+          goToSleepSequence();
+        } else {
+          setInputOrPlay(true, 'idle normal');
+        }
       }, 3000);
 
     } else if (normalizedResult === 'failed' && prev !== 'failed') {
+      if (currentPlayingRef.current === 'wake up' && isTransitioningRef.current) {
+        return;
+      }
       clearAllTimeouts.current();
       isTransitioningRef.current = true;
       idleCounterRef.current = 0;
@@ -234,7 +347,11 @@ export default function SiskaMascot({
 
       addTimeout.current(() => {
         isTransitioningRef.current = false;
-        setInputOrPlay(true, 'idle normal');
+        if (!prevCameraEnabledRef.current) {
+          goToSleepSequence();
+        } else {
+          setInputOrPlay(true, 'idle normal');
+        }
       }, 3000);
     } else if (normalizedResult === 'idle') {
       if (!isTransitioningRef.current) {
@@ -243,7 +360,7 @@ export default function SiskaMascot({
         }
       }
     }
-  }, [attendanceResult, rive, setInputOrPlay]);
+  }, [attendanceResult, rive, setInputOrPlay, goToSleepSequence]);
 
   return (
     <div style={{

@@ -266,7 +266,17 @@ export default function AttendancePage() {
     let isRunning = true
     const trackFaces = async () => {
       while (isRunning) {
-        if (webcamRef.current && webcamRef.current.video && cameraReady && status !== STATUS.NO_CAMERA) {
+        if (!isCameraEnabled || document.hidden || status === STATUS.NO_CAMERA) {
+          const canvas = canvasRef.current
+          if (canvas) {
+            const ctx = canvas.getContext('2d')
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+          }
+          await new Promise(r => setTimeout(r, 350))
+          continue
+        }
+
+        if (webcamRef.current && webcamRef.current.video && cameraReady) {
           const video = webcamRef.current.video
           if (video.readyState === 4) {
             try {
@@ -386,7 +396,7 @@ export default function AttendancePage() {
             } catch { /* Abaikan error deteksi wajah sementara */ }
           }
         }
-        await new Promise(r => setTimeout(r, 100)) // 10 fps
+        await new Promise(r => setTimeout(r, 140)) // ~7 fps hemat CPU & stabil untuk device
       }
     }
     trackFaces()
