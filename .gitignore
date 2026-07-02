@@ -6,27 +6,36 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 
-# Environment
+# Environment & Config
 .env
 .env.local
 .env.production
+*.env
 
-# Build
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+backend/siska.db
+
+# Build Output
 dist/
 build/
 
-# IDE
+# IDE & AI Tools
 .vscode/
 .idea/
 *.swp
 *.swo
+.gemini/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Uploads
+# Uploads & Media
 uploads/
+backend/uploads/
 
 # Logs
 *.log
@@ -35,3 +44,4 @@ uploads/
 venv/
 .venv/
 env/
+laporan_perubahan.md

@@ -8,21 +8,22 @@ SISKA (Sistem Kehadiran AI) adalah aplikasi presensi modern yang mengintegrasika
 - **Dynamic AI Mascot Interaction**: Dilengkapi dengan maskot interaktif berbasis animasi Rive yang merespons status presensi secara *real-time* (mode siaga normal, tertidur saat *idle*, terbangun saat mendeteksi wajah, dan selebrasi saat presensi berhasil).
 - **Contactless Attendance**: Pengguna cukup berdiri di depan kamera tanpa memerlukan sentuhan fisik pada perangkat, mendukung higienitas dan efisiensi antrean.
 - **Automated Voice Greeting**: Memberikan konfirmasi audio secara natural (*Text-to-Speech*) setelah identitas pengguna terverifikasi.
-- **Admin Dashboard & Management**: Panel administrasi terpadu untuk memantau statistik kehadiran harian, mengelola direktori pengguna, mendaftarkan sampel wajah baru (*face enrollment*), serta mengekspor laporan riwayat presensi ke format CSV.
+- **Admin Dashboard & Management (Light Mode)**: Panel administrasi modern bertema terang (*Light Mode*) yang profesional dan bersih untuk memantau statistik kehadiran secara seketika (*realtime WebSocket*), mengelola direktori pengguna, mendaftarkan sampel wajah baru (*face enrollment*), serta mengekspor laporan riwayat presensi ke format CSV.
+- **Multi-Device & Cloud Ready**: Arsitektur basis data terpusat (*Centralized Database*) menggunakan PostgreSQL yang siap dihubungkan dengan berbagai perangkat pemindai (*kiosk STB/kamera*) dan komputer admin baik di satu jaringan LAN maupun melalui *cloud database* (seperti Aiven atau Supabase).
 
 ## Arsitektur Sistem & Teknologi
 
 ### Frontend (Single Page Application)
 - **Framework**: React 19 dengan Vite 6
-- **Styling**: Tailwind CSS 4 & Vanilla CSS
+- **Styling**: Tailwind CSS 4 & Vanilla CSS (Skema Warna Terang Modern / Light Theme)
 - **State Management**: Zustand
-- **Animation Engine**: Rive (@rive-app/react-canvas)
+- **Animation Engine**: Rive (@rive-app/react-canvas) dengan transisi mulus & *auto-sleep*
 - **Computer Vision**: face-api.js & React Webcam
 
 ### Backend & Machine Learning API
-- **Framework**: FastAPI (Python REST API)
+- **Framework**: FastAPI (Python REST API & Realtime WebSocket)
 - **AI Engine**: DeepFace / Face Recognition Embeddings
-- **Database**: SQLite / SQLAlchemy
+- **Database**: PostgreSQL (Asynchronous via `asyncpg`) / SQLAlchemy
 
 ## Struktur Proyek
 
