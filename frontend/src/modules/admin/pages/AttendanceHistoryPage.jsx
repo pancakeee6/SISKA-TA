@@ -240,7 +240,7 @@ export default function AttendanceHistoryPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#fff', margin: 0 }}>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: 0 }}>
             Riwayat Absensi
           </h1>
           <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0 0' }}>
@@ -258,14 +258,14 @@ export default function AttendanceHistoryPage() {
               borderRadius: '12px',
               fontSize: '13px',
               fontWeight: 600,
-              color: '#ef4444',
+              color: '#dc2626',
               cursor: 'pointer',
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.2)',
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
               transition: 'all 0.2s',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#fee2e2'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#fef2f2'; }}
           >
             <Trash2 className="w-4 h-4" />
             Reset Log
@@ -283,13 +283,13 @@ export default function AttendanceHistoryPage() {
               fontWeight: 600,
               color: '#fff',
               cursor: 'pointer',
-              background: 'linear-gradient(135deg, #0ea5e9, #38bdf8)',
+              background: '#2563eb',
               border: 'none',
-              boxShadow: '0 4px 15px rgba(14,165,233,0.25)',
+              boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
               transition: 'all 0.2s',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(14,165,233,0.35)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(14,165,233,0.25)'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#1d4ed8'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.transform = 'translateY(0)'; }}
           >
             <Download className="w-4 h-4" />
             Export CSV
@@ -303,28 +303,28 @@ export default function AttendanceHistoryPage() {
         <div style={{
           padding: '20px',
           borderRadius: '16px',
-          background: 'rgba(15, 23, 42, 0.6)',
-          border: '1px solid rgba(52, 211, 153, 0.1)',
-          backdropFilter: 'blur(10px)',
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
           display: 'flex',
           alignItems: 'center',
           gap: '16px',
         }}>
           <div style={{
             width: '48px', height: '48px', borderRadius: '50%',
-            background: 'rgba(52, 211, 153, 0.12)',
-            border: '2px solid rgba(52, 211, 153, 0.25)',
+            background: '#d1fae5',
+            border: '2px solid #a7f3d0',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
-            <CheckCircle2 size={22} style={{ color: '#34d399' }} />
+            <CheckCircle2 size={22} style={{ color: '#059669' }} />
           </div>
           <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: '28px', fontWeight: 700, color: '#fff', margin: 0, lineHeight: 1.1 }}>
+            <p style={{ fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: 0, lineHeight: 1.1 }}>
               {loading ? '—' : presentToday}
             </p>
             <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>Hadir Hari Ini</p>
-            <p style={{ fontSize: '10px', color: '#34d399', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <p style={{ fontSize: '10px', color: '#059669', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 600 }}>
               <TrendingUp size={10} /> 5% dari kemarin
             </p>
           </div>
@@ -334,28 +334,28 @@ export default function AttendanceHistoryPage() {
         <div style={{
           padding: '20px',
           borderRadius: '16px',
-          background: 'rgba(15, 23, 42, 0.6)',
-          border: '1px solid rgba(251, 191, 36, 0.1)',
-          backdropFilter: 'blur(10px)',
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
           display: 'flex',
           alignItems: 'center',
           gap: '16px',
         }}>
           <div style={{
             width: '48px', height: '48px', borderRadius: '50%',
-            background: 'rgba(251, 191, 36, 0.12)',
-            border: '2px solid rgba(251, 191, 36, 0.25)',
+            background: '#fef3c7',
+            border: '2px solid #fde68a',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
-            <Clock size={22} style={{ color: '#fbbf24' }} />
+            <Clock size={22} style={{ color: '#d97706' }} />
           </div>
           <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: '28px', fontWeight: 700, color: '#fff', margin: 0, lineHeight: 1.1 }}>
+            <p style={{ fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: 0, lineHeight: 1.1 }}>
               {loading ? '—' : lateToday}
             </p>
             <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>Terlambat Hari Ini</p>
-            <p style={{ fontSize: '10px', color: '#fbbf24', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <p style={{ fontSize: '10px', color: '#d97706', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 600 }}>
               <TrendingDown size={10} /> 1 dari kemarin
             </p>
           </div>
@@ -365,28 +365,28 @@ export default function AttendanceHistoryPage() {
         <div style={{
           padding: '20px',
           borderRadius: '16px',
-          background: 'rgba(15, 23, 42, 0.6)',
-          border: '1px solid rgba(239, 68, 68, 0.1)',
-          backdropFilter: 'blur(10px)',
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
           display: 'flex',
           alignItems: 'center',
           gap: '16px',
         }}>
           <div style={{
             width: '48px', height: '48px', borderRadius: '50%',
-            background: 'rgba(239, 68, 68, 0.12)',
-            border: '2px solid rgba(239, 68, 68, 0.25)',
+            background: '#fee2e2',
+            border: '2px solid #fecaca',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
-            <XCircle size={22} style={{ color: '#ef4444' }} />
+            <XCircle size={22} style={{ color: '#dc2626' }} />
           </div>
           <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: '28px', fontWeight: 700, color: '#fff', margin: 0, lineHeight: 1.1 }}>
+            <p style={{ fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: 0, lineHeight: 1.1 }}>
               {loading ? '—' : absentToday}
             </p>
             <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>Tidak Hadir Hari Ini</p>
-            <p style={{ fontSize: '10px', color: '#ef4444', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <p style={{ fontSize: '10px', color: '#dc2626', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 600 }}>
               <TrendingDown size={10} /> 3 dari kemarin
             </p>
           </div>
@@ -396,28 +396,28 @@ export default function AttendanceHistoryPage() {
         <div style={{
           padding: '20px',
           borderRadius: '16px',
-          background: 'rgba(15, 23, 42, 0.6)',
-          border: '1px solid rgba(52, 211, 153, 0.1)',
-          backdropFilter: 'blur(10px)',
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
           display: 'flex',
           alignItems: 'center',
           gap: '16px',
         }}>
           <div style={{
             width: '48px', height: '48px', borderRadius: '50%',
-            background: 'rgba(52, 211, 153, 0.12)',
-            border: '2px solid rgba(52, 211, 153, 0.25)',
+            background: '#d1fae5',
+            border: '2px solid #a7f3d0',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
-            <TrendingUp size={22} style={{ color: '#34d399' }} />
+            <TrendingUp size={22} style={{ color: '#059669' }} />
           </div>
           <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: '28px', fontWeight: 700, color: '#fff', margin: 0, lineHeight: 1.1 }}>
+            <p style={{ fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: 0, lineHeight: 1.1 }}>
               {loading ? '—' : `${attendanceRate}%`}
             </p>
             <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>Rata-rata Kehadiran</p>
-            <p style={{ fontSize: '10px', color: '#34d399', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <p style={{ fontSize: '10px', color: '#059669', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 600 }}>
               <TrendingUp size={10} /> 2% dari minggu lalu
             </p>
           </div>
@@ -438,8 +438,9 @@ export default function AttendanceHistoryPage() {
           gap: '6px',
           padding: '8px 14px',
           borderRadius: '10px',
-          background: 'rgba(15, 23, 42, 0.6)',
-          border: '1px solid rgba(56, 189, 248, 0.08)',
+          background: '#ffffff',
+          border: '1px solid #cbd5e1',
+          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
           minWidth: '220px',
         }}>
           <Calendar size={14} style={{ color: '#64748b', flexShrink: 0 }} />
@@ -451,14 +452,14 @@ export default function AttendanceHistoryPage() {
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#94a3b8',
+              color: '#0f172a',
               fontSize: '12px',
               outline: 'none',
               width: '110px',
-              colorScheme: 'dark',
+              colorScheme: 'light',
             }}
           />
-          <span style={{ color: '#475569', fontSize: '12px' }}>–</span>
+          <span style={{ color: '#64748b', fontSize: '12px' }}>–</span>
           <input
             type="date"
             value={dateTo}
@@ -468,11 +469,11 @@ export default function AttendanceHistoryPage() {
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#94a3b8',
+              color: '#0f172a',
               fontSize: '12px',
               outline: 'none',
               width: '110px',
-              colorScheme: 'dark',
+              colorScheme: 'light',
             }}
           />
         </div>
@@ -484,8 +485,9 @@ export default function AttendanceHistoryPage() {
           gap: '8px',
           padding: '8px 14px',
           borderRadius: '10px',
-          background: 'rgba(15, 23, 42, 0.6)',
-          border: '1px solid rgba(56, 189, 248, 0.08)',
+          background: '#ffffff',
+          border: '1px solid #cbd5e1',
+          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
           flex: '1',
           maxWidth: '250px',
           minWidth: '160px',
@@ -499,7 +501,7 @@ export default function AttendanceHistoryPage() {
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#e2e8f0',
+              color: '#0f172a',
               fontSize: '12px',
               outline: 'none',
               width: '100%',
@@ -517,9 +519,10 @@ export default function AttendanceHistoryPage() {
               WebkitAppearance: 'none',
               padding: '8px 32px 8px 14px',
               borderRadius: '10px',
-              background: 'rgba(15, 23, 42, 0.6)',
-              border: '1px solid rgba(56, 189, 248, 0.08)',
-              color: '#94a3b8',
+              background: '#ffffff',
+              border: '1px solid #cbd5e1',
+              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+              color: '#0f172a',
               fontSize: '12px',
               outline: 'none',
               cursor: 'pointer',
@@ -549,7 +552,7 @@ export default function AttendanceHistoryPage() {
 
         {/* Data info text */}
         {!loading && (
-          <span style={{ fontSize: '12px', color: '#64748b' }}>
+          <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
             Menampilkan {Math.min(page * PER_PAGE, total) - (page - 1) * PER_PAGE > 0
               ? `${(page - 1) * PER_PAGE + 1}-${Math.min(page * PER_PAGE, total)}`
               : '0'} dari {total} data
@@ -560,7 +563,7 @@ export default function AttendanceHistoryPage() {
       {/* Active Filter Tags */}
       {activeFilters > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '-8px' }}>
-          <span style={{ fontSize: '12px', color: '#64748b' }}>Filter Aktif:</span>
+          <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>Filter Aktif:</span>
           {(dateFrom || dateTo) && (
             <span style={{
               display: 'inline-flex',
@@ -568,10 +571,11 @@ export default function AttendanceHistoryPage() {
               gap: '6px',
               padding: '4px 10px',
               borderRadius: '8px',
-              background: 'rgba(56, 189, 248, 0.08)',
-              border: '1px solid rgba(56, 189, 248, 0.15)',
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe',
               fontSize: '11px',
-              color: '#7dd3fc',
+              color: '#2563eb',
+              fontWeight: 500,
             }}>
               {formatFilterDate(dateFrom) || '...'} - {formatFilterDate(dateTo) || '...'}
               <X
@@ -586,14 +590,15 @@ export default function AttendanceHistoryPage() {
             style={{
               background: 'none',
               border: 'none',
-              color: '#f87171',
+              color: '#dc2626',
               fontSize: '12px',
+              fontWeight: 500,
               cursor: 'pointer',
               padding: '4px 8px',
               borderRadius: '6px',
               transition: 'all 0.15s',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(248,113,113,0.08)'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#fee2e2'; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
           >
             Hapus Filter
@@ -605,20 +610,21 @@ export default function AttendanceHistoryPage() {
       <div style={{
         borderRadius: '16px',
         overflow: 'hidden',
-        background: 'rgba(15, 23, 42, 0.5)',
-        border: '1px solid rgba(56, 189, 248, 0.06)',
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
       }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid rgba(56, 189, 248, 0.06)' }}>
+              <tr style={{ borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
                 {['Nama', 'NIM', 'Tanggal', 'Waktu', 'Jenis', 'Status', 'Keterlambatan'].map((col) => (
                   <th key={col} style={{
                     textAlign: 'left',
                     padding: '14px 20px',
                     fontSize: '11px',
                     fontWeight: 600,
-                    color: '#64748b',
+                    color: '#475569',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                     whiteSpace: 'nowrap',
@@ -631,13 +637,13 @@ export default function AttendanceHistoryPage() {
             <tbody>
               {loading ? (
                 [...Array(5)].map((_, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                  <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     {[...Array(7)].map((_, j) => (
                       <td key={j} style={{ padding: '14px 20px' }}>
                         <div style={{
                           height: '14px',
                           borderRadius: '6px',
-                          background: 'rgba(255,255,255,0.04)',
+                          background: '#f1f5f9',
                           animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                         }} />
                       </td>
@@ -648,12 +654,12 @@ export default function AttendanceHistoryPage() {
                 <tr>
                   <td colSpan={7} style={{ padding: '60px 20px', textAlign: 'center' }}>
                     <div style={{ fontSize: '36px', marginBottom: '12px' }}>📋</div>
-                    <p style={{ color: '#64748b', fontSize: '14px', fontWeight: 500 }}>
+                    <p style={{ color: '#0f172a', fontSize: '14px', fontWeight: 600 }}>
                       {activeFilters > 0
                         ? 'Tidak ada data kehadiran yang cocok'
                         : 'Belum ada riwayat absensi'}
                     </p>
-                    <p style={{ color: '#475569', fontSize: '12px', marginTop: '4px' }}>
+                    <p style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>
                       {activeFilters > 0 ? 'Coba ubah filter pencarian' : 'Data akan muncul saat pengguna melakukan check in.'}
                     </p>
                     {activeFilters > 0 && (
@@ -661,8 +667,9 @@ export default function AttendanceHistoryPage() {
                         onClick={clearFilters}
                         style={{
                           marginTop: '12px',
-                          color: '#38bdf8',
+                          color: '#2563eb',
                           fontSize: '13px',
+                          fontWeight: 600,
                           background: 'none',
                           border: 'none',
                           cursor: 'pointer',
@@ -681,10 +688,10 @@ export default function AttendanceHistoryPage() {
                     <tr
                       key={log.id}
                       style={{
-                        borderBottom: '1px solid rgba(255,255,255,0.02)',
+                        borderBottom: '1px solid #f1f5f9',
                         transition: 'background 0.15s',
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                     >
                       {/* Nama */}
@@ -706,7 +713,7 @@ export default function AttendanceHistoryPage() {
                           }}>
                             {log.user_name?.[0]?.toUpperCase() || '?'}
                           </div>
-                          <span style={{ fontSize: '13px', color: '#e2e8f0', fontWeight: 500 }}>
+                          <span style={{ fontSize: '13px', color: '#0f172a', fontWeight: 600 }}>
                             {log.user_name || 'Unknown'}
                           </span>
                         </div>
@@ -714,21 +721,21 @@ export default function AttendanceHistoryPage() {
 
                       {/* NIM */}
                       <td style={{ padding: '12px 20px' }}>
-                        <span style={{ fontSize: '13px', color: '#94a3b8', fontFamily: 'monospace' }}>
+                        <span style={{ fontSize: '13px', color: '#64748b', fontFamily: 'monospace' }}>
                           {log.employee_id || '-'}
                         </span>
                       </td>
 
                       {/* Tanggal */}
                       <td style={{ padding: '12px 20px' }}>
-                        <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+                        <span style={{ fontSize: '13px', color: '#475569' }}>
                           {formatDate(log.timestamp)}
                         </span>
                       </td>
 
                       {/* Waktu */}
                       <td style={{ padding: '12px 20px' }}>
-                        <span style={{ fontSize: '13px', color: '#e2e8f0', fontFamily: 'monospace' }}>
+                        <span style={{ fontSize: '13px', color: '#0f172a', fontFamily: 'monospace', fontWeight: 500 }}>
                           {formatTime(log.timestamp)}
                         </span>
                       </td>
@@ -744,14 +751,14 @@ export default function AttendanceHistoryPage() {
                           fontWeight: 600,
                           ...(log.event_type === 'IN'
                             ? {
-                                background: 'rgba(52, 211, 153, 0.1)',
-                                color: '#34d399',
-                                border: '1px solid rgba(52, 211, 153, 0.2)',
+                                background: '#d1fae5',
+                                color: '#059669',
+                                border: '1px solid #a7f3d0',
                               }
                             : {
-                                background: 'rgba(56, 189, 248, 0.1)',
-                                color: '#38bdf8',
-                                border: '1px solid rgba(56, 189, 248, 0.2)',
+                                background: '#eff6ff',
+                                color: '#2563eb',
+                                border: '1px solid #bfdbfe',
                               }),
                         }}>
                           {log.event_type === 'IN' ? 'Masuk' : 'Keluar'}
@@ -770,31 +777,31 @@ export default function AttendanceHistoryPage() {
                             fontWeight: 600,
                             ...(log.late
                               ? {
-                                  background: 'rgba(239, 68, 68, 0.1)',
-                                  color: '#ef4444',
-                                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                                  background: '#fee2e2',
+                                  color: '#dc2626',
+                                  border: '1px solid #fecaca',
                                 }
                               : {
-                                  background: 'rgba(52, 211, 153, 0.1)',
-                                  color: '#34d399',
-                                  border: '1px solid rgba(52, 211, 153, 0.2)',
+                                  background: '#d1fae5',
+                                  color: '#059669',
+                                  border: '1px solid #a7f3d0',
                                 }),
                           }}>
                             {log.late ? 'Terlambat' : 'Tepat Waktu'}
                           </span>
                         ) : (
-                          <span style={{ fontSize: '13px', color: '#475569' }}>-</span>
+                          <span style={{ fontSize: '13px', color: '#94a3b8' }}>-</span>
                         )}
                       </td>
 
                       {/* Keterlambatan */}
                       <td style={{ padding: '12px 20px' }}>
                         {log.late ? (
-                          <span style={{ fontSize: '13px', color: '#ef4444', fontWeight: 500 }}>
+                          <span style={{ fontSize: '13px', color: '#dc2626', fontWeight: 600 }}>
                             {getLateMinutes(log.timestamp)}
                           </span>
                         ) : (
-                          <span style={{ fontSize: '13px', color: '#475569' }}>-</span>
+                          <span style={{ fontSize: '13px', color: '#94a3b8' }}>-</span>
                         )}
                       </td>
                     </tr>
@@ -812,7 +819,8 @@ export default function AttendanceHistoryPage() {
             alignItems: 'center',
             justifyContent: 'center',
             padding: '16px 20px',
-            borderTop: '1px solid rgba(56, 189, 248, 0.06)',
+            borderTop: '1px solid #e2e8f0',
+            background: '#ffffff',
             gap: '6px',
           }}>
             {/* Sebelumnya */}
@@ -827,12 +835,12 @@ export default function AttendanceHistoryPage() {
                 borderRadius: '10px',
                 fontSize: '12px',
                 fontWeight: 500,
-                color: page <= 1 ? '#334155' : '#94a3b8',
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.05)',
+                color: page <= 1 ? '#cbd5e1' : '#475569',
+                background: '#f8fafc',
+                border: '1px solid #cbd5e1',
                 cursor: page <= 1 ? 'not-allowed' : 'pointer',
                 transition: 'all 0.15s',
-                opacity: page <= 1 ? 0.5 : 1,
+                opacity: page <= 1 ? 0.6 : 1,
               }}
             >
               <ChevronLeft size={14} />
@@ -859,13 +867,13 @@ export default function AttendanceHistoryPage() {
                     transition: 'all 0.2s',
                     ...(page === pageNum
                       ? {
-                          background: 'linear-gradient(135deg, #0ea5e9, #38bdf8)',
+                          background: '#2563eb',
                           color: '#fff',
-                          boxShadow: '0 2px 10px rgba(56, 189, 248, 0.35)',
+                          boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
                         }
                       : {
                           background: 'transparent',
-                          color: '#64748b',
+                          color: '#475569',
                         }),
                   }}
                 >
@@ -886,12 +894,12 @@ export default function AttendanceHistoryPage() {
                 borderRadius: '10px',
                 fontSize: '12px',
                 fontWeight: 500,
-                color: page >= totalPages ? '#334155' : '#94a3b8',
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.05)',
+                color: page >= totalPages ? '#cbd5e1' : '#475569',
+                background: '#f8fafc',
+                border: '1px solid #cbd5e1',
                 cursor: page >= totalPages ? 'not-allowed' : 'pointer',
                 transition: 'all 0.15s',
-                opacity: page >= totalPages ? 0.5 : 1,
+                opacity: page >= totalPages ? 0.6 : 1,
               }}
             >
               Selanjutnya
@@ -916,7 +924,7 @@ export default function AttendanceHistoryPage() {
             style={{
               position: 'absolute',
               inset: 0,
-              background: 'rgba(0,0,0,0.7)',
+              background: 'rgba(0,0,0,0.5)',
               backdropFilter: 'blur(4px)',
             }}
             onClick={() => setShowExport(false)}
@@ -927,24 +935,24 @@ export default function AttendanceHistoryPage() {
             maxWidth: '380px',
             borderRadius: '20px',
             padding: '28px',
-            background: 'linear-gradient(180deg, #111d35, #0f1a30)',
-            border: '1px solid rgba(56, 189, 248, 0.1)',
-            boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
               <div style={{
                 padding: '10px',
                 borderRadius: '12px',
-                background: 'rgba(56, 189, 248, 0.1)',
+                background: '#eff6ff',
               }}>
-                <Download size={20} style={{ color: '#38bdf8' }} />
+                <Download size={20} style={{ color: '#2563eb' }} />
               </div>
-              <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#fff', margin: 0 }}>Export CSV</h3>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Export CSV</h3>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
               <div>
-                <label style={{ fontSize: '11px', color: '#64748b', marginBottom: '6px', display: 'block' }}>Dari Tanggal</label>
+                <label style={{ fontSize: '11px', color: '#64748b', marginBottom: '6px', display: 'block', fontWeight: 600 }}>Dari Tanggal</label>
                 <input
                   type="date"
                   value={exportFrom}
@@ -953,18 +961,18 @@ export default function AttendanceHistoryPage() {
                     width: '100%',
                     padding: '10px 14px',
                     borderRadius: '10px',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(56, 189, 248, 0.08)',
-                    color: '#e2e8f0',
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
+                    color: '#0f172a',
                     fontSize: '13px',
                     outline: 'none',
-                    colorScheme: 'dark',
+                    colorScheme: 'light',
                     boxSizing: 'border-box',
                   }}
                 />
               </div>
               <div>
-                <label style={{ fontSize: '11px', color: '#64748b', marginBottom: '6px', display: 'block' }}>Sampai Tanggal</label>
+                <label style={{ fontSize: '11px', color: '#64748b', marginBottom: '6px', display: 'block', fontWeight: 600 }}>Sampai Tanggal</label>
                 <input
                   type="date"
                   value={exportTo}
@@ -973,17 +981,17 @@ export default function AttendanceHistoryPage() {
                     width: '100%',
                     padding: '10px 14px',
                     borderRadius: '10px',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(56, 189, 248, 0.08)',
-                    color: '#e2e8f0',
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
+                    color: '#0f172a',
                     fontSize: '13px',
                     outline: 'none',
-                    colorScheme: 'dark',
+                    colorScheme: 'light',
                     boxSizing: 'border-box',
                   }}
                 />
               </div>
-              <p style={{ fontSize: '10px', color: '#475569' }}>Kosongkan untuk export semua data</p>
+              <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>Kosongkan untuk export semua data</p>
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>
@@ -994,9 +1002,10 @@ export default function AttendanceHistoryPage() {
                   padding: '10px',
                   borderRadius: '10px',
                   fontSize: '13px',
-                  color: '#94a3b8',
-                  background: 'transparent',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  fontWeight: 600,
+                  color: '#475569',
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
                   cursor: 'pointer',
                   transition: 'all 0.15s',
                 }}
@@ -1013,15 +1022,15 @@ export default function AttendanceHistoryPage() {
                   fontSize: '13px',
                   fontWeight: 600,
                   color: '#fff',
-                  background: 'linear-gradient(135deg, #0ea5e9, #38bdf8)',
+                  background: '#2563eb',
                   border: 'none',
                   cursor: exporting ? 'wait' : 'pointer',
-                  opacity: exporting ? 0.6 : 1,
+                  opacity: exporting ? 0.7 : 1,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  boxShadow: '0 4px 15px rgba(56, 189, 248, 0.25)',
+                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
                   transition: 'all 0.15s',
                 }}
               >

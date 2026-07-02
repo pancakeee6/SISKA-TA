@@ -29,7 +29,7 @@ export default function AdminLayout() {
   const sidebarWidth = sidebarCollapsed ? '72px' : '250px'
 
   return (
-    <div className="flex h-screen" style={{ background: '#0b1120' }}>
+    <div className="flex h-screen" style={{ background: '#f8fafc' }}>
       {/* Sidebar toggle CSS transitions */}
       <style>{`
         .sidebar-transition {
@@ -57,15 +57,15 @@ export default function AdminLayout() {
           transition: all 0.2s ease;
         }
         .sidebar-collapse-btn:hover {
-          background: rgba(56, 189, 248, 0.1) !important;
-          color: #38bdf8 !important;
+          background: rgba(37, 99, 235, 0.08) !important;
+          color: #2563eb !important;
         }
       `}</style>
 
       {/* Mobile overlay */}
       {mobileSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setMobileSidebarOpen(false)}
         />
       )}
@@ -79,8 +79,9 @@ export default function AdminLayout() {
         style={{
           width: sidebarWidth,
           minWidth: sidebarWidth,
-          background: '#0d1a2d',
-          borderRight: '1px solid rgba(56, 189, 248, 0.1)',
+          background: '#ffffff',
+          borderRight: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
           overflow: 'hidden',
           position: 'relative',
           zIndex: 10,
@@ -97,12 +98,12 @@ export default function AdminLayout() {
             className="sidebar-collapse-btn"
             title={sidebarCollapsed ? 'Perluas sidebar' : 'Ciutkan sidebar'}
             style={{
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.06)',
+              background: '#f1f5f9',
+              border: '1px solid #e2e8f0',
               borderRadius: '8px',
               padding: '7px',
               cursor: 'pointer',
-              color: '#64748b',
+              color: '#475569',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -140,7 +141,7 @@ export default function AdminLayout() {
               <h1 style={{
                 fontSize: '18px',
                 fontWeight: 700,
-                color: '#ffffff',
+                color: '#0f172a',
                 letterSpacing: '0.5px',
                 lineHeight: 1.2,
                 margin: 0,
@@ -174,15 +175,15 @@ export default function AdminLayout() {
                   ? (isActive ? '4px 10px' : '2px 10px')
                   : (isActive ? '4px 14px' : '2px 14px'),
                 fontSize: '14px',
-                fontWeight: isActive ? 500 : 400,
-                color: isActive ? '#ffffff' : '#8494a7',
+                fontWeight: isActive ? 600 : 500,
+                color: isActive ? '#ffffff' : '#475569',
                 textDecoration: 'none',
-                borderRadius: isActive ? '12px' : '10px',
+                borderRadius: '12px',
                 background: isActive
                   ? 'linear-gradient(135deg, #2563eb, #1d4ed8)'
                   : 'transparent',
                 boxShadow: isActive
-                  ? '0 4px 15px rgba(37, 99, 235, 0.3)'
+                  ? '0 4px 12px rgba(37, 99, 235, 0.25)'
                   : 'none',
                 transition: 'all 0.2s ease',
                 position: 'relative',
@@ -203,7 +204,7 @@ export default function AdminLayout() {
         {/* User Footer */}
         <div style={{
           padding: sidebarCollapsed ? '12px 10px' : '16px',
-          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+          borderTop: '1px solid #f1f5f9',
         }}>
           <div style={{
             display: 'flex',
@@ -216,14 +217,14 @@ export default function AdminLayout() {
             justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
             overflow: 'hidden',
           }}
-            className="sidebar-user-footer"
+            className="sidebar-user-footer hover:bg-slate-50"
           >
             {/* User Avatar */}
             <div style={{
               width: '36px',
               height: '36px',
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, #4338ca, #6366f1)',
+              background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -244,7 +245,7 @@ export default function AdminLayout() {
               <p style={{
                 fontSize: '13px',
                 fontWeight: 600,
-                color: '#ffffff',
+                color: '#0f172a',
                 margin: 0,
                 lineHeight: 1.3,
               }}>Admin SISKA</p>
@@ -256,7 +257,7 @@ export default function AdminLayout() {
               }}>admin@siska.ai</p>
             </div>
             {!sidebarCollapsed && (
-              <ChevronRight size={16} style={{ color: '#64748b', flexShrink: 0 }} />
+              <ChevronRight size={16} style={{ color: '#94a3b8', flexShrink: 0 }} />
             )}
           </div>
         </div>
@@ -269,8 +270,9 @@ export default function AdminLayout() {
         ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}
         style={{
-          background: '#0d1a2d',
-          borderRight: '1px solid rgba(56, 189, 248, 0.1)',
+          background: '#ffffff',
+          borderRight: '1px solid #e2e8f0',
+          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
         }}
       >
         {/* Brand / Logo */}
@@ -292,7 +294,7 @@ export default function AdminLayout() {
                 <h1 style={{
                   fontSize: '18px',
                   fontWeight: 700,
-                  color: '#ffffff',
+                  color: '#0f172a',
                   letterSpacing: '0.5px',
                   lineHeight: 1.2,
                   margin: 0,
@@ -336,15 +338,15 @@ export default function AdminLayout() {
                 padding: '12px 20px',
                 margin: isActive ? '4px 14px' : '2px 14px',
                 fontSize: '14px',
-                fontWeight: isActive ? 500 : 400,
-                color: isActive ? '#ffffff' : '#8494a7',
+                fontWeight: isActive ? 600 : 500,
+                color: isActive ? '#ffffff' : '#475569',
                 textDecoration: 'none',
-                borderRadius: isActive ? '12px' : '10px',
+                borderRadius: '12px',
                 background: isActive
                   ? 'linear-gradient(135deg, #2563eb, #1d4ed8)'
                   : 'transparent',
                 boxShadow: isActive
-                  ? '0 4px 15px rgba(37, 99, 235, 0.3)'
+                  ? '0 4px 12px rgba(37, 99, 235, 0.25)'
                   : 'none',
                 transition: 'all 0.2s ease',
                 position: 'relative',
@@ -359,7 +361,7 @@ export default function AdminLayout() {
         {/* User Footer */}
         <div style={{
           padding: '16px',
-          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+          borderTop: '1px solid #f1f5f9',
         }}>
           <div style={{
             display: 'flex',
@@ -370,13 +372,13 @@ export default function AdminLayout() {
             cursor: 'pointer',
             transition: 'background 0.2s ease',
           }}
-            className="sidebar-user-footer"
+            className="sidebar-user-footer hover:bg-slate-50"
           >
             <div style={{
               width: '36px',
               height: '36px',
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, #4338ca, #6366f1)',
+              background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -391,7 +393,7 @@ export default function AdminLayout() {
               <p style={{
                 fontSize: '13px',
                 fontWeight: 600,
-                color: '#ffffff',
+                color: '#0f172a',
                 margin: 0,
                 lineHeight: 1.3,
               }}>Admin SISKA</p>
@@ -402,7 +404,7 @@ export default function AdminLayout() {
                 lineHeight: 1.4,
               }}>admin@siska.ai</p>
             </div>
-            <ChevronRight size={16} style={{ color: '#64748b', flexShrink: 0 }} />
+            <ChevronRight size={16} style={{ color: '#94a3b8', flexShrink: 0 }} />
           </div>
         </div>
       </aside>
@@ -419,15 +421,16 @@ export default function AdminLayout() {
             className="sidebar-collapse-btn"
             title="Buka menu"
             style={{
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.06)',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
               borderRadius: '10px',
               padding: '8px',
               cursor: 'pointer',
-              color: '#8494a7',
+              color: '#475569',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
             }}
           >
             <Menu size={18} />
@@ -435,7 +438,7 @@ export default function AdminLayout() {
         </div>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto" style={{ background: '#0b1120' }}>
+        <main className="flex-1 overflow-auto" style={{ background: '#f8fafc' }}>
           <div style={{ padding: '24px 28px 28px 28px', width: '100%' }}>
             <Outlet />
           </div>

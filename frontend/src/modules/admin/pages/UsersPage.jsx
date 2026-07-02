@@ -140,10 +140,10 @@ export default function UsersPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#ffffff', margin: 0 }}>
+          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: 0 }}>
             Pengguna
           </h1>
-          <p style={{ fontSize: '14px', color: '#8494a7', margin: '4px 0 0 0' }}>
+          <p style={{ fontSize: '14px', color: '#64748b', margin: '4px 0 0 0' }}>
             Kelola seluruh pengguna sistem SISKA
           </p>
         </div>
@@ -156,21 +156,21 @@ export default function UsersPage() {
             gap: '8px',
             padding: '10px 18px',
             borderRadius: '10px',
-            background: '#3b82f6',
+            background: '#2563eb',
             color: '#ffffff',
-            fontWeight: 500,
+            fontWeight: 600,
             fontSize: '14px',
             border: 'none',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)',
+            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#2563eb';
+            e.currentTarget.style.background = '#1d4ed8';
             e.currentTarget.style.transform = 'translateY(-1px)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#3b82f6';
+            e.currentTarget.style.background = '#2563eb';
             e.currentTarget.style.transform = 'none';
           }}
         >
@@ -193,10 +193,10 @@ export default function UsersPage() {
             icon: Users,
             trend: '▲ 5 minggu ini',
             trendColor: '#10b981',
-            bgColor: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)',
-            borderColor: 'rgba(59, 130, 246, 0.15)',
-            iconColor: '#3b82f6',
-            iconBg: 'rgba(59, 130, 246, 0.15)'
+            bgColor: '#ffffff',
+            borderColor: '#e2e8f0',
+            iconColor: '#2563eb',
+            iconBg: 'rgba(37, 99, 235, 0.1)'
           },
           {
             key: 'active',
@@ -205,10 +205,10 @@ export default function UsersPage() {
             icon: UserCheck,
             trend: `${stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}% dari total`,
             trendColor: '#10b981',
-            bgColor: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)',
-            borderColor: 'rgba(16, 185, 129, 0.15)',
+            bgColor: '#ffffff',
+            borderColor: '#e2e8f0',
             iconColor: '#10b981',
-            iconBg: 'rgba(16, 185, 129, 0.15)'
+            iconBg: 'rgba(16, 185, 129, 0.1)'
           },
           {
             key: 'inactive',
@@ -216,11 +216,11 @@ export default function UsersPage() {
             value: stats.inactive,
             icon: UserX,
             trend: `${stats.total > 0 ? Math.round((stats.inactive / stats.total) * 100) : 0}% dari total`,
-            trendColor: '#f59e0b',
-            bgColor: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)',
-            borderColor: 'rgba(245, 158, 11, 0.15)',
-            iconColor: '#f59e0b',
-            iconBg: 'rgba(245, 158, 11, 0.15)'
+            trendColor: '#d97706',
+            bgColor: '#ffffff',
+            borderColor: '#e2e8f0',
+            iconColor: '#d97706',
+            iconBg: 'rgba(245, 158, 11, 0.1)'
           },
           {
             key: 'has_face',
@@ -228,20 +228,22 @@ export default function UsersPage() {
             value: stats.has_face,
             icon: ScanFace,
             trend: `${stats.total > 0 ? Math.round((stats.has_face / stats.total) * 100) : 0}% dari total`,
-            trendColor: '#a78bfa',
-            bgColor: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)',
-            borderColor: 'rgba(139, 92, 246, 0.15)',
-            iconColor: '#a78bfa',
-            iconBg: 'rgba(139, 92, 246, 0.15)'
+            trendColor: '#7c3aed',
+            bgColor: '#ffffff',
+            borderColor: '#e2e8f0',
+            iconColor: '#7c3aed',
+            iconBg: 'rgba(139, 92, 246, 0.1)'
           },
         ].map(({ label, value, icon: Icon, trend, trendColor, bgColor, borderColor, iconColor, iconBg }) => (
           <div
             key={label}
+            className="card-hover"
             style={{
               borderRadius: '16px',
                padding: '20px',
                background: bgColor,
                border: `1px solid ${borderColor}`,
+               boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
                display: 'flex',
                alignItems: 'center',
                gap: '16px',
@@ -263,12 +265,12 @@ export default function UsersPage() {
               <p style={{
                 fontSize: '32px',
                 fontWeight: 800,
-                color: '#ffffff',
+                color: '#0f172a',
                 margin: 0,
                 lineHeight: 1.1,
               }}>{loading ? '—' : value}</p>
-              <p style={{ fontSize: '13px', color: '#94a3b8', margin: '2px 0 0 0' }}>{label}</p>
-              <p style={{ fontSize: '11px', color: trendColor, margin: '4px 0 0 0', fontWeight: 500 }}>{trend}</p>
+              <p style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, margin: '2px 0 0 0' }}>{label}</p>
+              <p style={{ fontSize: '11px', color: trendColor, margin: '4px 0 0 0', fontWeight: 600 }}>{trend}</p>
             </div>
           </div>
         ))}
@@ -277,8 +279,9 @@ export default function UsersPage() {
       {/* Main Content Table Container */}
       <div className="animate-fade-up stagger-2" style={{
         borderRadius: '16px',
-        background: 'linear-gradient(180deg, #0d1a2d 0%, #091220 100%)',
-        border: '1px solid rgba(56, 189, 248, 0.08)',
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
         overflow: 'hidden',
       }}>
         {/* Search & Filter Header */}
@@ -289,7 +292,7 @@ export default function UsersPage() {
           flexWrap: 'wrap',
           gap: '12px',
           padding: '16px 20px',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+          borderBottom: '1px solid #f1f5f9',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             {/* Search Input */}
@@ -305,9 +308,9 @@ export default function UsersPage() {
                   width: '100%',
                   padding: '10px 14px 10px 40px',
                   borderRadius: '10px',
-                  background: 'rgba(15, 23, 42, 0.3)',
-                  border: '1px solid rgba(56, 189, 248, 0.08)',
-                  color: '#ffffff',
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  color: '#0f172a',
                   fontSize: '13px',
                   outline: 'none',
                 }}
@@ -323,9 +326,9 @@ export default function UsersPage() {
                   appearance: 'none',
                   padding: '10px 36px 10px 16px',
                   borderRadius: '10px',
-                  background: 'rgba(15, 23, 42, 0.3)',
-                  border: '1px solid rgba(56, 189, 248, 0.08)',
-                  color: '#ffffff',
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  color: '#0f172a',
                   fontSize: '13px',
                   outline: 'none',
                   cursor: 'pointer',
@@ -341,7 +344,7 @@ export default function UsersPage() {
           </div>
 
           {!loading && (
-            <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
+            <p style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, margin: 0 }}>
               Menampilkan {Math.min(limit, users.length)} dari {total} pengguna
             </p>
           )}
@@ -351,23 +354,23 @@ export default function UsersPage() {
         <div className="overflow-x-auto">
           <table className="w-full" style={{ borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#8494a7', textTransform: 'none' }}>Pengguna</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#8494a7', textTransform: 'none' }}>NIM</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#8494a7', textTransform: 'none' }}>Email</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#8494a7', textTransform: 'none' }}>Program Studi</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#8494a7', textTransform: 'none' }}>Status</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#8494a7', textTransform: 'none' }}>Wajah</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#8494a7', textTransform: 'none', textAlign: 'right' }}>Aksi</th>
+              <tr style={{ borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'none' }}>Pengguna</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'none' }}>NIM</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'none' }}>Email</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'none' }}>Program Studi</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'none' }}>Status</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'none' }}>Wajah</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'none', textAlign: 'right' }}>Aksi</th>
               </tr>
             </thead>
-            <tbody style={{ divideY: '1px solid rgba(255, 255, 255, 0.02)' }}>
+            <tbody style={{ divideY: '1px solid #f1f5f9' }}>
               {loading ? (
                 [...Array(5)].map((_, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.02)' }}>
+                  <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     {[...Array(7)].map((_, j) => (
                       <td key={j} style={{ padding: '16px 20px' }}>
-                        <div className="h-4 bg-white/[0.04] rounded animate-pulse" />
+                        <div className="h-4 bg-slate-100 rounded animate-pulse" />
                       </td>
                     ))}
                   </tr>
@@ -376,7 +379,7 @@ export default function UsersPage() {
                 <tr>
                   <td colSpan={7} style={{ padding: '64px 20px', textAlign: 'center' }}>
                     <div className="text-4xl mb-3">🐱</div>
-                    <p style={{ color: '#94a3b8', fontSize: '14px', fontWeight: 500, margin: 0 }}>
+                    <p style={{ color: '#475569', fontSize: '14px', fontWeight: 600, margin: 0 }}>
                       {search ? 'Tidak ada pengguna yang cocok' : 'Belum ada pengguna'}
                     </p>
                     <p style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', margin: 0 }}>
@@ -389,13 +392,13 @@ export default function UsersPage() {
                           marginTop: '16px',
                           padding: '8px 16px',
                           borderRadius: '10px',
-                          background: '#3b82f6',
+                          background: '#2563eb',
                           color: '#ffffff',
                           fontSize: '13px',
-                          fontWeight: 500,
+                          fontWeight: 600,
                           border: 'none',
                           cursor: 'pointer',
-                          boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)',
+                          boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
                         }}
                       >
                         <Plus size={14} style={{ marginRight: '6px', display: 'inline-block', verticalAlign: 'middle' }} />
@@ -409,10 +412,10 @@ export default function UsersPage() {
                   <tr
                     key={user.id}
                     style={{
-                      borderBottom: '1px solid rgba(255, 255, 255, 0.02)',
+                      borderBottom: '1px solid #f1f5f9',
                       transition: 'background 0.2s',
                     }}
-                    className="hover:bg-white/[0.02]"
+                    className="hover:bg-slate-50"
                   >
                     {/* Pengguna (Avatar + Nama) */}
                     <td style={{ padding: '16px 20px' }}>
@@ -426,7 +429,7 @@ export default function UsersPage() {
                               height: '36px',
                               borderRadius: '50%',
                               objectFit: 'cover',
-                              background: 'rgba(255, 255, 255, 0.05)',
+                              background: '#f1f5f9',
                             }}
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
@@ -446,13 +449,13 @@ export default function UsersPage() {
                               fontSize: '13px',
                               fontWeight: 'bold',
                               color: '#ffffff',
-                              background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                              background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
                             }}
                           >
                             {user.full_name?.[0]?.toUpperCase() || '?'}
                           </div>
                         </div>
-                        <span style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff' }}>
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
                           {user.full_name}
                         </span>
                       </div>
@@ -460,21 +463,21 @@ export default function UsersPage() {
 
                     {/* NIM */}
                     <td style={{ padding: '16px 20px' }}>
-                      <span style={{ fontSize: '14px', color: '#cbd5e1', fontFamily: 'monospace' }}>
+                      <span style={{ fontSize: '14px', color: '#475569', fontFamily: 'monospace', fontWeight: 500 }}>
                         {user.employee_id}
                       </span>
                     </td>
 
                     {/* Email */}
                     <td style={{ padding: '16px 20px' }}>
-                      <span style={{ fontSize: '14px', color: '#8494a7' }}>
+                      <span style={{ fontSize: '14px', color: '#64748b' }}>
                         {user.email || '—'}
                       </span>
                     </td>
 
                     {/* Program Studi */}
                     <td style={{ padding: '16px 20px' }}>
-                      <span style={{ fontSize: '14px', color: '#cbd5e1' }}>
+                      <span style={{ fontSize: '14px', color: '#475569' }}>
                         {user.department || '—'}
                       </span>
                     </td>
@@ -487,8 +490,8 @@ export default function UsersPage() {
                           padding: '4px 10px',
                           borderRadius: '6px',
                           fontSize: '12px',
-                          fontWeight: 500,
-                          background: 'rgba(16, 185, 129, 0.15)',
+                          fontWeight: 600,
+                          background: 'rgba(16, 185, 129, 0.1)',
                           color: '#10b981',
                         }}>
                           Aktif
@@ -499,9 +502,9 @@ export default function UsersPage() {
                           padding: '4px 10px',
                           borderRadius: '6px',
                           fontSize: '12px',
-                          fontWeight: 500,
-                          background: 'rgba(245, 158, 11, 0.15)',
-                          color: '#fbbf24',
+                          fontWeight: 600,
+                          background: 'rgba(245, 158, 11, 0.1)',
+                          color: '#d97706',
                         }}>
                           Nonaktif
                         </span>
@@ -510,7 +513,7 @@ export default function UsersPage() {
 
                     {/* Wajah */}
                     <td style={{ padding: '16px 20px' }}>
-                      <span style={{ fontSize: '14px', color: '#cbd5e1' }}>
+                      <span style={{ fontSize: '14px', color: '#475569', fontWeight: 500 }}>
                         {user.face_count || 0} foto
                       </span>
                     </td>
@@ -529,21 +532,21 @@ export default function UsersPage() {
                             width: '32px',
                             height: '32px',
                             borderRadius: '8px',
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                            color: '#94a3b8',
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            color: '#64748b',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.border = '1px solid rgba(56, 189, 248, 0.3)';
+                            e.currentTarget.style.border = '1px solid rgba(37, 99, 235, 0.4)';
                             e.currentTarget.style.color = '#ffffff';
-                            e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)';
+                            e.currentTarget.style.background = '#2563eb';
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.08)';
-                            e.currentTarget.style.color = '#94a3b8';
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                            e.currentTarget.style.border = '1px solid #e2e8f0';
+                            e.currentTarget.style.color = '#64748b';
+                            e.currentTarget.style.background = '#f8fafc';
                           }}
                         >
                           <ScanFace size={16} />
@@ -560,21 +563,21 @@ export default function UsersPage() {
                             width: '32px',
                             height: '32px',
                             borderRadius: '8px',
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                            color: '#94a3b8',
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            color: '#64748b',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.border = '1px solid rgba(167, 139, 250, 0.3)';
+                            e.currentTarget.style.border = '1px solid rgba(124, 58, 237, 0.4)';
                             e.currentTarget.style.color = '#ffffff';
-                            e.currentTarget.style.background = 'rgba(167, 139, 250, 0.1)';
+                            e.currentTarget.style.background = '#7c3aed';
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.08)';
-                            e.currentTarget.style.color = '#94a3b8';
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                            e.currentTarget.style.border = '1px solid #e2e8f0';
+                            e.currentTarget.style.color = '#64748b';
+                            e.currentTarget.style.background = '#f8fafc';
                           }}
                         >
                           <Edit2 size={15} />
@@ -591,21 +594,21 @@ export default function UsersPage() {
                             width: '32px',
                             height: '32px',
                             borderRadius: '8px',
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                            color: '#94a3b8',
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            color: '#64748b',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.border = '1px solid rgba(248, 113, 113, 0.3)';
+                            e.currentTarget.style.border = '1px solid rgba(239, 68, 68, 0.4)';
                             e.currentTarget.style.color = '#ffffff';
-                            e.currentTarget.style.background = 'rgba(248, 113, 113, 0.1)';
+                            e.currentTarget.style.background = '#ef4444';
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.08)';
-                            e.currentTarget.style.color = '#94a3b8';
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                            e.currentTarget.style.border = '1px solid #e2e8f0';
+                            e.currentTarget.style.color = '#64748b';
+                            e.currentTarget.style.background = '#f8fafc';
                           }}
                         >
                           <Trash2 size={15} />
@@ -626,9 +629,9 @@ export default function UsersPage() {
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '16px 20px',
-            borderTop: '1px solid rgba(255, 255, 255, 0.04)',
+            borderTop: '1px solid #f1f5f9',
           }}>
-            <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
+            <p style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, margin: 0 }}>
               Halaman {page} dari {totalPages} ({total} total)
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -641,22 +644,23 @@ export default function UsersPage() {
                   gap: '4px',
                   padding: '6px 12px',
                   borderRadius: '8px',
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.06)',
-                  color: page <= 1 ? '#475569' : '#94a3b8',
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  color: page <= 1 ? '#cbd5e1' : '#475569',
                   fontSize: '13px',
+                  fontWeight: 500,
                   cursor: page <= 1 ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s',
                 }}
                 onMouseEnter={(e) => {
                   if (page > 1) {
-                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.15)';
-                    e.currentTarget.style.color = '#ffffff';
+                    e.currentTarget.style.border = '1px solid #2563eb';
+                    e.currentTarget.style.color = '#2563eb';
                   }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.06)';
-                  e.currentTarget.style.color = page <= 1 ? '#475569' : '#94a3b8';
+                  e.currentTarget.style.border = '1px solid #cbd5e1';
+                  e.currentTarget.style.color = page <= 1 ? '#cbd5e1' : '#475569';
                 }}
               >
                 <ChevronLeft size={16} />
@@ -678,24 +682,24 @@ export default function UsersPage() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontSize: '13px',
-                      fontWeight: 500,
+                      fontWeight: 600,
                       cursor: 'pointer',
                       transition: 'all 0.2s',
-                      border: 'none',
-                      background: isActive ? '#3b82f6' : 'transparent',
-                      color: isActive ? '#ffffff' : '#94a3b8',
-                      boxShadow: isActive ? '0 2px 8px rgba(59, 130, 246, 0.3)' : 'none',
+                      border: isActive ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                      background: isActive ? '#2563eb' : '#ffffff',
+                      color: isActive ? '#ffffff' : '#475569',
+                      boxShadow: isActive ? '0 2px 8px rgba(37, 99, 235, 0.3)' : 'none',
                     }}
                     onMouseEnter={(e) => {
                       if (!isActive) {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
-                        e.currentTarget.style.color = '#ffffff';
+                        e.currentTarget.style.background = '#f8fafc';
+                        e.currentTarget.style.color = '#0f172a';
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (!isActive) {
-                        e.currentTarget.style.background = 'transparent';
-                        e.currentTarget.style.color = '#94a3b8';
+                        e.currentTarget.style.background = '#ffffff';
+                        e.currentTarget.style.color = '#475569';
                       }
                     }}
                   >
@@ -713,22 +717,23 @@ export default function UsersPage() {
                   gap: '4px',
                   padding: '6px 12px',
                   borderRadius: '8px',
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.06)',
-                  color: page >= totalPages ? '#475569' : '#94a3b8',
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  color: page >= totalPages ? '#cbd5e1' : '#475569',
                   fontSize: '13px',
+                  fontWeight: 500,
                   cursor: page >= totalPages ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s',
                 }}
                 onMouseEnter={(e) => {
                   if (page < totalPages) {
-                    e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.15)';
-                    e.currentTarget.style.color = '#ffffff';
+                    e.currentTarget.style.border = '1px solid #2563eb';
+                    e.currentTarget.style.color = '#2563eb';
                   }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.border = '1px solid rgba(255, 255, 255, 0.06)';
-                  e.currentTarget.style.color = page >= totalPages ? '#475569' : '#94a3b8';
+                  e.currentTarget.style.border = '1px solid #cbd5e1';
+                  e.currentTarget.style.color = page >= totalPages ? '#cbd5e1' : '#475569';
                 }}
               >
                 Selanjutnya
@@ -742,20 +747,20 @@ export default function UsersPage() {
       {/* Create/Edit Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setModalOpen(false)} />
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setModalOpen(false)} />
           <div className="relative w-full max-w-md rounded-2xl shadow-2xl p-6 animate-fade-up"
             style={{
-              background: 'linear-gradient(180deg, #111d35, #0f1a30)',
-              border: '1px solid rgba(56, 189, 248, 0.1)',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
             }}
           >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-white">
+              <h3 className="text-lg font-bold text-slate-900">
                 {modalMode === 'create' ? 'Tambah Pengguna Baru' : 'Edit Pengguna'}
               </h3>
               <button
                 onClick={() => setModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -763,16 +768,16 @@ export default function UsersPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">NIP / Employee ID</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">NIP / Employee ID</label>
                 <input
                   type="text"
                   value={form.employee_id}
                   onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl text-white placeholder-slate-500 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 text-sm
+                             focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                   style={{
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(56, 189, 248, 0.1)',
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
                   }}
                   placeholder="Contoh: NIP001"
                   required
@@ -780,16 +785,16 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Nama Lengkap</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nama Lengkap</label>
                 <input
                   type="text"
                   value={form.full_name}
                   onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl text-white placeholder-slate-500 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 text-sm
+                             focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                   style={{
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(56, 189, 248, 0.1)',
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
                   }}
                   placeholder="Nama lengkap"
                   required
@@ -797,32 +802,32 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Email (opsional)</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email (opsional)</label>
                 <input
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl text-white placeholder-slate-500 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 text-sm
+                             focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                   style={{
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(56, 189, 248, 0.1)',
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
                   }}
                   placeholder="email@contoh.com"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Departemen (opsional)</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Departemen (opsional)</label>
                 <input
                   type="text"
                   value={form.department}
                   onChange={(e) => setForm({ ...form, department: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl text-white placeholder-slate-500 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 text-sm
+                             focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                   style={{
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(56, 189, 248, 0.1)',
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
                   }}
                   placeholder="IT, HRD, Finance, dll"
                 />
@@ -832,21 +837,21 @@ export default function UsersPage() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl text-slate-300 text-sm
-                             hover:bg-white/[0.04] transition-all cursor-pointer"
-                  style={{ border: '1px solid rgba(255, 255, 255, 0.08)' }}
+                  className="flex-1 py-2.5 rounded-xl text-slate-600 font-medium text-sm
+                             hover:bg-slate-100 transition-all cursor-pointer"
+                  style={{ border: '1px solid #cbd5e1' }}
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 py-2.5 text-white text-sm font-medium
+                  className="flex-1 py-2.5 text-white text-sm font-semibold
                              rounded-xl transition-all disabled:opacity-50 cursor-pointer
                              active:scale-[0.98] inline-flex items-center justify-center gap-2"
                   style={{
-                    background: 'linear-gradient(135deg, #0ea5e9, #38bdf8)',
-                    boxShadow: '0 4px 15px rgba(56, 189, 248, 0.25)',
+                    background: '#2563eb',
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
                   }}
                 >
                   {saving && <Loader2 size={14} className="animate-spin" />}
@@ -861,37 +866,37 @@ export default function UsersPage() {
       {/* Delete Confirmation */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
           <div className="relative w-full max-w-sm rounded-2xl shadow-2xl p-6 animate-fade-up"
             style={{
-              background: 'linear-gradient(180deg, #111d35, #0f1a30)',
-              border: '1px solid rgba(248, 113, 113, 0.15)',
+              background: '#ffffff',
+              border: '1px solid #fca5a5',
             }}
           >
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 rounded-xl bg-red-500/10">
-                <AlertCircle className="w-5 h-5 text-red-400" />
+              <div className="p-2.5 rounded-xl bg-red-100">
+                <AlertCircle className="w-5 h-5 text-red-600" />
               </div>
-              <h3 className="text-lg font-semibold text-white">Hapus Pengguna</h3>
+              <h3 className="text-lg font-bold text-slate-900">Hapus Pengguna</h3>
             </div>
-            <p className="text-sm text-slate-400 mb-6">
-              Yakin ingin menghapus <strong className="text-white">{deleteTarget.full_name}</strong>?
+            <p className="text-sm text-slate-600 mb-6">
+              Yakin ingin menghapus <strong className="text-slate-900 font-semibold">{deleteTarget.full_name}</strong>?
               Tindakan ini tidak dapat dibatalkan.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteTarget(null)}
-                className="flex-1 py-2.5 rounded-xl text-slate-300 text-sm
-                           hover:bg-white/[0.04] transition-all cursor-pointer"
-                style={{ border: '1px solid rgba(255, 255, 255, 0.08)' }}
+                className="flex-1 py-2.5 rounded-xl text-slate-600 font-medium text-sm
+                           hover:bg-slate-100 transition-all cursor-pointer"
+                style={{ border: '1px solid #cbd5e1' }}
               >
                 Batal
               </button>
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className="flex-1 py-2.5 bg-gradient-to-r from-red-600 to-rose-600
-                           hover:from-red-500 hover:to-rose-500 text-white text-sm font-medium
+                className="flex-1 py-2.5 bg-red-600
+                           hover:bg-red-700 text-white text-sm font-semibold
                            rounded-xl transition-all disabled:opacity-50 cursor-pointer
                            inline-flex items-center justify-center gap-2"
               >

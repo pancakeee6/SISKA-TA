@@ -67,6 +67,14 @@ export default function LoginPage() {
           border-color: rgba(56, 189, 248, 0.4) !important;
           box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.08);
         }
+        .login-input:-webkit-autofill,
+        .login-input:-webkit-autofill:hover, 
+        .login-input:-webkit-autofill:focus, 
+        .login-input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 30px #0c1426 inset !important;
+          -webkit-text-fill-color: #e2e8f0 !important;
+          transition: background-color 5000s ease-in-out 0s;
+        }
         .login-btn:hover:not(:disabled) {
           box-shadow: 0 6px 25px rgba(56, 189, 248, 0.4) !important;
           transform: translateY(-1px);
@@ -84,7 +92,7 @@ export default function LoginPage() {
         justifyContent: 'center',
         position: 'relative',
         overflow: 'hidden',
-        background: 'linear-gradient(160deg, #0b1628 0%, #0d1f3c 40%, #091428 100%)',
+        background: 'linear-gradient(160deg, rgba(11, 22, 40, 0.88) 0%, rgba(13, 31, 60, 0.92) 40%, rgba(9, 20, 40, 0.95) 100%), url("/kampus.jpg") center/cover no-repeat',
         padding: '40px 50px',
       }}>
         {/* Decorative glowing orbs */}
@@ -192,6 +200,19 @@ export default function LoginPage() {
           <div style={{
             animation: 'loginFadeUp 0.8s ease-out',
           }}>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              background: 'rgba(16, 185, 129, 0.15)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              marginBottom: '16px',
+            }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+              <span style={{ fontSize: '13px', fontWeight: 600, color: '#34d399' }}>Sistem Online</span>
+            </div>
             <h1 style={{
               fontSize: '42px',
               fontWeight: 800,
@@ -248,42 +269,33 @@ export default function LoginPage() {
         justifyContent: 'center',
         padding: '60px 50px',
         background: '#0c1426',
-        borderLeft: '1px solid rgba(56, 189, 248, 0.06)',
+        borderLeft: '1px solid rgba(255, 255, 255, 0.06)',
         position: 'relative',
-        overflow: 'hidden',
+        zIndex: 3,
       }}>
-        {/* Subtle top glow */}
-        <div style={{
-          position: 'absolute',
-          top: '-100px',
-          right: '-100px',
-          width: '250px',
-          height: '250px',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(56,189,248,0.04) 0%, transparent 70%)',
-        }} />
-
-        <div style={{
-          position: 'relative',
-          zIndex: 2,
-          animation: 'loginFadeUp 0.6s ease-out',
-        }}>
-          {/* Heading */}
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: 700,
-            color: '#ffffff',
-            margin: '0 0 6px 0',
-          }}>Selamat Datang Kembali!</h2>
-          <p style={{
-            fontSize: '14px',
-            color: '#64748b',
-            margin: '0 0 36px 0',
-          }}>Silakan masuk ke akun Anda</p>
+        <div style={{ maxWidth: '340px', margin: '0 auto', width: '100%' }}>
+          {/* Header */}
+          <div style={{ marginBottom: '36px' }}>
+            <h2 style={{
+              fontSize: '26px',
+              fontWeight: 700,
+              color: '#ffffff',
+              margin: '0 0 8px 0',
+            }}>
+              Masuk ke Admin
+            </h2>
+            <p style={{
+              fontSize: '14px',
+              color: '#64748b',
+              margin: 0,
+            }}>
+              Kelola data absensi dan manajemen wajah
+            </p>
+          </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit}>
-            {/* Email / Username */}
+            {/* Username */}
             <div style={{ marginBottom: '20px' }}>
               <label htmlFor="login-username" style={{
                 display: 'block',
@@ -292,7 +304,7 @@ export default function LoginPage() {
                 color: '#94a3b8',
                 marginBottom: '8px',
               }}>
-                Email
+                Username / Email
               </label>
               <input
                 id="login-username"
@@ -319,7 +331,7 @@ export default function LoginPage() {
             </div>
 
             {/* Password */}
-            <div style={{ marginBottom: '14px' }}>
+            <div style={{ marginBottom: '28px' }}>
               <label htmlFor="login-password" style={{
                 display: 'block',
                 fontSize: '13px',
@@ -375,28 +387,6 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-            </div>
-
-            {/* Forgot Password */}
-            <div style={{ textAlign: 'right', marginBottom: '28px' }}>
-              <button
-                type="button"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#6366f1',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  padding: 0,
-                  transition: 'color 0.15s',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = '#818cf8'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = '#6366f1'; }}
-                onClick={() => toast('Hubungi administrator untuk reset password', { icon: 'ℹ️' })}
-              >
-                Lupa password?
-              </button>
             </div>
 
             {/* Submit Button */}
