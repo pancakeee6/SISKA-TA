@@ -1,1 +1,80 @@
-Generic single-database configuration.
+# Dokumentasi Migrasi Database SISKA (Alembic)
+
+Direktori ini berisi konfigurasi dan riwayat migrasi skema basis data (*Database Schema Migrations*) untuk layanan backend **Sistem Kehadiran AI (SISKA)** menggunakan [Alembic](https://alembic.sqlalchemy.org/) dan [SQLAlchemy Async](https://docs.sqlalchemy.org/).
+
+---
+
+## 1. Arsitektur & Fitur Otomatisasi
+
+Sistem migrasi di SISKA telah dirancang agar bekerja secara asinkron (*async engine*) dan kompatibel penuh baik untuk lingkungan lokal maupun *Cloud Database* (seperti **Aiven for PostgreSQL**, Supabase, atau Neon).
+
+### Fitur Utama di `env.py`:
+- **Pembacaan Environment Dinamis:** Alembic tidak menggunakan URL statis di `alembic.ini`, melainkan secara otomatis membaca variabel `DATABASE_URL` dari file konfigurasi `backend/.env`.
+- **Normalisasi URI Cloud Otomatis:** Jika Anda menyalin Service URI dari penyedia cloud seperti Aiven yang berformat `postgres://` atau `postgresql://`, sistem migrasi akan otomatis mengonversinya menjadi driver asinkron `postgresql+asyncpg://`.
+- **Normalisasi Parameter SSL:** Parameter koneksi cloud seperti `?sslmode=require` atau `?ssl-mode=REQUIRED` otomatis disesuaikan menjadi parameter kompatibel `asyncpg` (`?ssl=require`).
+
+---
+
+## 2. Prasyarat & Persiapan Lingkungan
+
+Pastikan Anda berada di direktori root `backend/` dan telah mengaktifkan *virtual environment* Python:
+
+```powershell
+# Masuk ke direktori backend
+cd backend
+
+# Aktifkan virtual environment (Windows)
+.\venv\Scripts\activate
+
+# Pastikan file .env sudah dikonfigurasi berdasarkan .env.example
+```
+
+> **🔒 PENTING (Keamanan):**
+> **Jangan pernah** menyisipkan atau menuliskan *username*, *password*, host, ataupun Service URI database secara langsung (hardcode) ke dalam file `env.py`, `alembic.ini`, ataupun file di dalam folder `versions/`. Selalu gunakan variabel `DATABASE_URL` di dalam file `.env` (yang sudah dimasukkan ke `.gitignore`).
+
+---
+
+## 3. Daftar Perintah Migrasi Umum
+
+Berikut adalah perintah-perintah CLI Alembic yang paling sering digunakan dalam siklus pengembangan SISKA:
+
+### A. Menerapkan Migrasi ke Database (*Upgrade*)
+Untuk membuat tabel baru atau menyinkronkan database dengan skema terbaru (baik di lokal maupun di cloud Aiven):
+```powershell
+alembic upgrade head
+```
+
+### B. Membuat File Revisi Skema Baru (*Autogenerate*)
+Jika Anda menambahkan atau mengubah model SQLAlchemy di direktori `app/models/` (misal: menambahkan kolom baru pada tabel `User` atau `Attendance`):
+```powershell
+alembic revision --autogenerate -m "deskripsi_perubahan_skema"
+```
+*Catatan: Selalu periksa file revisi baru yang terbentuk di folder `versions/` sebelum menjalankan upgrade untuk memastikan tipe data yang terdeteksi sudah tepat.*
+
+### C. Membatalkan Perubahan Terakhir (*Downgrade*)
+Jika ingin mengembalikan skema database satu langkah ke belakang sebelum revisi terakhir:
+```powershell
+alembic downgrade -1
+```
+
+### D. Melihat Riwayat Migrasi (*History & Status*)
+Untuk melihat riwayat revisi dan status versi skema saat ini:
+```powershell
+# Melihat seluruh riwayat revisi
+alembic history --verbose
+
+# Melihat versi yang sedang aktif di database saat ini
+alembic current
+```
+
+---
+
+## 4. Struktur Direktori Migrasi
+
+```text
+migrations/
+├── versions/       # Folder berisi file script migrasi kronologis (misal: e8f2..._initial.py)
+├── env.py          # Script utama penghubung Alembic dengan model SQLAlchemy & .env
+├── script.py.mako  # Template generator untuk file revisi baru
+└── README          # Dokumentasi panduan migrasi ini
+```
