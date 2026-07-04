@@ -89,11 +89,11 @@ export default function LoginPage() {
         flex: '1',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         position: 'relative',
         overflow: 'hidden',
-        background: 'linear-gradient(160deg, rgba(11, 22, 40, 0.88) 0%, rgba(13, 31, 60, 0.92) 40%, rgba(9, 20, 40, 0.95) 100%), url("/kampus.jpg") center/cover no-repeat',
-        padding: '40px 50px',
+        background: 'linear-gradient(160deg, rgba(11, 22, 40, 0.4) 0%, rgba(13, 31, 60, 0.6) 40%, rgba(9, 20, 40, 0.75) 100%), url("/kampus2.jpg") center/cover no-repeat',
+        padding: '60px 100px',
       }}>
         {/* Decorative glowing orbs */}
         <div style={{
@@ -156,107 +156,64 @@ export default function LoginPage() {
           }} />
         ))}
 
-        {/* Horizontal layout: Mascot left + Text right */}
+        {/* Clean layout for Internal Admin */}
         <div style={{
           position: 'relative',
           zIndex: 2,
           display: 'flex',
-          alignItems: 'center',
-          gap: '40px',
-          maxWidth: '620px',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+          textAlign: 'left',
+          maxWidth: '540px',
+          animation: 'loginFadeUp 0.8s ease-out',
         }}>
-          {/* Mascot — large, on the left */}
           <div style={{
-            flexShrink: 0,
-            animation: 'loginFloat 5s ease-in-out infinite',
-            position: 'relative',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '6px 14px',
+            borderRadius: '9999px',
+            background: 'rgba(56, 189, 248, 0.1)',
+            border: '1px solid rgba(56, 189, 248, 0.2)',
+            marginBottom: '24px',
+            width: 'fit-content',
           }}>
-            {/* Glow behind mascot */}
-            <div style={{
-              position: 'absolute',
-              bottom: '-15px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '240px',
-              height: '40px',
-              borderRadius: '50%',
-              background: 'radial-gradient(ellipse, rgba(56,189,248,0.2) 0%, transparent 70%)',
-              filter: 'blur(8px)',
-            }} />
-            <img
-              src={siskaMascot}
-              alt="SISKA Mascot"
-              style={{
-                width: '300px',
-                height: 'auto',
-                filter: 'drop-shadow(0 15px 40px rgba(56,189,248,0.2))',
-                position: 'relative',
-                zIndex: 1,
-              }}
-            />
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#38bdf8', display: 'inline-block' }} />
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#38bdf8', letterSpacing: '0.5px' }}>Internal Admin Access</span>
           </div>
+          
+          <h1 style={{
+            fontSize: '48px',
+            fontWeight: 800,
+            color: '#ffffff',
+            letterSpacing: '2px',
+            margin: '0 0 12px 0',
+            textShadow: '0 4px 20px rgba(0,0,0,0.8)',
+            lineHeight: 1.1,
+          }}>
+            Portal Administrator
+          </h1>
+          
+          <p style={{
+            fontSize: '18px',
+            color: '#f8fafc',
+            margin: '0 0 32px 0',
+            letterSpacing: '0.5px',
+            fontWeight: 500,
+            lineHeight: 1.6,
+            textShadow: '0 2px 8px rgba(0,0,0,0.8)'
+          }}>
+            Sistem Informasi Manajemen Kehadiran Berbasis AI (SISKA). Terbatas hanya untuk staf akademik dan administrator.
+          </p>
 
-          {/* Brand Text — beside mascot */}
+          {/* Divider line */}
           <div style={{
-            animation: 'loginFadeUp 0.8s ease-out',
-          }}>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '6px 14px',
-              borderRadius: '9999px',
-              background: 'rgba(16, 185, 129, 0.15)',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
-              marginBottom: '16px',
-            }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#34d399' }}>Sistem Online</span>
-            </div>
-            <h1 style={{
-              fontSize: '42px',
-              fontWeight: 800,
-              color: '#ffffff',
-              letterSpacing: '4px',
-              margin: '0 0 6px 0',
-              textShadow: '0 2px 20px rgba(56,189,248,0.2)',
-            }}>SISKA</h1>
-            <p style={{
-              fontSize: '15px',
-              color: '#64748b',
-              margin: '0 0 28px 0',
-              letterSpacing: '1px',
-            }}>Sistem Kehadiran AI</p>
-
-            {/* Divider line */}
-            <div style={{
-              width: '50px',
-              height: '3px',
-              borderRadius: '2px',
-              background: 'linear-gradient(90deg, #2563eb, #38bdf8)',
-              marginBottom: '24px',
-            }} />
-
-            {/* Tagline */}
-            <p style={{
-              fontSize: '22px',
-              fontWeight: 600,
-              color: '#e2e8f0',
-              margin: 0,
-              lineHeight: 1.5,
-            }}>
-              Absensi cerdas,
-            </p>
-            <p style={{
-              fontSize: '22px',
-              fontWeight: 600,
-              color: '#e2e8f0',
-              margin: 0,
-              lineHeight: 1.5,
-            }}>
-              satu pandangan saja 😺
-            </p>
-          </div>
+            width: '60px',
+            height: '4px',
+            borderRadius: '2px',
+            background: 'linear-gradient(90deg, #38bdf8, #2563eb)',
+          }} />
         </div>
       </div>
 

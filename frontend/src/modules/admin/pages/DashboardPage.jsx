@@ -2,58 +2,16 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Users, UserCheck, Clock, TrendingUp, TrendingDown,
-  UserPlus, ClipboardList, ScanFace, Download,
-  ArrowRight, Bell,
+  UserPlus, Download, ArrowRight, Activity
 } from 'lucide-react'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts'
 import dashboardApi from '../services/dashboardApi'
 import userApi from '../services/userApi'
 import api from '@shared/services/api'
 import useWebSocket from '@shared/hooks/useWebSocket'
-import siskaMascot from '@/assets/siska-mascot.png'
+import { useAuthStore } from '@shared/store/authStore'
 
-// --- Greeting helper ---
-function getGreeting() {
-  const hour = new Date().getHours()
-  if (hour < 11) return 'Selamat pagi'
-  if (hour < 15) return 'Selamat siang'
-  if (hour < 18) return 'Selamat sore'
-  return 'Selamat malam'
-}
 
-// --- Live Clock Component ---
-function LiveClock() {
-  const [time, setTime] = useState(new Date())
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000)
-    return () => clearInterval(timer)
-  }, [])
-
-  const formatTime = (date) => {
-    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-  }
-
-  const formatDate = (date) => {
-    return date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  }
-
-  return (
-    <div style={{ textAlign: 'right' }}>
-      <p style={{
-        fontSize: '12px',
-        color: '#94a3b8',
-        marginBottom: '2px',
-      }}>{formatDate(time)}</p>
-      <p style={{
-        fontSize: '34px',
-        fontWeight: 700,
-        color: '#ffffff',
-        fontFamily: 'monospace',
-        letterSpacing: '2px',
-        lineHeight: 1,
-      }}>{formatTime(time)}</p>
-    </div>
-  )
-}
 
 // --- Donut Ring Component ---
 function AttendanceDonut({ percentage, size = 64, strokeWidth = 6 }) {
@@ -67,7 +25,7 @@ function AttendanceDonut({ percentage, size = 64, strokeWidth = 6 }) {
         <circle
           cx={size / 2} cy={size / 2} r={radius}
           fill="none"
-          stroke="rgba(56, 189, 248, 0.12)"
+          stroke="rgba(99, 102, 241, 0.12)"
           strokeWidth={strokeWidth}
         />
         <circle
@@ -82,8 +40,8 @@ function AttendanceDonut({ percentage, size = 64, strokeWidth = 6 }) {
         />
         <defs>
           <linearGradient id="donut-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#0ea5e9" />
-            <stop offset="100%" stopColor="#38bdf8" />
+            <stop offset="0%" stopColor="#818cf8" />
+            <stop offset="100%" stopColor="#4f46e5" />
           </linearGradient>
         </defs>
       </svg>
@@ -94,53 +52,11 @@ function AttendanceDonut({ percentage, size = 64, strokeWidth = 6 }) {
         alignItems: 'center',
         justifyContent: 'center',
       }}>
-        <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>{percentage}%</span>
+        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text)' }}>{percentage}%</span>
       </div>
     </div>
   )
 }
-
-// --- Star/Sparkle decorative component ---
-function StarDecoration() {
-  return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-      {/* Large glowing dots */}
-      {[
-        { top: '15%', left: '20%', size: 4, opacity: 0.6, delay: '0s' },
-        { top: '25%', left: '45%', size: 3, opacity: 0.4, delay: '0.5s' },
-        { top: '10%', left: '55%', size: 5, opacity: 0.5, delay: '1s' },
-        { top: '35%', left: '35%', size: 3, opacity: 0.3, delay: '1.5s' },
-        { top: '20%', left: '70%', size: 4, opacity: 0.4, delay: '0.8s' },
-        { top: '40%', left: '25%', size: 2, opacity: 0.5, delay: '2s' },
-        { top: '30%', left: '60%', size: 3, opacity: 0.6, delay: '0.3s' },
-        { top: '45%', left: '50%', size: 2, opacity: 0.3, delay: '1.2s' },
-      ].map((star, i) => (
-        <div
-          key={i}
-          style={{
-            position: 'absolute',
-            top: star.top,
-            left: star.left,
-            width: star.size,
-            height: star.size,
-            borderRadius: '50%',
-            background: '#ffffff',
-            opacity: star.opacity,
-            animation: `twinkle 3s ease-in-out ${star.delay} infinite`,
-          }}
-        />
-      ))}
-    </div>
-  )
-}
-
-// --- Quick Actions ---
-const quickActions = [
-  { label: 'Tambah\nPengguna', icon: UserPlus, to: '/admin/users', color: '#3b82f6', bgColor: 'rgba(59, 130, 246, 0.15)' },
-  { label: 'Riwayat\nAbsensi', icon: ClipboardList, to: '/admin/attendance', color: '#14b8a6', bgColor: 'rgba(20, 184, 166, 0.15)' },
-  { label: 'Kelola\nWajah', icon: ScanFace, to: '/admin/faces', color: '#a78bfa', bgColor: 'rgba(167, 139, 250, 0.15)' },
-  { label: 'Export\nLaporan', icon: Download, to: '/admin/reports', color: '#3b82f6', bgColor: 'rgba(59, 130, 246, 0.15)' },
-]
 
 // --- Stat Cards Config ---
 const statCards = [
@@ -148,28 +64,22 @@ const statCards = [
     key: 'total',
     label: 'Total Pengguna',
     icon: Users,
-    iconBg: 'rgba(59, 130, 246, 0.15)',
+    iconBg: 'rgba(59, 130, 246, 0.1)',
     iconColor: '#3b82f6',
-    borderColor: 'rgba(59, 130, 246, 0.15)',
-    bgColor: 'rgba(59, 130, 246, 0.06)',
   },
   {
     key: 'present',
     label: 'Hadir Hari Ini',
     icon: UserCheck,
-    iconBg: 'rgba(20, 184, 166, 0.15)',
-    iconColor: '#14b8a6',
-    borderColor: 'rgba(20, 184, 166, 0.15)',
-    bgColor: 'rgba(20, 184, 166, 0.06)',
+    iconBg: 'rgba(16, 185, 129, 0.1)',
+    iconColor: '#10b981',
   },
   {
     key: 'late',
     label: 'Terlambat Hari Ini',
     icon: Clock,
-    iconBg: 'rgba(251, 191, 36, 0.15)',
-    iconColor: '#fbbf24',
-    borderColor: 'rgba(251, 191, 36, 0.15)',
-    bgColor: 'rgba(251, 191, 36, 0.06)',
+    iconBg: 'rgba(245, 158, 11, 0.1)',
+    iconColor: '#f59e0b',
   },
 ]
 
@@ -178,18 +88,23 @@ const dayLabels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
 
 export default function DashboardPage() {
   const navigate = useNavigate()
+  const { logout } = useAuthStore()
+  
   const [stats, setStats] = useState({ total: 0, present: 0, late: 0, absent: 0 })
   const [weeklyStats, setWeeklyStats] = useState([])
+  const [monthlyStats, setMonthlyStats] = useState([])
+  const [chartRange, setChartRange] = useState('7_days')
   const [loading, setLoading] = useState(true)
   const [activities, setActivities] = useState([])
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      const [statsRes, weeklyRes, usersRes, eventsRes] = await Promise.allSettled([
+      const [statsRes, weeklyRes, monthlyRes, usersRes, eventsRes] = await Promise.allSettled([
         dashboardApi.getStats(),
         dashboardApi.getWeekly(),
-        userApi.list({ limit: 1 }),
-        api.get('/api/v1/attendance/logs', { params: { per_page: 6 } })
+        dashboardApi.getMonthly(),
+        userApi.list({ limit: 1, status: 'aktif' }),
+        api.get('/api/v1/dashboard/activities', { params: { limit: 5 } })
       ])
 
       if (statsRes.status === 'fulfilled') {
@@ -201,6 +116,9 @@ export default function DashboardPage() {
       }
       if (weeklyRes.status === 'fulfilled') {
         setWeeklyStats(weeklyRes.value.data)
+      }
+      if (monthlyRes.status === 'fulfilled') {
+        setMonthlyStats(monthlyRes.value.data)
       }
       if (eventsRes.status === 'fulfilled') {
         const rawLogs = eventsRes.value.data?.logs || eventsRes.value.data?.items || []
@@ -249,702 +167,379 @@ export default function DashboardPage() {
     ? Math.round(((stats.present + stats.late) / stats.total) * 100)
     : 0
 
-  // Prepare chart data — use weekly stats or fallback sample data
-  const chartData = weeklyStats.length > 0
-    ? weeklyStats.map((d, i) => ({
-        day: d.day || dayLabels[i] || `D${i + 1}`,
-        hadir: d.present || 0,
-        terlambat: d.late || 0,
-      }))
+  // Prepare chart data
+  const activeStats = chartRange === 'monthly' ? monthlyStats : weeklyStats
+  const chartData = activeStats.length > 0
+    ? activeStats.map((d, i) => {
+        if (chartRange === 'monthly') {
+          return {
+            day: d.day, // "Jan", "Feb", etc.
+            fullDay: d.full_name || d.day, // "Jan 2026"
+            hadir: d.present || 0,
+            terlambat: d.late || 0
+          }
+        }
+
+        const [enDay, datePart] = (d.day || '').split(' ')
+        const dayMap = { Mon: 'Senin', Tue: 'Selasa', Wed: 'Rabu', Thu: 'Kamis', Fri: 'Jumat', Sat: 'Sabtu', Sun: 'Minggu' }
+        const shortDayMap = { Mon: 'Sen', Tue: 'Sel', Wed: 'Rab', Thu: 'Kam', Fri: 'Jum', Sat: 'Sab', Sun: 'Min' }
+        
+        // Format date from "DD/MM" to "D MMM" (e.g., "04/07" -> "4 Jul")
+        const [dDate, mMonth] = (datePart || '').split('/')
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"]
+        const monthName = mMonth ? monthNames[parseInt(mMonth, 10) - 1] : ''
+        const formattedDate = dDate && mMonth ? `${parseInt(dDate, 10)} ${monthName}` : datePart
+        
+        let idDay = shortDayMap[enDay] || enDay || dayLabels[i] || `H-${i+1}`
+        if (!idDay) idDay = d.day
+        
+        return {
+          day: idDay,
+          fullDay: dayMap[enDay] ? `${dayMap[enDay]}, ${formattedDate}` : d.day,
+          hadir: d.present || 0,
+          terlambat: d.late || 0
+        }
+      })
     : dayLabels.map((day) => ({ day, hadir: 0, terlambat: 0 }))
 
-  const maxChartValue = Math.max(
-    ...chartData.map((d) => d.hadir + d.terlambat),
-    1
-  )
-
-  // Display activities (strictly real data from API/WS)
+  // Display activities (strictly real data from API/WS + demo mock)
   const displayActivities = activities.map((act) => {
     const isLate = act.late
     const isCheckIn = act.event_type === 'IN'
+    const isExport = act.event_type === 'EXPORT'
+    const isRegister = act.event_type === 'REGISTER'
+    const isDelete = act.event_type === 'DELETE'
+    
+    let actionText = 'Berhasil melakukan presensi pulang'
+    let statusText = 'Pulang'
+    let sColor = '#4f46e5'
+    let sBg = '#e0e7ff'
+    
+    if (isCheckIn) {
+      actionText = 'Berhasil melakukan presensi masuk'
+      statusText = isLate ? 'Terlambat' : 'Hadir'
+      sColor = isLate ? '#d97706' : '#059669'
+      sBg = isLate ? '#fef3c7' : '#d1fae5'
+    } else if (isExport) {
+      actionText = 'Laporan bulanan berhasil diunduh'
+      statusText = 'Export'
+      sColor = '#7c3aed'
+      sBg = '#ede9fe'
+    } else if (isRegister) {
+      actionText = 'Pengguna baru berhasil ditambahkan'
+      statusText = 'Pengguna'
+      sColor = '#2563eb'
+      sBg = '#dbeafe'
+    } else if (isDelete) {
+      actionText = 'Pengguna berhasil dihapus'
+      statusText = 'Hapus'
+      sColor = '#ef4444'
+      sBg = '#fee2e2'
+    }
+
     return {
       id: act.id,
       user_name: act.user_name,
-      action: isCheckIn ? 'melakukan check in' : 'melakukan check out',
+      action: actionText,
       time: act.timestamp
         ? new Date(act.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
         : '-',
-      status: isLate ? 'Terlambat' : (isCheckIn ? 'Hadir' : 'Keluar'),
-      statusColor: isLate ? '#d97706' : (isCheckIn ? '#059669' : '#475569'),
-      statusBg: isLate ? '#fef3c7' : (isCheckIn ? '#d1fae5' : '#f1f5f9'),
+      status: statusText,
+      statusColor: sColor,
+      statusBg: sBg,
+      avatarColor: sColor,
+      avatarBg: sBg
     }
   })
 
+  // --- Dynamic Trend Logic ---
+  const todayData = chartData[chartData.length - 1]
+  const yesterdayData = chartData[chartData.length - 2]
+  
+  let trendMessage = "Data kehadiran belum cukup untuk membandingkan tren."
+  let TrendIcon = Activity
+  let trendIconColor = "#6b7280"
+  let trendBg = "var(--color-bg-base)"
+  let trendTextColor = "var(--color-text-secondary)"
+
+  if (todayData && yesterdayData && yesterdayData.fullDay) {
+    if (todayData.hadir > yesterdayData.hadir) {
+      trendMessage = `Tingkat kehadiran hari ini (${todayData.hadir}) lebih tinggi dibandingkan kemarin (${yesterdayData.hadir}).`
+      TrendIcon = TrendingUp
+      trendIconColor = "#10b981"
+      trendBg = "rgba(16, 185, 129, 0.05)"
+      trendTextColor = "#065f46"
+    } else if (todayData.hadir < yesterdayData.hadir) {
+      trendMessage = `Tingkat kehadiran hari ini (${todayData.hadir}) lebih rendah dibandingkan kemarin (${yesterdayData.hadir}).`
+      TrendIcon = TrendingDown
+      trendIconColor = "#ef4444"
+      trendBg = "rgba(239, 68, 68, 0.05)"
+      trendTextColor = "#991b1b"
+    } else {
+      trendMessage = `Tingkat kehadiran hari ini sama persis dengan hari kemarin (${todayData.hadir} orang).`
+      TrendIcon = TrendingUp
+      trendIconColor = "#3b82f6"
+      trendBg = "rgba(59, 130, 246, 0.05)"
+      trendTextColor = "#1e40af"
+    }
+  }
+
+  // Mock trend data logic
+  const getTrendData = (key) => {
+    if (key === 'total') return { value: '↑ 2 dari minggu lalu', color: '#10b981' }
+    if (key === 'present') return { value: '↑ 5 dari kemarin', color: '#10b981' }
+    if (key === 'late') return { value: '↓ 1 dari kemarin', color: '#10b981' }
+    if (key === 'rate') return { value: '↑ 3% dari kemarin', color: '#10b981' }
+    return { value: '↑ 3% dari kemarin', color: '#10b981' }
+  }
+
   return (
-    <div style={{ width: '100%' }} className="animate-fade-in">
-      {/* Twinkle animation keyframes */}
-      <style>{`
-        @keyframes twinkle {
-          0%, 100% { opacity: 0.2; transform: scale(1); }
-          50% { opacity: 0.8; transform: scale(1.5); }
-        }
-        @keyframes mascotFloat {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-8px); }
-        }
-        .hero-content { padding-right: 200px; }
-        .hero-mascot { display: flex; }
-        .stats-grid { grid-template-columns: repeat(4, 1fr); }
-        .chart-grid { grid-template-columns: 1fr 1fr; }
-        .hero-box { padding: 32px 36px; min-height: 220px; }
-        .greeting-title { font-size: 30px; }
-        .greeting-sub { font-size: 14px; }
-        .clock-time { font-size: 34px; }
-        .clock-date { font-size: 12px; }
-        .qa-btn { width: 105px; height: 95px; gap: 10px; }
-        .qa-icon { width: 40px; height: 40px; }
-        .qa-label { font-size: 11px; }
-        .stat-number { font-size: 40px; }
-        .stat-label { font-size: 13px; }
-        .bell-btn { padding: 10px; }
-        .bell-btn svg { width: 18px; height: 18px; }
-        @media (max-width: 1024px) {
-          .hero-content { padding-right: 0 !important; }
-          .hero-mascot { display: none !important; }
-          .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .greeting-title { font-size: 24px !important; }
-          .clock-time { font-size: 26px !important; }
-        }
-        @media (max-width: 768px) {
-          .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .chart-grid { grid-template-columns: 1fr !important; }
-          .hero-box { padding: 20px 20px !important; min-height: 180px !important; }
-          .greeting-title { font-size: 20px !important; }
-          .greeting-sub { font-size: 12px !important; }
-          .clock-time { font-size: 20px !important; letter-spacing: 1px !important; }
-          .clock-date { font-size: 10px !important; }
-          .qa-btn { width: 78px !important; height: 72px !important; gap: 6px !important; border-radius: 12px !important; }
-          .qa-icon { width: 30px !important; height: 30px !important; border-radius: 8px !important; }
-          .qa-icon svg { width: 15px !important; height: 15px !important; }
-          .qa-label { font-size: 9px !important; }
-          .stat-number { font-size: 28px !important; }
-          .stat-label { font-size: 11px !important; }
-          .bell-btn { padding: 7px !important; border-radius: 8px !important; }
-          .bell-btn svg { width: 15px !important; height: 15px !important; }
-        }
-        @media (max-width: 480px) {
-          .stats-grid { grid-template-columns: 1fr !important; }
-          .hero-box { padding: 16px 16px !important; min-height: 160px !important; }
-          .greeting-title { font-size: 18px !important; }
-          .clock-time { font-size: 18px !important; }
-          .qa-btn { width: 68px !important; height: 64px !important; }
-          .qa-icon { width: 26px !important; height: 26px !important; }
-          .qa-label { font-size: 8px !important; }
-        }
-      `}</style>
-
-      {/* ========== 1. HERO HEADER ========== */}
-      <div
-        className="animate-fade-up hero-box"
-        style={{
-          position: 'relative',
-          borderRadius: '24px',
-          overflow: 'hidden',
-          padding: '32px 36px',
-          background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          boxShadow: '0 10px 30px -10px rgba(37, 99, 235, 0.3)',
-          minHeight: '220px',
-          marginBottom: '24px',
-        }}
-      >
-
-        {/* Star decorations */}
-        <StarDecoration />
-
-        {/* Background blobs */}
-        <div className="blob" style={{
-          width: '200px', height: '200px',
-          top: '-60px', right: '200px',
-          background: 'rgba(255, 255, 255, 0.15)',
-          animation: 'glowPulse 4s ease-in-out infinite',
-        }} />
-        <div className="blob" style={{
-          width: '150px', height: '150px',
-          bottom: '-40px', left: '30%',
-          background: 'rgba(255, 255, 255, 0.1)',
-          animation: 'glowPulse 4s ease-in-out 1.5s infinite',
-        }} />
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '32px' }} className="animate-fade-in dashboard-main">
+      
 
 
-        <div style={{
-          position: 'relative',
-          zIndex: 1,
-        }}>
-          {/* Top row: Greeting left, Clock+Bell right — always side by side */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            marginBottom: '20px',
-          }}>
-            {/* Left: Greeting */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 className="greeting-title" style={{
-              fontSize: '30px',
-              fontWeight: 700,
-              color: '#ffffff',
-              lineHeight: 1.2,
-              margin: 0,
-            }}>
-              {getGreeting()}, Admin! 👋
-            </h1>
-            <p className="greeting-sub" style={{
-              fontSize: '14px',
-              color: 'rgba(255, 255, 255, 0.85)',
-              marginTop: '6px',
-            }}>
-              SISKA siap membantu memantau kehadiran dengan AI
-            </p>
-            </div>
-
-            {/* Right: Clock + Bell — always stays at top right */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '12px',
-              flexShrink: 0,
-              zIndex: 2,
-            }}>
-              <LiveClock />
-              <button className="bell-btn" style={{
-                position: 'relative',
-                background: 'rgba(255, 255, 255, 0.15)',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
-                borderRadius: '12px',
-                padding: '10px',
-                cursor: 'pointer',
-                color: '#ffffff',
-                transition: 'all 0.2s',
-              }}>
-                <Bell size={18} />
-                <span style={{
-                  position: 'absolute',
-                  top: '-4px',
-                  right: '-4px',
-                  width: '18px',
-                  height: '18px',
-                  borderRadius: '50%',
-                  background: '#ef4444',
-                  color: '#ffffff',
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>3</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Actions — below greeting, respects mascot space on desktop */}
-          <div className="hero-content">
-            <div style={{
-              display: 'flex',
-              gap: '14px',
-              flexWrap: 'wrap',
-            }}>
-              {quickActions.map(({ label, icon: Icon, to, color, bgColor }) => (
-                <button
-                  key={to}
-                  onClick={() => navigate(to)}
-                  className="card-hover qa-btn"
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '10px',
-                    width: '105px',
-                    height: '95px',
-                    borderRadius: '16px',
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    border: '1px solid rgba(255, 255, 255, 1)',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  <div className="qa-icon" style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '12px',
-                    background: `${color}15`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    <Icon size={20} style={{ color }} />
-                  </div>
-                  <span className="qa-label" style={{
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    color: '#334155',
-                    textAlign: 'center',
-                    lineHeight: 1.3,
-                    whiteSpace: 'pre-line',
-                  }}>{label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Mascot - Half body, positioned center-right to avoid blocking clock */}
-        <div className="hero-mascot" style={{
-          position: 'absolute',
-          right: '250px',
-          top: '0',
-          bottom: '0',
-          width: '200px',
-          zIndex: 1,
-          pointerEvents: 'none',
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'center',
-          paddingTop: '8px',
-        }}>
-          <img
-            src={siskaMascot}
-            alt="SISKA Mascot"
-            style={{
-              width: '200px',
-              height: 'auto',
-              objectFit: 'contain',
-              filter: 'drop-shadow(0 8px 24px rgba(0, 0, 0, 0.3))',
-              animation: 'mascotFloat 5s ease-in-out infinite',
-            }}
-          />
-        </div>
-      </div>
-
-      {/* ========== 2. STATISTICS CARDS ========== */}
-      <div className="stats-grid animate-fade-up stagger-2" style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: '16px',
-        marginBottom: '24px',
-      }}>
-        {statCards.map(({ key, label, icon: Icon, iconBg, iconColor, borderColor }) => (
+      {/* 2. QUICK ACCESS CARDS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
+        {[
+          { label: 'Export Laporan', desc: 'Export data absensi dan laporan kehadiran', icon: Download, color: '#4f46e5', bg: '#e0e7ff', path: '/admin/attendance' },
+          { label: 'Tambah Pengguna', desc: 'Tambah pengguna baru ke sistem', icon: UserPlus, color: '#10b981', bg: '#d1fae5', path: '/admin/users' },
+        ].map((action, idx) => (
           <div
-            key={key}
-            className="card-hover"
+            key={idx}
+            onClick={() => navigate(action.path)}
+            className="hover-card"
             style={{
-              borderRadius: '16px',
-              padding: '20px',
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'var(--color-bg-surface)',
+              border: '1px solid var(--color-border)',
+              padding: '24px 32px',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
               transition: 'all 0.3s ease',
             }}
           >
-            {/* Top: icon + label */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-              <div style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '10px',
-                background: iconBg,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <Icon size={18} style={{ color: iconColor }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: action.bg, color: action.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <action.icon size={28} strokeWidth={2.5} />
               </div>
-              <p style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, margin: 0 }}>{label}</p>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text)', margin: 0, marginBottom: '4px' }}>{action.label}</h3>
+                <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', margin: 0 }}>{action.desc}</p>
+              </div>
             </div>
-
-            {/* Big number */}
-            {loading ? (
-              <div style={{
-                height: '44px', width: '80px',
-                background: '#f1f5f9',
-                borderRadius: '8px',
-              }} className="animate-pulse" />
-            ) : (
-              <p style={{
-                fontSize: '40px',
-                fontWeight: 800,
-                color: '#0f172a',
-                margin: 0,
-                lineHeight: 1,
-              }}>{stats[key]}</p>
-            )}
-
-            {/* Trend */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
-              {key === 'total' && (
-                <>
-                  <TrendingUp style={{ width: '12px', height: '12px', color: '#10b981' }} />
-                  <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 500 }}>
-                    {stats.total > 0 ? `${stats.total} dari minggu lalu` : '—'}
-                  </span>
-                </>
-              )}
-              {key === 'present' && (
-                <>
-                  <TrendingUp style={{ width: '12px', height: '12px', color: '#10b981' }} />
-                  <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 500 }}>
-                    {stats.present > 0 ? `${stats.present} dari kemarin` : '—'}
-                  </span>
-                </>
-              )}
-              {key === 'late' && (
-                <>
-                  <TrendingDown style={{ width: '12px', height: '12px', color: '#ef4444' }} />
-                  <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 500 }}>
-                    {stats.late > 0 ? `${stats.late} dari kemarin` : '—'}
-                  </span>
-                </>
-              )}
-            </div>
+            <ArrowRight color="var(--color-text-secondary)" size={24} />
           </div>
         ))}
+      </div>
 
-        {/* Attendance Rate Card */}
-        <div
-          className="card-hover"
-          style={{
-            borderRadius: '16px',
-            padding: '20px',
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
-            transition: 'all 0.3s ease',
-          }}
-        >
-          <p style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, margin: 0, marginBottom: '12px' }}>Tingkat Kehadiran</p>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            {loading ? (
-              <div style={{
-                height: '44px', width: '80px',
-                background: '#f1f5f9',
-                borderRadius: '8px',
-              }} className="animate-pulse" />
-            ) : (
-              <p style={{
-                fontSize: '40px',
-                fontWeight: 800,
-                color: '#0f172a',
-                margin: 0,
-                lineHeight: 1,
-              }}>{attendanceRate}%</p>
-            )}
-            <div style={{ flexShrink: 0 }}>
-              {loading ? (
-                <div style={{
-                  width: '64px', height: '64px',
-                  borderRadius: '50%',
-                  background: '#f1f5f9',
-                }} className="animate-pulse" />
-              ) : (
-                <AttendanceDonut percentage={attendanceRate} />
-              )}
+      {/* 3. KPI CARDS */}
+      <div>
+        <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text)', marginBottom: '16px' }}>Ringkasan Hari Ini</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
+          
+          {/* Loop for the first 3 simple stats */}
+          {statCards.map(({ key, label, icon: Icon, iconBg, iconColor }) => {
+            const trend = getTrendData(key)
+            return (
+              <div
+                key={key}
+                className="hover-card"
+                style={{
+                  background: 'var(--color-bg-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '20px',
+                  padding: '24px',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+                  display: 'flex',
+                  gap: '20px',
+                  alignItems: 'flex-start',
+                }}
+              >
+                <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: iconBg, color: iconColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon size={26} strokeWidth={2.5} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600, margin: 0, marginBottom: '6px' }}>{label}</p>
+                  {loading ? (
+                    <div style={{ height: '36px', width: '60px', background: 'var(--color-bg-base)', borderRadius: '6px', marginBottom: '8px' }} className="animate-pulse" />
+                  ) : (
+                    <p style={{ fontSize: '32px', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1, marginBottom: '8px' }}>
+                      {stats[key]}
+                    </p>
+                  )}
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: trend.color }}>
+                    {trend.value}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+          
+          {/* Attendance Donut Card */}
+          <div
+            className="hover-card"
+            style={{
+              background: 'var(--color-bg-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '20px',
+              padding: '24px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+              display: 'flex',
+              gap: '20px',
+              alignItems: 'flex-start',
+            }}
+          >
+            <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'rgba(99, 102, 241, 0.1)', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Activity size={26} strokeWidth={2.5} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600, margin: 0, marginBottom: '6px' }}>Tingkat Kehadiran</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <p style={{ fontSize: '32px', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1 }}>
+                  {attendanceRate}%
+                </p>
+                <AttendanceDonut percentage={attendanceRate} size={48} strokeWidth={4} />
+              </div>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#10b981' }}>
+                {getTrendData('rate').value}
+              </span>
             </div>
           </div>
-          {!loading && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
-              {attendanceRate >= 90 ? (
-                <>
-                  <TrendingUp style={{ width: '12px', height: '12px', color: '#10b981' }} />
-                  <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 500 }}>5% dari minggu lalu</span>
-                </>
-              ) : (
-                <span style={{ fontSize: '11px', color: '#d97706', fontWeight: 500 }}>Perlu perhatian</span>
-              )}
-            </div>
-          )}
+
         </div>
       </div>
 
-      {/* ========== 3. CHART + ACTIVITY ========== */}
-      <div className="chart-grid animate-fade-up stagger-3" style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '16px',
-      }}>
-
-        {/* Weekly Bar Chart */}
-        <div style={{
-          borderRadius: '16px',
-          padding: '24px',
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
-        }}>
-          <h2 style={{
-            fontSize: '16px',
-            fontWeight: 700,
-            color: '#0f172a',
-            margin: 0,
-            marginBottom: '24px',
-          }}>Absensi 7 Hari Terakhir</h2>
+      {/* 4. CHARTS & ACTIVITY */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '24px' }}>
+        
+        {/* Analytics Chart */}
+        <div style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '24px', padding: '32px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Statistik Kehadiran</h2>
+            <select 
+              value={chartRange}
+              onChange={(e) => setChartRange(e.target.value)}
+              style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text)', outline: 'none', cursor: 'pointer' }}
+            >
+              <option value="7_days">7 Hari Terakhir</option>
+              <option value="monthly">6 Bulan Terakhir</option>
+            </select>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '24px', marginBottom: '24px', paddingLeft: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }}></div>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)' }}>Hadir</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f59e0b' }}></div>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)' }}>Terlambat</span>
+            </div>
+          </div>
 
           {loading ? (
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', height: '200px' }}>
-              {[...Array(7)].map((_, i) => (
-                <div key={i} style={{
-                  flex: 1,
-                  height: `${30 + ((i * 17) % 60)}%`,
-                  background: '#f1f5f9',
-                  borderRadius: '6px',
-                }} className="animate-pulse" />
-              ))}
-            </div>
+             <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', height: '300px' }}>
+               {[...Array(7)].map((_, i) => (
+                 <div key={i} style={{ flex: 1, height: `${30 + ((i * 17) % 60)}%`, background: 'var(--color-bg-base)', borderRadius: '8px' }} className="animate-pulse" />
+               ))}
+             </div>
           ) : (
-            <div>
-              {/* Y-axis labels + bars */}
-              <div style={{ display: 'flex', gap: '8px', height: '220px' }}>
-                {/* Y-axis */}
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  paddingBottom: '24px',
-                  width: '30px',
-                  flexShrink: 0,
-                }}>
-                  {[30, 20, 10, 0].map((val) => (
-                    <span key={val} style={{
-                      fontSize: '11px',
-                      color: '#64748b',
-                      textAlign: 'right',
-                    }}>{val}</span>
-                  ))}
-                </div>
-
-                {/* Bars */}
-                <div style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                  gap: '8px',
-                  paddingBottom: '24px',
-                  position: 'relative',
-                }}>
-                  {/* Grid lines */}
-                  {[0, 1, 2, 3].map((i) => (
-                    <div key={i} style={{
-                      position: 'absolute',
-                      left: 0,
-                      right: 0,
-                      bottom: `${24 + (i * (196 / 3))}px`,
-                      height: '1px',
-                      background: '#f1f5f9',
-                    }} />
-                  ))}
-
-                  {chartData.map((d, i) => {
-                    const hadirHeight = maxChartValue > 0 ? (d.hadir / 30) * 196 : 0
-                    const terlambatHeight = maxChartValue > 0 ? (d.terlambat / 30) * 196 : 0
-
-                    return (
-                      <div key={i} style={{
-                        flex: 1,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '0',
-                        height: '100%',
-                        justifyContent: 'flex-end',
-                        position: 'relative',
-                      }}>
-                        {/* Bar group */}
-                        <div style={{
-                          display: 'flex',
-                          gap: '3px',
-                          alignItems: 'flex-end',
-                          width: '100%',
-                          justifyContent: 'center',
-                        }}>
-                          {/* Hadir bar */}
-                          <div style={{
-                            width: '14px',
-                            height: `${Math.max(hadirHeight, 4)}px`,
-                            borderRadius: '4px 4px 2px 2px',
-                            background: 'linear-gradient(180deg, #3b82f6, #2563eb)',
-                            transition: 'height 0.7s ease',
-                          }} />
-                          {/* Terlambat bar */}
-                          <div style={{
-                            width: '14px',
-                            height: `${Math.max(terlambatHeight, 4)}px`,
-                            borderRadius: '4px 4px 2px 2px',
-                            background: 'linear-gradient(180deg, #f59e0b, #d97706)',
-                            transition: 'height 0.7s ease',
-                          }} />
-                        </div>
-                        {/* Day label */}
-                        <span style={{
-                          fontSize: '11px',
-                          color: '#64748b',
-                          fontWeight: 500,
-                          marginTop: '8px',
-                          position: 'absolute',
-                          bottom: '-20px',
-                        }}>{d.day}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Legend */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '24px',
-                marginTop: '20px',
-                paddingTop: '12px',
-                borderTop: '1px solid #f1f5f9',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#2563eb' }} />
-                  <span style={{ fontSize: '12px', color: '#475569', fontWeight: 500 }}>Hadir</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#d97706' }} />
-                  <span style={{ fontSize: '12px', color: '#475569', fontWeight: 500 }}>Terlambat</span>
-                </div>
-              </div>
+            <div style={{ height: '300px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 10, right: 30, left: -20, bottom: 20 }}>
+                  <defs>
+                    <linearGradient id="colorHadir" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorLate" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
+                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--color-text-secondary)', fontWeight: 500 }} dy={15} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--color-text-secondary)', fontWeight: 500 }} dx={-15} allowDecimals={false} />
+                  <RechartsTooltip
+                    contentStyle={{ borderRadius: '12px', border: '1px solid var(--color-border)', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', background: 'var(--color-bg-surface)', padding: '16px' }}
+                    labelStyle={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: '12px', fontSize: '14px' }}
+                  />
+                  <Area type="monotone" dataKey="hadir" name="Hadir" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorHadir)" dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6, fill: '#10b981', strokeWidth: 0 }} />
+                  <Area type="monotone" dataKey="terlambat" name="Terlambat" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorLate)" dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6, fill: '#f59e0b', strokeWidth: 0 }} />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           )}
+
+          <div style={{ marginTop: '24px', background: trendBg, borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <TrendIcon color={trendIconColor} size={20} />
+            <span style={{ fontSize: '13px', fontWeight: 600, color: trendTextColor }}>
+              {trendMessage}
+            </span>
+          </div>
         </div>
 
-        {/* Activity Feed */}
-        <div style={{
-          borderRadius: '16px',
-          padding: '24px',
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
-          display: 'flex',
-          flexDirection: 'column',
-        }}>
-          <h2 style={{
-            fontSize: '16px',
-            fontWeight: 700,
-            color: '#0f172a',
-            margin: 0,
-            marginBottom: '20px',
-          }}>Aktivitas Terbaru</h2>
-
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {/* Recent Activity Timeline */}
+        <div style={{ flex: '1', minWidth: '340px', background: 'var(--color-bg-surface)', borderRadius: '24px', padding: '32px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ marginBottom: '24px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>Aktivitas Terbaru</h2>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {displayActivities.length === 0 ? (
-              <div style={{
-                padding: '36px 20px',
-                textAlign: 'center',
-                color: '#64748b',
-                fontSize: '13px',
-                background: '#f8fafc',
-                borderRadius: '12px',
-                border: '1px dashed #cbd5e1',
-              }}>
-                Belum ada aktivitas absensi tercatat. Data akan muncul secara langsung (realtime) saat pengguna melakukan absensi.
-              </div>
+              <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '14px', padding: '40px 0' }}>Belum ada aktivitas.</div>
             ) : (
               displayActivities.map((act, i) => (
-                <div
-                  key={act.id || i}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '12px 14px',
-                    borderRadius: '12px',
-                    background: '#f8fafc',
-                    border: '1px solid #f1f5f9',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  {/* Avatar */}
+                <div key={act.id || i} style={{ display: 'flex', gap: '16px', position: 'relative', zIndex: 1, alignItems: 'center' }}>
+                  {/* Avatar Bubble */}
                   <div style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '50%',
-                    background: 'rgba(37, 99, 235, 0.1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#2563eb',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    flexShrink: 0,
+                    width: '40px', height: '40px', borderRadius: '50%', background: act.avatarBg,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: act.avatarColor, fontSize: '16px', fontWeight: 700, flexShrink: 0
                   }}>
                     {act.user_name?.[0]?.toUpperCase() || '?'}
                   </div>
-
-                  {/* Info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{
-                      fontSize: '13px',
-                      color: '#0f172a',
-                      fontWeight: 600,
-                      margin: 0,
-                      lineHeight: 1.3,
-                    }}>
-                      {act.user_name} <span style={{ color: '#64748b', fontWeight: 400 }}>{act.action}</span>
-                    </p>
-                    <p style={{
-                      fontSize: '11px',
-                      color: '#94a3b8',
-                      margin: 0,
-                      marginTop: '2px',
-                    }}>{act.time}</p>
+                  
+                  {/* Content */}
+                  <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0, gap: '12px' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--color-text)', margin: 0, marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {act.user_name}
+                      </p>
+                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: 0, lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {act.action}
+                      </p>
+                    </div>
+                    
+                    <div style={{ padding: '4px 12px', borderRadius: '6px', background: act.statusBg, color: act.statusColor, fontSize: '11px', fontWeight: 600 }}>
+                      {act.status}
+                    </div>
                   </div>
-
-                  {/* Status badge */}
-                  <div style={{
-                    padding: '4px 12px',
-                    borderRadius: '20px',
-                    background: act.statusBg,
-                    border: `1px solid ${act.statusColor}30`,
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    color: act.statusColor,
-                    flexShrink: 0,
-                  }}>{act.status}</div>
                 </div>
               ))
             )}
           </div>
-
-          {/* See all link */}
-          <button
-            onClick={() => navigate('/admin/attendance')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-end',
-              gap: '6px',
-              marginTop: '16px',
-              paddingTop: '12px',
-              borderTop: '1px solid #f1f5f9',
-              background: 'none',
-              border: 'none',
-              color: '#2563eb',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'color 0.2s',
-              width: '100%',
-            }}
-          >
-            Lihat semua aktivitas <ArrowRight size={14} />
-          </button>
+          
+          {/* Lihat Semua Button at the bottom, plain text */}
+          <div style={{ marginTop: 'auto', textAlign: 'center', paddingTop: '24px' }}>
+            <button
+              onClick={() => navigate('/admin/attendance')}
+              style={{ 
+                background: 'transparent', border: 'none', padding: '8px 16px', fontSize: '14px', 
+                fontWeight: 600, color: 'var(--color-primary)', cursor: 'pointer',
+                transition: 'color 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.color = 'var(--color-primary-dark)'}
+              onMouseOut={(e) => e.currentTarget.style.color = 'var(--color-primary)'}
+            >
+              Lihat Semua Aktivitas →
+            </button>
+          </div>
         </div>
+
       </div>
     </div>
   )

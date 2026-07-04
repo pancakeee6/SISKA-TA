@@ -9,6 +9,7 @@ from app.db.database import get_db
 from app.api.deps import get_current_admin
 from app.models.user import User
 from app.models.face import FaceData
+from app.models.activity_log import ActivityLog
 from app.schemas.user import UserCreate, UserUpdate, UserResponse, UserListResponse
 from app.services import ai_service
 
@@ -116,6 +117,21 @@ async def create_user(
         # Log warning but don't fail user creation
         logger.warning(f"ML API sync gagal untuk user '{user.full_name}': {e}")
 
+    # Log Activity
+    try:
+        activity = ActivityLog(
+            admin_id=_admin["id"],
+            action="REGISTER",
+            target_type="user",
+            target_id=user.id,
+            details={"employee_id": user.employee_id, "name": user.full_name}
+        )
+        db.add(activity)
+        await db.commit() # commit all changes including user
+    except Exception as e:
+        logger.warning(f"Failed to log activity: {e}")
+        await db.commit() # commit user even if activity log fails
+
     return UserResponse.model_validate(user)
 
 
@@ -179,7 +195,28 @@ async def delete_user(
         except Exception as e:
             logger.warning(f"ML API delete gagal untuk person_id={user.ml_person_id}: {e}")
 
+    # Explicitly delete local face data since soft-delete doesn't trigger cascade
+    from sqlalchemy import delete
+    from app.models.face import FaceData
+    await db.execute(delete(FaceData).where(FaceData.user_id == user_id))
+
     user.is_active = False
-    await db.flush()
+    # Append suffix to free up the employee_id for reuse
+    user.employee_id = f"{user.employee_id}-del-{str(user.id)[:8]}"
+    
+    # Log Activity
+    try:
+        activity = ActivityLog(
+            admin_id=_admin["id"],
+            action="DELETE",
+            target_type="user",
+            target_id=user.id,
+            details={"employee_id": user.employee_id, "name": user.full_name}
+        )
+        db.add(activity)
+    except Exception as e:
+        logger.warning(f"Failed to log delete activity: {e}")
+
+    await db.commit()
 
     return {"message": f"User '{user.full_name}' berhasil dihapus"}

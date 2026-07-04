@@ -5,10 +5,13 @@
 /* ===== SISKA DESIGN TOKENS — Dark Oceanic Blue Theme ===== */
 :root {
   /* Background layers — pure clean dark theme */
-  --color-bg-base: #000000;
-  --color-bg-surface: #09090b;
-  --color-bg-elevated: #030303;
-  --color-bg-card: #080808;
+  --color-bg-base: #0c263f;
+  --color-bg-surface: #213e58; /* Matched with sidebar */
+  --color-bg-elevated: #334155; 
+  --color-bg-card: #1e293b;
+  --color-sidebar: #213e58; /* Original blue for both modes */
+  --color-sidebar-text: #ffffff;
+  --color-sidebar-text-active: #ecf1f3; 
 
   /* Primary Brand — Sky Blue (Cat Identity) */
   --color-primary: #38bdf8;
@@ -37,13 +40,13 @@
   /* Text */
   --color-text: #f1f5f9;
   --color-text-secondary: #94a3b8;
-  --color-text-muted: #475569;
-  --color-text-dimmed: #334155;
+  --color-text-muted: #ffffff;
+  --color-text-dimmed: #f7fbff;
 
   /* Borders */
-  --color-border: rgba(56, 189, 248, 0.08);
-  --color-border-subtle: rgba(255, 255, 255, 0.06);
-  --color-border-hover: rgba(56, 189, 248, 0.15);
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-subtle: rgba(255, 255, 255, 0.05);
+  --color-border-hover: rgba(56, 189, 248, 0.25);
 
   /* Spacing */
   --radius: 0.75rem;
@@ -68,8 +71,11 @@
   /* Background layers — pure white & soft gray */
   --color-bg-base: #eef2ff; /* Indigo-50 for a livelier background */
   --color-bg-surface: #ffffff;
-  --color-bg-elevated: #ffffff; /* Pure white so cards pop out */
+  --color-bg-elevated: #ffffff;
   --color-bg-card: #ffffff;
+  --color-sidebar: #264b5d; /* Original blue for both modes */
+  --color-sidebar-text: #93c5fd;
+  --color-sidebar-text-active: #1e3a8a;
 
   /* Primary Brand — slightly darker blue for contrast */
   --color-primary: #0284c7;
@@ -310,10 +316,21 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 .sidebar-nav-item[aria-current="page"]:hover {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
-  color: #ffffff !important;
+  background: none !important;
 }
 
 .sidebar-user-footer:hover {
   background: rgba(255, 255, 255, 0.04);
+}
+
+
+/* Dashboard Redesign */
+[data-theme='light'] .dashboard-main {
+  background: linear-gradient(135deg, #f8fafc 0%, #eef4ff 100%);
+  border-radius: 32px;
+}
+.hover-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important;
+  border-color: var(--color-primary) !important;
 }

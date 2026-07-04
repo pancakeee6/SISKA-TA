@@ -14,3 +14,11 @@ class TokenResponse(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class AdminUpdate(BaseModel):
+    full_name: str | None = None
+    username: str | None = None
+    avatar: str | None = None
+    current_password: str | None = None
+    new_password: str | None = None

@@ -7,6 +7,9 @@ from app.db.database import get_db
 from app.api.deps import get_current_admin
 from app.models.attendance import AttendanceLog
 from app.models.user import User
+from app.models.activity_log import ActivityLog
+from app.models.admin import Admin
+from sqlalchemy.orm import selectinload
 from app.schemas.dashboard import DashboardStats
 
 router = APIRouter()
@@ -89,3 +92,113 @@ async def get_weekly_stats(
         })
 
     return weekly
+
+
+@router.get("/monthly")
+async def get_monthly_stats(
+    db: AsyncSession = Depends(get_db),
+    _admin=Depends(get_current_admin),
+):
+    """Get monthly attendance statistics (last 6 months)."""
+    today = datetime.now(timezone.utc).date()
+    
+    monthly = []
+    for i in range(5, -1, -1):
+        m = (today.month - i - 1) % 12 + 1
+        y = today.year + ((today.month - i - 1) // 12)
+        monthly.append({
+            "year": y,
+            "month": m,
+            "present": 0,
+            "late": 0,
+        })
+        
+    start_date = datetime(monthly[0]["year"], monthly[0]["month"], 1).date()
+    
+    query = select(
+        func.date(AttendanceLog.timestamp).label("date"),
+        AttendanceLog.late,
+        func.count(func.distinct(AttendanceLog.user_id)).label("count")
+    ).where(
+        func.date(AttendanceLog.timestamp) >= start_date,
+        AttendanceLog.event_type == "IN"
+    ).group_by(
+        func.date(AttendanceLog.timestamp),
+        AttendanceLog.late
+    )
+    
+    result = await db.execute(query)
+    rows = result.all()
+    
+    for row in rows:
+        r_date_str = str(row.date)
+        r_year = int(r_date_str[:4])
+        r_month = int(r_date_str[5:7])
+        
+        for m in monthly:
+            if m["year"] == r_year and m["month"] == r_month:
+                if row.late:
+                    m["late"] += row.count
+                else:
+                    m["present"] += row.count
+                    
+    # Format output
+    output = []
+    month_names = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"]
+    for m in monthly:
+        output.append({
+            "day": month_names[m["month"] - 1],
+            "full_name": f"{month_names[m['month'] - 1]} {m['year']}",
+            "present": m["present"],
+            "late": m["late"]
+        })
+        
+    return output
+
+
+@router.get("/activities")
+async def get_recent_activities(
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db),
+    _admin=Depends(get_current_admin),
+):
+    """Get unified recent activities (attendance + admin logs)"""
+    # 1. Get attendance logs
+    att_query = select(AttendanceLog).options(selectinload(AttendanceLog.user)).order_by(AttendanceLog.timestamp.desc()).limit(limit)
+    att_result = await db.execute(att_query)
+    attendance_logs = att_result.scalars().all()
+    
+    # 2. Get activity logs
+    act_query = select(ActivityLog).options(selectinload(ActivityLog.admin)).order_by(ActivityLog.created_at.desc()).limit(limit)
+    act_result = await db.execute(act_query)
+    activity_logs = act_result.scalars().all()
+    
+    # 3. Combine and map to common schema
+    unified = []
+    for log in attendance_logs:
+        unified.append({
+            "id": f"att-{log.id}",
+            "user_name": log.user.full_name if log.user else "Unknown",
+            "event_type": log.event_type, # "IN" or "OUT"
+            "timestamp": log.timestamp.isoformat() if log.timestamp else None,
+            "late": log.late,
+            "category": "ATTENDANCE"
+        })
+        
+    for log in activity_logs:
+        unified.append({
+            "id": f"act-{log.id}",
+            "user_name": log.admin.full_name if log.admin else "Administrator",
+            "event_type": log.action,  
+            "timestamp": log.created_at.isoformat() if log.created_at else None,
+            "late": False,
+            "category": "ADMIN"
+        })
+        
+    # Remove logs without timestamp just in case
+    unified = [u for u in unified if u["timestamp"] is not None]
+        
+    # Sort descending by timestamp
+    unified.sort(key=lambda x: x["timestamp"], reverse=True)
+    
+    return {"items": unified[:limit]}
