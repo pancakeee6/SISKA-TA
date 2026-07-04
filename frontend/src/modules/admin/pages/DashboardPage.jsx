@@ -454,7 +454,7 @@ export default function DashboardPage() {
               gap: '14px',
               flexWrap: 'wrap',
             }}>
-              {quickActions.map(({ label, icon: Icon, to, color, bgColor }) => (
+              {quickActions.map(({ label, icon: Icon, to, color }) => (
                 <button
                   key={to}
                   onClick={() => navigate(to)}
@@ -535,7 +535,7 @@ export default function DashboardPage() {
         gap: '16px',
         marginBottom: '24px',
       }}>
-        {statCards.map(({ key, label, icon: Icon, iconBg, iconColor, borderColor }) => (
+        {statCards.map(({ key, label, icon: Icon, iconBg, iconColor }) => (
           <div
             key={key}
             className="card-hover"
