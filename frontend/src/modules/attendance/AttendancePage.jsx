@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import Webcam from 'react-webcam'
 import { Camera, Maximize, Minimize, Moon, Sun, CheckCircle, XCircle, Clock, Wifi, WifiOff, RotateCcw } from 'lucide-react'
-import * as faceapi from 'face-api.js'
 import attendanceApi from './services/attendanceApi'
 import SiskaMascot from './SiskaMascot'
 import './AttendancePage.css'
@@ -134,6 +133,7 @@ async function speakCombinedGreeting(faces) {
   }
 
   const combinedText = (textId + " " + textEn).trim();
+  const ttsText = textId.trim() || combinedText;
   if (!combinedText) return "";
 
   const preset = localStorage.getItem('siska_greeting_style') || 'ava';
@@ -153,7 +153,7 @@ async function speakCombinedGreeting(faces) {
     const response = await fetch('/api/v1/tts/synthesize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: combinedText, voice: voice, rate: rateStr, pitch: pitchStr })
+      body: JSON.stringify({ text: ttsText, voice: voice, rate: rateStr, pitch: pitchStr })
     });
     
     if (response.ok) {
@@ -248,10 +248,14 @@ export default function AttendancePage() {
     return new Blob([array], { type: mime })
   }
 
-  // Load Face API Models
+  const faceapiRef = useRef(null)
+
+  // Load Face API Models secara dinamis (Lazy Load)
   useEffect(() => {
     const loadModels = async () => {
       try {
+        const faceapi = await import('face-api.js')
+        faceapiRef.current = faceapi
         await faceapi.nets.tinyFaceDetector.loadFromUri('/models')
         setIsModelLoaded(true)
       } catch (err) {
@@ -261,19 +265,24 @@ export default function AttendancePage() {
     loadModels()
   }, [])
 
-  // Real-time Face Tracking (Optimized: adaptive FPS, cached dimensions)
+  // Real-time Face Tracking (Optimized: adaptive FPS, cached dimensions, lazy faceapi)
   const cachedDimRef = useRef(null) // Cache matchDimensions result
   const detectorOptionsRef = useRef(null) // Reuse detector options object
 
   useEffect(() => {
     let isRunning = true
-    // Reuse detector options to avoid object allocation every frame
-    if (!detectorOptionsRef.current) {
-      detectorOptionsRef.current = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 })
-    }
 
     const trackFaces = async () => {
       while (isRunning) {
+        if (!faceapiRef.current) {
+          await new Promise(r => setTimeout(r, 200))
+          continue
+        }
+        const faceapi = faceapiRef.current
+        if (!detectorOptionsRef.current) {
+          // Optimasi STB ARM: resolusi input 160 memotong beban pemrosesan piksel hingga 50% dibanding 224
+          detectorOptionsRef.current = new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.4 })
+        }
         // Pause entirely when camera disabled, tab hidden, or no camera
         if (!isCameraEnabled || document.hidden || status === STATUS.NO_CAMERA) {
           const canvas = canvasRef.current
@@ -295,7 +304,7 @@ export default function AttendancePage() {
                if (faceNow) {
                  consecDetectedRef.current = (consecDetectedRef.current || 0) + 1;
                  consecLostRef.current = 0;
-                 if (consecDetectedRef.current >= 3 && !hasFaceRef.current) {
+                 if (consecDetectedRef.current >= 1 && !hasFaceRef.current) {
                    hasFaceRef.current = true;
                    setHasFace(true);
                  }
@@ -308,17 +317,17 @@ export default function AttendancePage() {
                  }
                }
                const canvas = canvasRef.current
-              if (canvas) {
-                const displaySize = { width: video.videoWidth, height: video.videoHeight }
-                // Only re-match dimensions when video size actually changes (avoids expensive DOM layout)
-                if (!cachedDimRef.current || cachedDimRef.current.w !== displaySize.width || cachedDimRef.current.h !== displaySize.height) {
-                  faceapi.matchDimensions(canvas, displaySize)
-                  cachedDimRef.current = { w: displaySize.width, h: displaySize.height }
-                }
-                const resizedDetections = faceapi.resizeResults(detections, displaySize)
-                
-                const ctx = canvas.getContext('2d')
-                ctx.clearRect(0, 0, canvas.width, canvas.height)
+               if (canvas) {
+                 const ctx = canvas.getContext('2d')
+                 ctx.clearRect(0, 0, canvas.width, canvas.height)
+                 if (faceNow) {
+                   const displaySize = { width: video.videoWidth, height: video.videoHeight }
+                   // Only re-match dimensions when video size actually changes (avoids expensive DOM layout)
+                   if (!cachedDimRef.current || cachedDimRef.current.w !== displaySize.width || cachedDimRef.current.h !== displaySize.height) {
+                     faceapi.matchDimensions(canvas, displaySize)
+                     cachedDimRef.current = { w: displaySize.width, h: displaySize.height }
+                   }
+                   const resizedDetections = faceapi.resizeResults(detections, displaySize)
                 
                 // Tentukan warna berdasarkan status
                 let color = 'rgba(99, 102, 241, 0.8)' // default indigo
@@ -406,12 +415,13 @@ export default function AttendancePage() {
                       ctx.fillText(label, labelX + padding, labelY + 17)
                   }
                 })
-              }
-            } catch { /* Abaikan error deteksi wajah sementara */ }
+                 }
+               }
+             } catch { /* Abaikan error deteksi wajah sementara */ }
           }
         }
         // Adaptive FPS: faster when face is actively detected (for responsive tracking), slower when idle (to save CPU)
-        const delay = hasFaceRef.current ? 140 : 250
+        const delay = hasFaceRef.current ? 140 : 400
         await new Promise(r => setTimeout(r, delay))
       }
     }
@@ -484,6 +494,7 @@ export default function AttendancePage() {
   // Jika tidak ada wajah, proses scanning berhenti 100% (nol beban CPU untuk API call)
   useEffect(() => {
     if (cameraReady && status === STATUS.IDLE && !isCapturing && hasFace) {
+      captureAndRecognize()
       timerRef.current = setInterval(() => {
         captureAndRecognize()
       }, CAPTURE_INTERVAL)
