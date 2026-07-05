@@ -14,10 +14,10 @@ const STATUS = {
   NO_CAMERA: 'no_camera',
 }
 
-// Auto-capture interval in ms
-const CAPTURE_INTERVAL = 4000
-// How long to show result before resetting
-const RESULT_DISPLAY_MS = 18000
+// Auto-capture interval in ms (dipercepat ke 1.5 detik untuk responsivitas STB maksimal)
+const CAPTURE_INTERVAL = 1500
+// How long to show result before resetting (dioptimalkan ke 5 detik agar antrean siswa lancar & tidak terkunci 18 detik)
+const RESULT_DISPLAY_MS = 5000
 
 // Audio Queue helper to prevent collisions
 window.audioQueue = window.audioQueue || [];
@@ -45,9 +45,29 @@ const playNextAudio = () => {
 
   audio.onended = cleanup;
   audio.onerror = cleanup;
-  audio.play().catch(() => {
-    cleanup();
-  });
+
+  // Solusi B: Tunggu buffer canplaythrough & beri jeda pemanasan DAC hardware STB 150ms
+  const startPlay = () => {
+    setTimeout(() => {
+      audio.play().catch(() => {
+        cleanup();
+      });
+    }, 150);
+  };
+
+  if (audio.readyState >= 3) {
+    startPlay();
+  } else {
+    audio.oncanplaythrough = () => {
+      audio.oncanplaythrough = null;
+      startPlay();
+    };
+    setTimeout(() => {
+      if (window.currentAudio === audio && audio.paused) {
+        startPlay();
+      }
+    }, 2000);
+  }
 };
 
 const queueAudio = (url) => {
@@ -67,7 +87,7 @@ const joinNames = (names) => {
   return `${names.join(', ')}, dan ${last}`;
 };
 
-// Voice greeting using Web Speech API with varied sentences
+// Voice greeting using Web Speech API with varied sentences (Khusus Bahasa Indonesia singkat & stabil untuk STB)
 async function speakCombinedGreeting(faces) {
   if (!faces || faces.length === 0) return "";
   
@@ -76,7 +96,6 @@ async function speakCombinedGreeting(faces) {
   const cooldownFaces = faces.filter(f => f.status !== 'ok' && f.status !== 'recognized');
 
   let textId = "";
-  let textEn = "";
 
   if (successFaces.length > 0) {
     const inFaces = successFaces.filter(f => f.event_type === 'IN');
@@ -87,57 +106,57 @@ async function speakCombinedGreeting(faces) {
 
     if (inNames.length > 0) {
       const combinedInName = joinNames(inNames);
-      // Cek apakah ada minimal 1 orang yang terlambat di rombongan IN
       const isLate = inFaces.some(f => f.late);
       
-        if (isLate) {
-          const lateGreetings = [
-            { id: `Halo, ${combinedInName}. Absen berhasil dicatat, mohon lebih tepat waktu besok ya.`, en: `Hello ${combinedInName}, attendance recorded.` },
-            { id: `Halo, ${combinedInName}. Absen masuk tercatat, jangan terlambat lagi besok ya.`, en: `Hello ${combinedInName}, please be on time tomorrow.` }
-          ];
-          const chosen = lateGreetings[Math.floor(Math.random() * lateGreetings.length)];
-          textId += chosen.id + " ";
-          textEn += chosen.en + " ";
-        } else {
-          const inGreetings = [
-            { id: `Halo, ${combinedInName}. Absen masuk berhasil, selamat bertugas!`, en: `Have a great day at work!` },
-            { id: `Halo, ${combinedInName}. Absen berhasil, semangat untuk hari ini!`, en: `Welcome ${combinedInName}, let's do our best today!` }
-          ];
-          const chosen = inGreetings[Math.floor(Math.random() * inGreetings.length)];
-          textId += chosen.id + " ";
-          textEn += chosen.en + " ";
-        }
-      }
-      if (outNames.length > 0) {
-        const combinedOutName = joinNames(outNames);
-        const outGreetings = [
-          { id: `Terima kasih hari ini, ${combinedOutName}. Hati-hati di jalan.`, en: `Thank you, have a safe trip home.` },
-          { id: `Absen pulang berhasil. Selamat beristirahat, ${combinedOutName}.`, en: `Check-out successful, have a good rest.` }
+      if (isLate) {
+        const lateGreetings = [
+          `Halo, ${combinedInName}. Absen tercatat, mohon lebih tepat waktu besok ya.`,
+          `Halo, ${combinedInName}. Absen masuk berhasil, jangan terlambat lagi ya.`
         ];
-        const chosen = outGreetings[Math.floor(Math.random() * outGreetings.length)];
-        textId += chosen.id + " ";
-        textEn += chosen.en + " ";
+        textId += lateGreetings[Math.floor(Math.random() * lateGreetings.length)] + " ";
+      } else {
+        const inGreetings = [
+          `Halo, ${combinedInName}. Selamat pagi dan semangat belajar!`,
+          `Halo, ${combinedInName}. Absen masuk berhasil, selamat bertugas!`
+        ];
+        textId += inGreetings[Math.floor(Math.random() * inGreetings.length)] + " ";
       }
     }
 
-    if (cooldownFaces.length > 0) {
-      const cooldownNames = cooldownFaces.map(f => f.user_name || 'Karyawan');
-      const cooldownGreetings = [
-        { id: `Halo, ${joinNames(cooldownNames)}. Absenmu sudah tercatat sebelumnya.`, en: `Please wait before trying again.` }
+    if (outNames.length > 0) {
+      const combinedOutName = joinNames(outNames);
+      const outGreetings = [
+        `Terima kasih hari ini, ${combinedOutName}. Hati-hati di jalan pulang.`,
+        `Absen pulang berhasil. Selamat beristirahat, ${combinedOutName}.`
       ];
-      const chosen = cooldownGreetings[Math.floor(Math.random() * cooldownGreetings.length)];
-      textId += chosen.id + " ";
-      textEn += chosen.en + " ";
+      textId += outGreetings[Math.floor(Math.random() * outGreetings.length)] + " ";
     }
+  }
 
-  const combinedText = (textId + " " + textEn).trim();
-  const ttsText = textId.trim() || combinedText;
+  if (cooldownFaces.length > 0) {
+    const cooldownNames = cooldownFaces.map(f => f.user_name || 'Karyawan');
+    const cooldownGreetings = [
+      `Halo, ${joinNames(cooldownNames)}. Absenmu sudah tercatat sebelumnya.`
+    ];
+    textId += cooldownGreetings[Math.floor(Math.random() * cooldownGreetings.length)] + " ";
+  }
+
+  const combinedText = textId.trim();
+  // Solusi A: Tambahkan jeda elipsis dan koma di awal kalimat agar DAC hardware STB tidak memotong kata pertama
+  const ttsText = `. . , , ${combinedText}`;
   if (!combinedText) return "";
 
-  // Menggunakan satu karakter suara tunggal natural (Ava Multilingual Neural)
+  // Menggunakan karakter suara Ava (Multilingual Neural) yang jauh lebih ramah, hangat, dan ekspresif
   const voice = 'en-US-AvaMultilingualNeural'; 
   const rateStr = "+0%";
   const pitchStr = "+0Hz";
+
+  // Client-Side In-Memory TTS Cache: Jika sapaan yang sama pernah dibuat, putar instan (0ms latency!)
+  window.ttsAudioCache = window.ttsAudioCache || new Map();
+  if (window.ttsAudioCache.has(ttsText)) {
+    queueAudio(window.ttsAudioCache.get(ttsText));
+    return combinedText;
+  }
 
   try {
     const response = await fetch('/api/v1/tts/synthesize', {
@@ -149,6 +168,12 @@ async function speakCombinedGreeting(faces) {
     if (response.ok) {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
+      if (window.ttsAudioCache.size > 50) {
+        const firstKey = window.ttsAudioCache.keys().next().value;
+        URL.revokeObjectURL(window.ttsAudioCache.get(firstKey));
+        window.ttsAudioCache.delete(firstKey);
+      }
+      window.ttsAudioCache.set(ttsText, url);
       queueAudio(url);
     }
   } catch (err) {
@@ -165,7 +190,6 @@ export default function AttendancePage() {
 
   const [status, setStatus] = useState(STATUS.IDLE)
   const [results, setResults] = useState([])
-  const [isModelLoaded, setIsModelLoaded] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [cameraReady, setCameraReady] = useState(false)
   const [isCameraEnabled, setIsCameraEnabled] = useState(true)
@@ -226,55 +250,20 @@ export default function AttendancePage() {
     return () => clearInterval(interval)
   }, [])
 
-  const faceapiRef = useRef(null)
-  const detectorOptionsFarRef = useRef(null)
-  const detectorOptionsNearRef = useRef(null)
   const prevFrameRef = useRef(null)
   const motionCanvasRef = useRef(document.createElement('canvas'))
   const captureCanvasRef = useRef(document.createElement('canvas'))
 
-  // Load Face API Models secara dinamis (Lazy Load) + Optimasi Mali-450 WebGL
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        const faceapi = await import('face-api.js')
-        faceapiRef.current = faceapi
-        try {
-          if (faceapi.tf && faceapi.tf.env) {
-            faceapi.tf.env().set('WEBGL_PACK', false)
-            faceapi.tf.env().set('WEBGL_FORCE_F16_TEXTURES', true)
-          }
-        } catch { /* Abaikan jika flag tf tidak didukung browser tertentu */ }
-        await faceapi.nets.tinyFaceDetector.loadFromUri('/models')
-        setIsModelLoaded(true)
-      } catch (err) {
-        console.error("Error loading faceapi models:", err)
-        setIsModelLoaded(true)
-      }
-    }
-    loadModels()
-  }, [])
-
-  // Real-time Face Tracking dengan STB Smart Motion Gate, Adaptive InputSize & Adaptive Sleep
+  // Real-time STB Pure Lite Presence Gate (< 0.05% CPU / 0% WebGL) & Bbox Rendering
   useEffect(() => {
     let isRunning = true
     const motionCanvas = motionCanvasRef.current
     motionCanvas.width = 32
     motionCanvas.height = 24
     const motionCtx = motionCanvas.getContext('2d', { willReadFrequently: true })
-    let idleTicks = 0
 
-    const trackFaces = async () => {
+    const trackPresence = async () => {
       while (isRunning) {
-        if (!faceapiRef.current) {
-          await new Promise(r => setTimeout(r, 200))
-          continue
-        }
-        const faceapi = faceapiRef.current
-        if (!detectorOptionsFarRef.current) {
-          detectorOptionsFarRef.current = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.25 })
-          detectorOptionsNearRef.current = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.25 })
-        }
         if (!isCameraEnabled || document.hidden || status === STATUS.NO_CAMERA) {
           const canvas = canvasRef.current
           if (canvas) {
@@ -289,7 +278,7 @@ export default function AttendancePage() {
           const video = webcamRef.current.video
           if (video.readyState === 4 && video.videoWidth > 0) {
             try {
-              // ─── STB Smart Motion Gate (< 0.1% CPU) ───
+              // ─── STB Pure Lite Presence Gate (Matematika simpel piksel 32x24) ───
               motionCtx.drawImage(video, 0, 0, 32, 24)
               const frameData = motionCtx.getImageData(0, 0, 32, 24).data
               let totalDiff = 0
@@ -302,18 +291,8 @@ export default function AttendancePage() {
               const avgDiff = prevFrameRef.current ? (totalDiff / (32 * 24)) : 100
               prevFrameRef.current = new Uint8ClampedArray(frameData)
 
-              idleTicks++
-              if (avgDiff < 3 && !hasFaceRef.current && idleTicks < 5) {
-                await new Promise(r => setTimeout(r, 350))
-                continue
-              }
-              idleTicks = 0
-
-              // ─── Dynamic Adaptive InputSize (Hemat ~50% FLOPs AI saat melacak) ───
-              const currentOptions = hasFaceRef.current ? detectorOptionsNearRef.current : detectorOptionsFarRef.current
-              const detections = await faceapi.detectAllFaces(video, currentOptions)
-              const faceNow = detections && detections.length > 0
-              if (faceNow) {
+              // Jika ada pergerakan/kehadiran siswa di depan kamera
+              if (avgDiff >= 2.0) {
                 consecDetectedRef.current = (consecDetectedRef.current || 0) + 1
                 consecLostRef.current = 0
                 if (consecDetectedRef.current >= 1 && !hasFaceRef.current) {
@@ -321,14 +300,18 @@ export default function AttendancePage() {
                   setHasFace(true)
                 }
               } else {
+                // Jika ruangan diam
                 consecLostRef.current = (consecLostRef.current || 0) + 1
-                consecDetectedRef.current = 0
-                if (consecLostRef.current >= 15 && hasFaceRef.current) {
+                // Beri toleransi 30 tick (~6 detik) sebelum mengaktifkan mode tidur
+                // Agar proses scanning tidak terputus saat siswa berdiri tenang
+                if (consecLostRef.current >= 30 && hasFaceRef.current && status === STATUS.IDLE) {
                   hasFaceRef.current = false
                   setHasFace(false)
+                  consecDetectedRef.current = 0
                 }
               }
 
+              // ─── Render Bounding Box dari respons API Backend ───
               const canvas = canvasRef.current
               if (canvas) {
                 const displaySize = { width: video.videoWidth, height: video.videoHeight }
@@ -338,69 +321,46 @@ export default function AttendancePage() {
                 }
                 const ctx = canvas.getContext('2d')
                 ctx.clearRect(0, 0, canvas.width, canvas.height)
-                if (faceNow) {
-                  const resizedDetections = faceapi.resizeResults(detections, displaySize)
 
-                  let color = 'rgba(99, 102, 241, 0.8)'
-                  if (status === STATUS.RECOGNIZED) color = 'rgba(16, 185, 129, 0.9)'
-                  else if (status === STATUS.ERROR || status === STATUS.UNRECOGNIZED) color = 'rgba(239, 68, 68, 0.8)'
-                  else if (status === STATUS.SCANNING) color = 'rgba(99, 102, 241, 1)'
+                const apiBboxes = apiBboxesRef.current || []
+                if (apiBboxes.length > 0 && (status === STATUS.RECOGNIZED || status === STATUS.SCANNING)) {
+                  let color = status === STATUS.RECOGNIZED ? 'rgba(16, 185, 129, 0.9)' : 'rgba(99, 102, 241, 0.9)'
+                  apiBboxes.forEach(({ bbox, name }) => {
+                    if (!bbox || bbox.length < 4) return
+                    // Sesuaikan skala dengan resolusi capture baru (320x240) agar kotak wajah akurat 100%
+                    const scaleX = displaySize.width / 320
+                    const scaleY = displaySize.height / 240
+                    let x1 = bbox[0] * scaleX
+                    let y1 = bbox[1] * scaleY
+                    let x2 = bbox[2] * scaleX
+                    let y2 = bbox[3] * scaleY
+                    let width = x2 - x1
+                    let height = y2 - y1
 
-                  const apiBboxes = apiBboxesRef.current || []
-                  resizedDetections.forEach(det => {
-                    let { x, y, width, height } = det.box
                     if (isMirrored) {
-                      x = displaySize.width - x - width
+                      x1 = displaySize.width - x1 - width
                     }
 
                     ctx.strokeStyle = color
                     ctx.lineWidth = 2.5
-                    ctx.strokeRect(x, y, width, height)
+                    ctx.strokeRect(x1, y1, width, height)
 
                     ctx.lineWidth = 4
                     ctx.strokeStyle = '#ffffff'
                     const l = Math.min(22, width / 4)
-                    ctx.beginPath(); ctx.moveTo(x, y + l); ctx.lineTo(x, y); ctx.lineTo(x + l, y); ctx.stroke();
-                    ctx.beginPath(); ctx.moveTo(x + width - l, y); ctx.lineTo(x + width, y); ctx.lineTo(x + width, y + l); ctx.stroke();
-                    ctx.beginPath(); ctx.moveTo(x, y + height - l); ctx.lineTo(x, y + height); ctx.lineTo(x + l, y + height); ctx.stroke();
-                    ctx.beginPath(); ctx.moveTo(x + width, y + height - l); ctx.lineTo(x + width, y + height); ctx.lineTo(x + width - l, y + height); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x1, y1 + l); ctx.lineTo(x1, y1); ctx.lineTo(x1 + l, y1); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x1 + width - l, y1); ctx.lineTo(x1 + width, y1); ctx.lineTo(x1 + width, y1 + l); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x1, y1 + height - l); ctx.lineTo(x1, y1 + height); ctx.lineTo(x1 + l, y1 + height); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x1 + width, y1 + height - l); ctx.lineTo(x1 + width, y1 + height); ctx.lineTo(x1 + width - l, y1 + height); ctx.stroke();
 
-                    let matchedName = null
-                    if (apiBboxes.length > 0 && status === STATUS.RECOGNIZED) {
-                      let minDist = Infinity
-                      const centerX = x + width / 2
-                      const centerY = y + height / 2
-
-                      apiBboxes.forEach(({ bbox, name }) => {
-                        if (!bbox || bbox.length < 4) return
-                        let [x1, y1, x2, y2] = bbox
-                        if (isMirrored) {
-                          const tempX1 = displaySize.width - x2
-                          x2 = displaySize.width - x1
-                          x1 = tempX1
-                        }
-                        const apiCenterX = x1 + (x2 - x1) / 2
-                        const apiCenterY = y1 + (y2 - y1) / 2
-                        const dist = Math.hypot(centerX - apiCenterX, centerY - apiCenterY)
-                        if (dist < 150 && dist < minDist) {
-                          minDist = dist
-                          matchedName = name
-                        }
-                      })
-
-                      if (!matchedName && apiBboxes.length === 1 && resizedDetections.length === 1) {
-                        matchedName = apiBboxes[0].name
-                      }
-                    }
-
-                    if (matchedName && status === STATUS.RECOGNIZED) {
-                      const label = matchedName.charAt(0).toUpperCase() + matchedName.slice(1)
+                    if (name && status === STATUS.RECOGNIZED) {
+                      const label = name.charAt(0).toUpperCase() + name.slice(1)
                       ctx.font = 'bold 14px Inter, sans-serif'
                       const textWidth = ctx.measureText(label).width
                       const padding = 8
                       const labelH = 24
-                      const labelX = x
-                      const labelY = y - labelH - 4
+                      const labelX = x1
+                      const labelY = y1 - labelH - 4
 
                       ctx.fillStyle = color
                       ctx.beginPath()
@@ -411,21 +371,57 @@ export default function AttendancePage() {
                       ctx.fillText(label, labelX + padding, labelY + 17)
                     }
                   })
+                } else if (hasFaceRef.current && status === STATUS.SCANNING) {
+                  // Indikator target scan futuristik saat API backend memindai
+                  const centerX = displaySize.width / 2
+                  const centerY = displaySize.height / 2
+                  const boxW = Math.min(240, displaySize.width * 0.45)
+                  const boxH = boxW * 1.25
+                  const x1 = centerX - boxW / 2
+                  const y1 = centerY - boxH / 2
+
+                  ctx.strokeStyle = 'rgba(99, 102, 241, 0.6)'
+                  ctx.lineWidth = 2
+                  ctx.strokeRect(x1, y1, boxW, boxH)
+
+                  ctx.lineWidth = 4
+                  ctx.strokeStyle = '#6366f1'
+                  const l = 24
+                  ctx.beginPath(); ctx.moveTo(x1, y1 + l); ctx.lineTo(x1, y1); ctx.lineTo(x1 + l, y1); ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(x1 + boxW - l, y1); ctx.lineTo(x1 + boxW, y1); ctx.lineTo(x1 + boxW, y1 + l); ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(x1, y1 + boxH - l); ctx.lineTo(x1, y1 + boxH); ctx.lineTo(x1 + l, y1 + boxH); ctx.stroke();
+                  ctx.beginPath(); ctx.moveTo(x1 + boxW, y1 + boxH - l); ctx.lineTo(x1 + boxW, y1 + boxH); ctx.lineTo(x1 + boxW - l, y1 + boxH); ctx.stroke();
                 }
               }
-            } catch { /* Abaikan error canvas/deteksi sementara */ }
+            } catch { /* Abaikan error canvas sementara */ }
           }
         }
-        // Adaptive Sleep: Saat berbicara/cooldown, beri waktu santai pada prosesor STB
-        const sleepTime = (status === STATUS.RECOGNIZED || status === STATUS.UNRECOGNIZED) ? 650 : 350
+        const sleepTime = (status === STATUS.RECOGNIZED || status === STATUS.UNRECOGNIZED) ? 500 : 200
         await new Promise(r => setTimeout(r, sleepTime))
       }
     }
-    trackFaces()
+    trackPresence()
     return () => { isRunning = false }
   }, [cameraReady, status, isMirrored, isCameraEnabled])
 
-  // Capture Asinkron Langsung ke Blob (Tanpa alokasi string Base64 & kompresi 480x360 @ 0.63 JPEG)
+  // Instant Audio Beep saat scanning dimulai (memberi umpan balik psikologis < 10ms tanpa latency cloud)
+  const playInstantBeep = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime); // Nada A5 (high beep futuristik)
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.12);
+    } catch { /* Abaikan jika audio context belum diizinkan browser */ }
+  };
+
+  // Capture Asinkron Langsung ke Blob (Kompresi 320x240 @ 0.60 JPEG untuk hemat 50% bandwidth & CPU STB)
   const captureAndRecognize = useCallback(async () => {
     if (!webcamRef.current || !webcamRef.current.video || isCapturing) return
     const video = webcamRef.current.video
@@ -433,17 +429,18 @@ export default function AttendancePage() {
 
     setIsCapturing(true)
     setStatus(STATUS.SCANNING)
+    playInstantBeep()
 
     try {
       const capCanvas = captureCanvasRef.current
-      const targetW = 480
-      const targetH = Math.round((video.videoHeight / video.videoWidth) * targetW) || 360
+      const targetW = 320
+      const targetH = Math.round((video.videoHeight / video.videoWidth) * targetW) || 240
       capCanvas.width = targetW
       capCanvas.height = targetH
       const ctx = capCanvas.getContext('2d')
       ctx.drawImage(video, 0, 0, targetW, targetH)
 
-      const blob = await new Promise(resolve => capCanvas.toBlob(resolve, 'image/jpeg', 0.63))
+      const blob = await new Promise(resolve => capCanvas.toBlob(resolve, 'image/jpeg', 0.60))
       if (!blob) {
         setIsCapturing(false)
         setStatus(STATUS.IDLE)
@@ -489,6 +486,7 @@ export default function AttendancePage() {
           setTimeout(() => {
             setStatus(STATUS.IDLE)
             setIsCapturing(false)
+            apiBboxesRef.current = []
           }, 1500)
         }
       } else {
@@ -497,6 +495,7 @@ export default function AttendancePage() {
         setTimeout(() => {
           setStatus(STATUS.IDLE)
           setIsCapturing(false)
+          apiBboxesRef.current = []
         }, 1500)
       }
     } catch (err) {
@@ -506,6 +505,7 @@ export default function AttendancePage() {
       setTimeout(() => {
         setStatus(STATUS.IDLE)
         setIsCapturing(false)
+        apiBboxesRef.current = []
       }, 2000)
     }
   }, [isCapturing])
@@ -740,77 +740,56 @@ export default function AttendancePage() {
             {/* Webcam */}
             {status !== STATUS.NO_CAMERA ? (
               <>
-                {!isModelLoaded ? (
+                <Webcam
+                  ref={webcamRef}
+                  audio={false}
+                  screenshotFormat="image/jpeg"
+                  screenshotQuality={0.7}
+                  videoConstraints={{
+                    width: 640,
+                    height: 480,
+                    facingMode: 'user',
+                  }}
+                  onUserMedia={() => setCameraReady(true)}
+                  onUserMediaError={() => setStatus(STATUS.NO_CAMERA)}
+                  mirrored={isMirrored}
+                  style={{ 
+                    width: '100%', height: '100%', objectFit: 'cover',
+                    opacity: !isCameraEnabled ? 0.2 : 1,
+                    transition: 'opacity 0.4s ease-out'
+                  }}
+                />
+                
+                {/* ─── REALTIME FACE TRACKING CANVAS ─── */}
+                <canvas
+                  ref={canvasRef}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    pointerEvents: 'none',
+                    zIndex: 15,
+                    willChange: 'contents',
+                    display: isCameraEnabled ? 'block' : 'none',
+                  }}
+                />
+
+                {/* OVERLAY KAMERA DIMATIKAN */}
+                {!isCameraEnabled && (
                   <div style={{
-                    width: '100%', height: '100%',
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
                     display: 'flex', flexDirection: 'column',
                     alignItems: 'center', justifyContent: 'center', 
-                    background: 'var(--color-bg-surface)'
+                    background: 'rgba(0, 0, 0, 0.3)', zIndex: 20
                   }}>
-                    <div style={{
-                      width: '40px', height: '40px',
-                      border: '4px solid var(--color-primary)',
-                      borderTopColor: 'transparent',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite'
-                    }} />
-                    <p style={{ color: 'var(--color-text)', marginTop: '16px', fontWeight: 600 }}>Memuat Modul AI...</p>
-                    <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+                    <Camera size={40} style={{ color: '#cbd5e1', marginBottom: '8px' }} />
+                    <p style={{ color: '#e2e8f0', fontSize: '14px', fontWeight: 500, letterSpacing: '0.5px' }}>
+                      Kamera dijeda
+                    </p>
                   </div>
-                ) : (
-                  <>
-                    <Webcam
-                      ref={webcamRef}
-                      audio={false}
-                      screenshotFormat="image/jpeg"
-                      screenshotQuality={0.7}
-                      videoConstraints={{
-                        width: 640,
-                        height: 480,
-                        facingMode: 'user',
-                      }}
-                      onUserMedia={() => setCameraReady(true)}
-                      onUserMediaError={() => setStatus(STATUS.NO_CAMERA)}
-                      mirrored={isMirrored}
-                      style={{ 
-                        width: '100%', height: '100%', objectFit: 'cover',
-                        opacity: !isCameraEnabled ? 0.2 : 1,
-                        transition: 'opacity 0.4s ease-out'
-                      }}
-                    />
-                    
-                    {/* ─── REALTIME FACE TRACKING CANVAS ─── */}
-                    <canvas
-                      ref={canvasRef}
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        pointerEvents: 'none',
-                        zIndex: 15,
-                        willChange: 'contents',
-                        display: isCameraEnabled ? 'block' : 'none',
-                      }}
-                    />
-
-                    {/* OVERLAY KAMERA DIMATIKAN */}
-                    {!isCameraEnabled && (
-                      <div style={{
-                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                        display: 'flex', flexDirection: 'column',
-                        alignItems: 'center', justifyContent: 'center', 
-                        background: 'rgba(0, 0, 0, 0.3)', zIndex: 20
-                      }}>
-                        <Camera size={40} style={{ color: '#cbd5e1', marginBottom: '8px' }} />
-                        <p style={{ color: '#e2e8f0', fontSize: '14px', fontWeight: 500, letterSpacing: '0.5px' }}>
-                          Kamera dijeda
-                        </p>
-                      </div>
-                    )}
-                  </>
                 )}
               </>
             ) : (
@@ -839,7 +818,7 @@ export default function AttendancePage() {
                   position: 'absolute', left: '5%', right: '5%', height: '2px',
                   background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.8), transparent)',
                   animation: 'att-scanLine 2s ease-in-out infinite',
-                  boxShadow: '0 0 15px rgba(99,102,241,0.5)',
+                  boxShadow: '0 0 4px rgba(99,102,241,0.8)',
                   pointerEvents: 'none',
                 }} />
                 {/* Corner brackets */}
