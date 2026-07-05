@@ -16,6 +16,18 @@ logger = logging.getLogger(__name__)
 
 # Cached ML API admin token
 _ml_token: str | None = None
+_http_client: httpx.AsyncClient | None = None
+
+
+def get_http_client() -> httpx.AsyncClient:
+    """Get or create the singleton persistent HTTP client with connection pooling & 60s timeout."""
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(60.0, connect=20.0),
+            limits=httpx.Limits(max_keepalive_connections=10, max_connections=20, keepalive_expiry=300.0),
+        )
+    return _http_client
 
 
 async def _get_ml_token() -> str:
@@ -24,19 +36,19 @@ async def _get_ml_token() -> str:
     if _ml_token:
         return _ml_token
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        res = await client.post(
-            f"{settings.AI_API_URL}/admin/login",
-            json={
-                "username": settings.ML_ADMIN_USERNAME,
-                "password": settings.ML_ADMIN_PASSWORD,
-            },
-        )
-        res.raise_for_status()
-        data = res.json()
-        _ml_token = data.get("token") or data.get("access_token")
-        logger.info("[ML API] Login berhasil")
-        return _ml_token
+    client = get_http_client()
+    res = await client.post(
+        f"{settings.AI_API_URL}/admin/login",
+        json={
+            "username": settings.ML_ADMIN_USERNAME,
+            "password": settings.ML_ADMIN_PASSWORD,
+        },
+    )
+    res.raise_for_status()
+    data = res.json()
+    _ml_token = data.get("token") or data.get("access_token")
+    logger.info("[ML API] Login berhasil")
+    return _ml_token
 
 
 def _clear_ml_token():
@@ -48,9 +60,22 @@ def _clear_ml_token():
 async def _ml_request(method: str, path: str, **kwargs) -> httpx.Response:
     """Make an authenticated request to ML API with auto-retry on 401."""
     token = await _get_ml_token()
+    client = get_http_client()
 
-    async with httpx.AsyncClient(timeout=kwargs.pop("timeout", 15.0)) as client:
-        headers = kwargs.pop("headers", {})
+    headers = kwargs.pop("headers", {})
+    headers["Authorization"] = f"Bearer {token}"
+    kwargs.pop("timeout", None)  # Abaikan timeout kustom agar menggunakan default 60s dari singleton
+
+    res = await getattr(client, method)(
+        f"{settings.AI_API_URL}{path}",
+        headers=headers,
+        **kwargs,
+    )
+
+    # If 401/403, token might be expired — retry once
+    if res.status_code in (401, 403):
+        _clear_ml_token()
+        token = await _get_ml_token()
         headers["Authorization"] = f"Bearer {token}"
 
         res = await getattr(client, method)(
@@ -59,21 +84,8 @@ async def _ml_request(method: str, path: str, **kwargs) -> httpx.Response:
             **kwargs,
         )
 
-        # If 401/403, token might be expired — retry once
-        if res.status_code in (401, 403):
-            _clear_ml_token()
-            token = await _get_ml_token()
-            headers["Authorization"] = f"Bearer {token}"
-
-            async with httpx.AsyncClient(timeout=15.0) as retry_client:
-                res = await getattr(retry_client, method)(
-                    f"{settings.AI_API_URL}{path}",
-                    headers=headers,
-                    **kwargs,
-                )
-
-        res.raise_for_status()
-        return res
+    res.raise_for_status()
+    return res
 
 
 # ─── Face Recognition (Public — used by attendance kiosk) ────────────
@@ -87,18 +99,18 @@ async def recognize_face(image_file: UploadFile) -> dict:
     # saat membaca SpooledTemporaryFile secara async.
     content = await image_file.read()
     await image_file.seek(0)
-    
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        response = await client.post(
-            f"{settings.AI_API_URL}/v1/recognize_multi",
-            files={"file": (image_file.filename, content, image_file.content_type)},
-            headers={
-                "x-device-id": settings.DEVICE_ID,
-                "x-device-token": settings.DEVICE_TOKEN,
-            },
-        )
-        response.raise_for_status()
-        return response.json()
+
+    client = get_http_client()
+    response = await client.post(
+        f"{settings.AI_API_URL}/v1/recognize_multi",
+        files={"file": (image_file.filename, content, image_file.content_type)},
+        headers={
+            "x-device-id": settings.DEVICE_ID,
+            "x-device-token": settings.DEVICE_TOKEN,
+        },
+    )
+    response.raise_for_status()
+    return response.json()
 
 
 # ─── Person Management (Admin — synced with SISKA users) ─────────────
@@ -153,4 +165,3 @@ async def reset_attendance() -> dict:
     res = await _ml_request("post", "/admin/reset_attendance")
     logger.info("[ML API] Attendance reset triggered via admin")
     return res.json()
-

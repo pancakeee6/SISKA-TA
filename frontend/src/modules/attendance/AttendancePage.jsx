@@ -327,9 +327,9 @@ export default function AttendancePage() {
                   let color = status === STATUS.RECOGNIZED ? 'rgba(16, 185, 129, 0.9)' : 'rgba(99, 102, 241, 0.9)'
                   apiBboxes.forEach(({ bbox, name }) => {
                     if (!bbox || bbox.length < 4) return
-                    // Sesuaikan skala dengan resolusi capture baru (320x240) agar kotak wajah akurat 100%
-                    const scaleX = displaySize.width / 320
-                    const scaleY = displaySize.height / 240
+                    // Skala disesuaikan dengan resolusi asli video agar kotak wajah akurat 100%
+                    const scaleX = displaySize.width / (video.videoWidth || 640)
+                    const scaleY = displaySize.height / (video.videoHeight || 480)
                     let x1 = bbox[0] * scaleX
                     let y1 = bbox[1] * scaleY
                     let x2 = bbox[2] * scaleX
@@ -433,14 +433,14 @@ export default function AttendancePage() {
 
     try {
       const capCanvas = captureCanvasRef.current
-      const targetW = 320
-      const targetH = Math.round((video.videoHeight / video.videoWidth) * targetW) || 240
+      const targetW = video.videoWidth || 640
+      const targetH = video.videoHeight || 480
       capCanvas.width = targetW
       capCanvas.height = targetH
       const ctx = capCanvas.getContext('2d')
       ctx.drawImage(video, 0, 0, targetW, targetH)
 
-      const blob = await new Promise(resolve => capCanvas.toBlob(resolve, 'image/jpeg', 0.60))
+      const blob = await new Promise(resolve => capCanvas.toBlob(resolve, 'image/jpeg', 0.85))
       if (!blob) {
         setIsCapturing(false)
         setStatus(STATUS.IDLE)
