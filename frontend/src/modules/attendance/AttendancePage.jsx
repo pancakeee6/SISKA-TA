@@ -35,7 +35,10 @@ const playNextAudio = () => {
   window.currentAudio = audio;
 
   const cleanup = () => {
-    URL.revokeObjectURL(url);
+    // Jangan revoke URL jika ada di dalam cache ttsAudioCache agar bisa diputar ulang saat absen lagi/cooldown!
+    if (!window.ttsAudioCache || !Array.from(window.ttsAudioCache.values()).includes(url)) {
+      URL.revokeObjectURL(url);
+    }
     audio.onended = null;
     audio.onerror = null;
     audio.src = "";
