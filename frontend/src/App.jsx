@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense, useEffect, useState } from 'react'
+import { Toaster } from 'react-hot-toast'
+import authApi from '@modules/auth/services/authApi'
 import { useAuthStore } from '@shared/store/authStore'
 
 // Lazy load modules for code splitting
@@ -10,6 +12,7 @@ const DashboardPage = lazy(() => import('@modules/admin/pages/DashboardPage'))
 const UsersPage = lazy(() => import('@modules/admin/pages/UsersPage'))
 const AttendanceHistoryPage = lazy(() => import('@modules/admin/pages/AttendanceHistoryPage'))
 const FaceManagementPage = lazy(() => import('@modules/admin/pages/FaceManagementPage'))
+const SettingsPage = lazy(() => import('@modules/admin/pages/SettingsPage'))
 
 // Shared
 import ProtectedRoute from '@shared/components/ProtectedRoute'
@@ -29,17 +32,30 @@ export default function App() {
   const [initializing, setInitializing] = useState(!!refreshToken)
 
   useEffect(() => {
-    // If authenticated but no admin data, mock admin data (since ML API doesn't have /me)
-    if (useAuthStore.getState().isAuthenticated && !useAuthStore.getState().admin) {
-      setAdmin({ id: "1", username: "admin", full_name: "Administrator" })
-    }
-    setTimeout(() => setInitializing(false), 0)
-  }, [setAdmin])
+    const initAuth = async () => {
+      const state = useAuthStore.getState();
+      if (state.isAuthenticated && !state.admin) {
+        try {
+          const { data } = await authApi.getMe();
+          setAdmin(data);
+        } catch (error) {
+          console.error("Failed to fetch admin profile:", error);
+          if (error.response?.status === 401) {
+            useAuthStore.getState().logout();
+          }
+        }
+      }
+      setInitializing(false);
+    };
+    initAuth();
+  }, [setAdmin]);
 
   if (initializing) return <PageLoader />
 
   return (
-    <Suspense fallback={<PageLoader />}>
+    <>
+      <Toaster position="top-right" />
+      <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Public Routes */}
         <Route path="/attendance" element={<AttendancePage />} />
@@ -58,11 +74,13 @@ export default function App() {
           <Route path="users" element={<UsersPage />} />
           <Route path="attendance" element={<AttendanceHistoryPage />} />
           <Route path="faces" element={<FaceManagementPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
 
         {/* Default redirect */}
         <Route path="*" element={<Navigate to="/attendance" replace />} />
       </Routes>
     </Suspense>
+    </>
   )
 }

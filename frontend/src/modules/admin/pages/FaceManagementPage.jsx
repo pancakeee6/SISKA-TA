@@ -40,7 +40,7 @@ export default function FaceManagementPage() {
   const fetchUsers = async () => {
     setLoadingUsers(true)
     try {
-      const res = await userApi.list({ limit: 100 })
+      const res = await userApi.list({ limit: 100, status: 'aktif' })
       setUsers(res.data.items || res.data || [])
     } catch {
       toast.error('Gagal memuat data user')
@@ -180,10 +180,10 @@ export default function FaceManagementPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+          <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
             Manajemen Wajah
           </h1>
-          <p style={{ fontSize: '14px', color: '#64748b', margin: '4px 0 0 0' }}>
+          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
             Kelola data wajah pengguna untuk pengenalan AI
           </p>
         </div>
@@ -291,8 +291,8 @@ export default function FaceManagementPage() {
       <div className="grid grid-cols-1 xl:grid-cols-[300px_1fr_340px] gap-6 items-start">
         {/* Left Column: Daftar Pengguna */}
         <div style={{
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
+          background: 'var(--color-bg-surface)',
+          border: '1px solid var(--color-border)',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
           borderRadius: '16px',
           overflow: 'hidden',
@@ -301,8 +301,8 @@ export default function FaceManagementPage() {
           height: 'calc(100vh - 200px)',
           minHeight: '500px',
         }}>
-          <div style={{ padding: '16px', borderBottom: '1px solid #f1f5f9' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', margin: '0 0 12px 0' }}>
+          <div style={{ padding: '16px', borderBottom: '1px solid var(--color-border)' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text)', margin: '0 0 12px 0' }}>
               Daftar Pengguna
             </h3>
             <div style={{ position: 'relative' }}>
@@ -316,9 +316,9 @@ export default function FaceManagementPage() {
                   width: '100%',
                   padding: '8px 12px 8px 36px',
                   borderRadius: '8px',
-                  background: '#f8fafc',
-                  border: '1px solid #cbd5e1',
-                  color: '#0f172a',
+                  background: 'var(--color-bg-base)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text)',
                   fontSize: '13px',
                   outline: 'none',
                 }}
@@ -334,7 +334,7 @@ export default function FaceManagementPage() {
             ) : filteredUsers.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '32px' }}>
                 <User className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>
+                <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px', margin: 0 }}>
                   {searchUser ? 'Tidak ada user cocok' : 'Belum ada user'}
                 </p>
               </div>
@@ -352,14 +352,14 @@ export default function FaceManagementPage() {
                       gap: '12px',
                       padding: '12px 16px',
                       border: 'none',
-                      borderBottom: '1px solid #f1f5f9',
+                      borderBottom: '1px solid var(--color-border)',
                       background: isActive ? '#2563eb' : 'transparent',
                       textAlign: 'left',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
                     }}
                     onMouseEnter={(e) => {
-                      if (!isActive) e.currentTarget.style.background = '#f8fafc';
+                      if (!isActive) e.currentTarget.style.background = 'var(--color-bg-base)';
                     }}
                     onMouseLeave={(e) => {
                       if (!isActive) e.currentTarget.style.background = 'transparent';
@@ -374,7 +374,7 @@ export default function FaceManagementPage() {
                           height: '36px',
                           borderRadius: '50%',
                           objectFit: 'cover',
-                          background: '#f1f5f9',
+                          background: 'var(--color-border)',
                         }}
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
@@ -404,7 +404,7 @@ export default function FaceManagementPage() {
                       <p style={{
                         fontSize: '14px',
                         fontWeight: 600,
-                        color: isActive ? '#ffffff' : '#0f172a',
+                        color: isActive ? '#ffffff' : 'var(--color-text)',
                         margin: 0,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -414,7 +414,7 @@ export default function FaceManagementPage() {
                       </p>
                       <p style={{
                         fontSize: '12px',
-                        color: isActive ? '#bfdbfe' : '#64748b',
+                        color: isActive ? '#bfdbfe' : 'var(--color-text-secondary)',
                         margin: '2px 0 0 0',
                       }}>
                         {user.face_count || 0} foto
@@ -431,8 +431,8 @@ export default function FaceManagementPage() {
         {!selectedUser ? (
           /* Empty state spans both middle and right columns for clean look */
           <div className="xl:col-span-2" style={{
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
+            background: 'var(--color-bg-surface)',
+            border: '1px solid var(--color-border)',
             boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
             borderRadius: '16px',
             padding: '64px 24px',
@@ -442,8 +442,8 @@ export default function FaceManagementPage() {
               width: '80px',
               height: '80px',
               borderRadius: '20px',
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
+              background: 'var(--color-bg-base)',
+              border: '1px solid var(--color-border)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -452,10 +452,10 @@ export default function FaceManagementPage() {
             }}>
               🐱
             </div>
-            <h3 style={{ color: '#0f172a', fontSize: '18px', fontWeight: 700, margin: '0 0 8px 0' }}>
+            <h3 style={{ color: 'var(--color-text)', fontSize: '18px', fontWeight: 700, margin: '0 0 8px 0' }}>
               Belum Ada Pengguna Terpilih
             </h3>
-            <p style={{ color: '#64748b', fontSize: '14px', maxWidth: '360px', margin: '0 auto' }}>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', maxWidth: '360px', margin: '0 auto' }}>
               Silakan pilih salah satu pengguna di panel sebelah kiri untuk mengelola data foto wajah mereka.
             </p>
           </div>
@@ -463,8 +463,8 @@ export default function FaceManagementPage() {
           <>
             {/* Middle Column: Data Wajah */}
             <div style={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
+              background: 'var(--color-bg-surface)',
+              border: '1px solid var(--color-border)',
               boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
               borderRadius: '16px',
               padding: '24px',
@@ -475,7 +475,7 @@ export default function FaceManagementPage() {
               {/* Header Title with stats */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
                     Data Wajah - {selectedUser.full_name}
                   </h3>
                   <span style={{
@@ -515,7 +515,7 @@ export default function FaceManagementPage() {
                 }}
                 style={{
                   border: dragActive ? '2px dashed #2563eb' : '1px dashed #cbd5e1',
-                  background: dragActive ? '#eff6ff' : '#f8fafc',
+                  background: dragActive ? '#eff6ff' : 'var(--color-bg-base)',
                   borderRadius: '12px',
                   padding: '36px 20px',
                   textAlign: 'center',
@@ -529,10 +529,10 @@ export default function FaceManagementPage() {
                 }}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <span style={{ fontSize: '14px', color: '#0f172a', fontWeight: 600 }}>
+                <span style={{ fontSize: '14px', color: 'var(--color-text)', fontWeight: 600 }}>
                   Drag & drop foto di sini
                 </span>
-                <span style={{ fontSize: '12px', color: '#64748b' }}>atau</span>
+                <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>atau</span>
                 <button
                   type="button"
                   style={{
@@ -556,14 +556,14 @@ export default function FaceManagementPage() {
                 >
                   Pilih File
                 </button>
-                <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
                   JPG, PNG, WebP - Maks. 5MB
                 </span>
               </div>
 
               {/* Uploaded Portraits Grid */}
               <div>
-                <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', margin: '0 0 12px 0' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text)', margin: '0 0 12px 0' }}>
                   Foto Wajah Terdaftar ({faces.length})
                 </h4>
                 {loadingFaces ? (
@@ -574,11 +574,11 @@ export default function FaceManagementPage() {
                   <div style={{
                     padding: '36px',
                     textAlign: 'center',
-                    background: '#f8fafc',
+                    background: 'var(--color-bg-base)',
                     borderRadius: '12px',
-                    border: '1px solid #e2e8f0',
+                    border: '1px solid var(--color-border)',
                   }}>
-                    <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>
+                    <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px', margin: 0 }}>
                       Belum ada data foto wajah untuk pengguna ini.
                     </p>
                   </div>
@@ -596,8 +596,8 @@ export default function FaceManagementPage() {
                           aspectRatio: '3/4',
                           borderRadius: '10px',
                           overflow: 'hidden',
-                          background: '#f8fafc',
-                          border: '1px solid #e2e8f0',
+                          background: 'var(--color-bg-base)',
+                          border: '1px solid var(--color-border)',
                         }}
                         className="group"
                       >
@@ -669,15 +669,15 @@ export default function FaceManagementPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {/* Card 1: Tips Foto Wajah */}
               <div style={{
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
+                background: 'var(--color-bg-surface)',
+                border: '1px solid var(--color-border)',
                 boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
                 borderRadius: '16px',
                 padding: '24px',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
                   <span style={{ fontSize: '18px' }}>💡</span>
-                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', margin: 0 }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>
                     Tips Foto Wajah
                   </h3>
                 </div>
@@ -703,7 +703,7 @@ export default function FaceManagementPage() {
                       }}>
                         <Check size={11} style={{ color: '#10b981' }} />
                       </div>
-                      <span style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>{tip}</span>
+                      <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>{tip}</span>
                     </div>
                   ))}
                 </div>
@@ -711,18 +711,18 @@ export default function FaceManagementPage() {
 
               {/* Card 2: Progress */}
               <div style={{
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
+                background: 'var(--color-bg-surface)',
+                border: '1px solid var(--color-border)',
                 boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
                 borderRadius: '16px',
                 padding: '24px',
               }}>
-                <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', margin: '0 0 16px 0' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text)', margin: '0 0 16px 0' }}>
                   Progress
                 </h3>
                 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '13px', color: '#475569', fontWeight: 600 }}>
+                  <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
                     {faces.length} dari 3 foto
                   </span>
                   <span style={{ fontSize: '13px', color: '#10b981', fontWeight: 700 }}>
@@ -734,7 +734,7 @@ export default function FaceManagementPage() {
                 <div style={{
                   height: '8px',
                   borderRadius: '4px',
-                  background: '#f1f5f9',
+                  background: 'var(--color-border)',
                   overflow: 'hidden',
                   marginBottom: '12px',
                 }}>
@@ -747,7 +747,7 @@ export default function FaceManagementPage() {
                   }} />
                 </div>
 
-                <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
+                <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: 0 }}>
                   {faces.length >= 3
                     ? 'Data wajah siap digunakan untuk absensi'
                     : `Unggah ${3 - faces.length} foto lagi untuk dapat digunakan untuk absensi.`}
@@ -762,9 +762,11 @@ export default function FaceManagementPage() {
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
-          <div className="relative w-full max-w-sm rounded-2xl shadow-2xl p-6 animate-fade-up"
+          <div className="relative w-full max-w-sm shadow-2xl animate-fade-up"
             style={{
-              background: '#ffffff',
+              padding: '32px',
+              borderRadius: '24px',
+              background: 'var(--color-bg-surface)',
               border: '1px solid #fca5a5',
             }}
           >
@@ -772,27 +774,54 @@ export default function FaceManagementPage() {
               <div className="p-2.5 rounded-xl bg-red-100">
                 <AlertCircle className="w-5 h-5 text-red-600" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900">Hapus Data Wajah</h3>
+              <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--color-text)' }}>Hapus Foto</h3>
             </div>
-            <p className="text-sm text-slate-600 mb-6">
+            <p className="text-sm mb-6" style={{ color: 'var(--color-text-secondary)' }}>
               Yakin ingin menghapus data wajah ini? Embedding AI juga akan dihapus.
             </p>
-            <div className="flex gap-3">
+            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
               <button
                 onClick={() => setDeleteTarget(null)}
-                className="flex-1 py-2.5 rounded-xl text-slate-600 font-medium text-sm
-                           hover:bg-slate-100 transition-all cursor-pointer"
-                style={{ border: '1px solid #cbd5e1' }}
+                style={{ 
+                  flex: 1, 
+                  padding: '10px', 
+                  borderRadius: '8px', 
+                  fontWeight: 600, 
+                  fontSize: '14px', 
+                  border: '1px solid var(--color-border)', 
+                  color: 'var(--color-text-secondary)', 
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'var(--color-bg-base)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 Batal
               </button>
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className="flex-1 py-2.5 bg-red-600
-                           hover:bg-red-700 text-white text-sm font-semibold
-                           rounded-xl transition-all disabled:opacity-50 cursor-pointer
-                           inline-flex items-center justify-center gap-2"
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  color: '#ffffff',
+                  background: '#dc2626',
+                  border: 'none',
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                  opacity: deleting ? 0.7 : 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 4px 12px rgba(220, 38, 38, 0.25)'
+                }}
+                onMouseOver={(e) => { if(!deleting) e.currentTarget.style.filter = 'brightness(1.1)' }}
+                onMouseOut={(e) => { if(!deleting) e.currentTarget.style.filter = 'none' }}
               >
                 {deleting && <Loader2 className="w-4 h-4 animate-spin" />}
                 Hapus
@@ -805,14 +834,16 @@ export default function FaceManagementPage() {
       {showCamera && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowCamera(false)} />
-          <div className="relative w-full max-w-md rounded-2xl shadow-2xl p-6 animate-fade-up flex flex-col gap-4"
+          <div className="relative w-full max-w-md shadow-2xl animate-fade-up flex flex-col gap-4"
             style={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
+              padding: '32px',
+              borderRadius: '24px',
+              background: 'var(--color-bg-surface)',
+              border: '1px solid var(--color-border)',
             }}
           >
-            <h3 className="text-lg font-bold text-slate-900">Ambil Foto Wajah</h3>
-            <div className="rounded-xl overflow-hidden bg-black/90 aspect-video relative">
+            <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--color-text)' }}>Ambil Foto Wajah</h3>
+            <div className="rounded-xl overflow-hidden bg-black/90 aspect-video relative" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
               <Webcam
                 audio={false}
                 ref={webcamRef}
@@ -821,17 +852,47 @@ export default function FaceManagementPage() {
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
             </div>
-            <div className="flex gap-3 mt-2">
+            <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
               <button
                 onClick={() => setShowCamera(false)}
-                className="flex-1 py-2.5 rounded-xl text-slate-600 font-medium text-sm hover:bg-slate-100 transition-all cursor-pointer"
-                style={{ border: '1px solid #cbd5e1' }}
+                style={{ 
+                  flex: 1, 
+                  padding: '10px', 
+                  borderRadius: '8px', 
+                  fontWeight: 600, 
+                  fontSize: '14px', 
+                  border: '1px solid var(--color-border)', 
+                  color: 'var(--color-text-secondary)', 
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'var(--color-bg-base)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 Batal
               </button>
               <button
                 onClick={captureFace}
-                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-all cursor-pointer inline-flex items-center justify-center gap-2"
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  color: '#ffffff',
+                  background: 'var(--color-primary)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 4px 12px rgba(56, 189, 248, 0.25)'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
+                onMouseOut={(e) => e.currentTarget.style.filter = 'none'}
               >
                 <Camera size={16} />
                 Jepret & Simpan

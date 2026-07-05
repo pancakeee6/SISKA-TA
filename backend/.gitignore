@@ -1,0 +1,55 @@
+# ==============================================================================
+# SISKA BACKEND GITIGNORE
+# ==============================================================================
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets.json
+credentials.json
+service_account.json
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+siska.db
+siska.db*
+
+# Uploads & Media
+uploads/
+*.mp3
+*.wav
+*.ogg
+
+# Python & Virtualenv
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Logs & Temp Scripts
+*.log
+check_*.py
+fix_*.py
+test_*.py
+!tests/
+scratch/
+tmp/
+temp/
+*.tmp
+*.old
+*.orig

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Users, Plus, Search, Edit2, Trash2, X,
-  ChevronLeft, ChevronRight, AlertCircle, Loader2,
+  ChevronLeft, ChevronRight, Loader2,
   UserCheck, UserX, ScanFace, ChevronDown
 } from 'lucide-react'
 import userApi from '../services/userApi'
@@ -140,10 +140,10 @@ export default function UsersPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+          <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
             Pengguna
           </h1>
-          <p style={{ fontSize: '14px', color: '#64748b', margin: '4px 0 0 0' }}>
+          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
             Kelola seluruh pengguna sistem SISKA
           </p>
         </div>
@@ -193,8 +193,8 @@ export default function UsersPage() {
             icon: Users,
             trend: '▲ 5 minggu ini',
             trendColor: '#10b981',
-            bgColor: '#ffffff',
-            borderColor: '#e2e8f0',
+            bgColor: 'var(--color-bg-surface)',
+            borderColor: 'var(--color-border)',
             iconColor: '#2563eb',
             iconBg: 'rgba(37, 99, 235, 0.1)'
           },
@@ -205,8 +205,8 @@ export default function UsersPage() {
             icon: UserCheck,
             trend: `${stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}% dari total`,
             trendColor: '#10b981',
-            bgColor: '#ffffff',
-            borderColor: '#e2e8f0',
+            bgColor: 'var(--color-bg-surface)',
+            borderColor: 'var(--color-border)',
             iconColor: '#10b981',
             iconBg: 'rgba(16, 185, 129, 0.1)'
           },
@@ -217,8 +217,8 @@ export default function UsersPage() {
             icon: UserX,
             trend: `${stats.total > 0 ? Math.round((stats.inactive / stats.total) * 100) : 0}% dari total`,
             trendColor: '#d97706',
-            bgColor: '#ffffff',
-            borderColor: '#e2e8f0',
+            bgColor: 'var(--color-bg-surface)',
+            borderColor: 'var(--color-border)',
             iconColor: '#d97706',
             iconBg: 'rgba(245, 158, 11, 0.1)'
           },
@@ -229,8 +229,8 @@ export default function UsersPage() {
             icon: ScanFace,
             trend: `${stats.total > 0 ? Math.round((stats.has_face / stats.total) * 100) : 0}% dari total`,
             trendColor: '#7c3aed',
-            bgColor: '#ffffff',
-            borderColor: '#e2e8f0',
+            bgColor: 'var(--color-bg-surface)',
+            borderColor: 'var(--color-border)',
             iconColor: '#7c3aed',
             iconBg: 'rgba(139, 92, 246, 0.1)'
           },
@@ -265,11 +265,11 @@ export default function UsersPage() {
               <p style={{
                 fontSize: '32px',
                 fontWeight: 800,
-                color: '#0f172a',
+                color: 'var(--color-text)',
                 margin: 0,
                 lineHeight: 1.1,
               }}>{loading ? '—' : value}</p>
-              <p style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, margin: '2px 0 0 0' }}>{label}</p>
+              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 500, margin: '2px 0 0 0' }}>{label}</p>
               <p style={{ fontSize: '11px', color: trendColor, margin: '4px 0 0 0', fontWeight: 600 }}>{trend}</p>
             </div>
           </div>
@@ -279,8 +279,8 @@ export default function UsersPage() {
       {/* Main Content Table Container */}
       <div className="animate-fade-up stagger-2" style={{
         borderRadius: '16px',
-        background: '#ffffff',
-        border: '1px solid #e2e8f0',
+        background: 'var(--color-bg-surface)',
+        border: '1px solid var(--color-border)',
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
         overflow: 'hidden',
       }}>
@@ -292,7 +292,7 @@ export default function UsersPage() {
           flexWrap: 'wrap',
           gap: '12px',
           padding: '16px 20px',
-          borderBottom: '1px solid #f1f5f9',
+          borderBottom: '1px solid var(--color-border)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             {/* Search Input */}
@@ -308,9 +308,9 @@ export default function UsersPage() {
                   width: '100%',
                   padding: '10px 14px 10px 40px',
                   borderRadius: '10px',
-                  background: '#f8fafc',
-                  border: '1px solid #cbd5e1',
-                  color: '#0f172a',
+                  background: 'var(--color-bg-base)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text)',
                   fontSize: '13px',
                   outline: 'none',
                 }}
@@ -326,9 +326,9 @@ export default function UsersPage() {
                   appearance: 'none',
                   padding: '10px 36px 10px 16px',
                   borderRadius: '10px',
-                  background: '#f8fafc',
-                  border: '1px solid #cbd5e1',
-                  color: '#0f172a',
+                  background: 'var(--color-bg-base)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text)',
                   fontSize: '13px',
                   outline: 'none',
                   cursor: 'pointer',
@@ -344,7 +344,7 @@ export default function UsersPage() {
           </div>
 
           {!loading && (
-            <p style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, margin: 0 }}>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 500, margin: 0 }}>
               Menampilkan {Math.min(limit, users.length)} dari {total} pengguna
             </p>
           )}
@@ -354,20 +354,20 @@ export default function UsersPage() {
         <div className="overflow-x-auto">
           <table className="w-full" style={{ borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'none' }}>Pengguna</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'none' }}>NIM</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'none' }}>Email</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'none' }}>Program Studi</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'none' }}>Status</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'none' }}>Wajah</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'none', textAlign: 'right' }}>Aksi</th>
+              <tr style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-base)' }}>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Pengguna</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>NIM</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Email</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Program Studi</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Status</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Wajah</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none', textAlign: 'right' }}>Aksi</th>
               </tr>
             </thead>
             <tbody style={{ divideY: '1px solid #f1f5f9' }}>
               {loading ? (
                 [...Array(5)].map((_, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
                     {[...Array(7)].map((_, j) => (
                       <td key={j} style={{ padding: '16px 20px' }}>
                         <div className="h-4 bg-slate-100 rounded animate-pulse" />
@@ -379,10 +379,10 @@ export default function UsersPage() {
                 <tr>
                   <td colSpan={7} style={{ padding: '64px 20px', textAlign: 'center' }}>
                     <div className="text-4xl mb-3">🐱</div>
-                    <p style={{ color: '#475569', fontSize: '14px', fontWeight: 600, margin: 0 }}>
+                    <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', fontWeight: 600, margin: 0 }}>
                       {search ? 'Tidak ada pengguna yang cocok' : 'Belum ada pengguna'}
                     </p>
-                    <p style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', margin: 0 }}>
+                    <p style={{ color: 'var(--color-text-secondary)', fontSize: '12px', marginTop: '4px', margin: 0 }}>
                       {search ? 'Coba kata kunci lain' : 'Yuk, tambahkan pengguna pertama untuk memulai!'}
                     </p>
                     {!search && (
@@ -412,10 +412,11 @@ export default function UsersPage() {
                   <tr
                     key={user.id}
                     style={{
-                      borderBottom: '1px solid #f1f5f9',
+                      borderBottom: '1px solid var(--color-border)',
                       transition: 'background 0.2s',
                     }}
-                    className="hover:bg-slate-50"
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-bg-base)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                   >
                     {/* Pengguna (Avatar + Nama) */}
                     <td style={{ padding: '16px 20px' }}>
@@ -455,7 +456,7 @@ export default function UsersPage() {
                             {user.full_name?.[0]?.toUpperCase() || '?'}
                           </div>
                         </div>
-                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text)' }}>
                           {user.full_name}
                         </span>
                       </div>
@@ -463,21 +464,21 @@ export default function UsersPage() {
 
                     {/* NIM */}
                     <td style={{ padding: '16px 20px' }}>
-                      <span style={{ fontSize: '14px', color: '#475569', fontFamily: 'monospace', fontWeight: 500 }}>
+                      <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)', fontFamily: 'monospace', fontWeight: 500 }}>
                         {user.employee_id}
                       </span>
                     </td>
 
                     {/* Email */}
                     <td style={{ padding: '16px 20px' }}>
-                      <span style={{ fontSize: '14px', color: '#64748b' }}>
+                      <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                         {user.email || '—'}
                       </span>
                     </td>
 
                     {/* Program Studi */}
                     <td style={{ padding: '16px 20px' }}>
-                      <span style={{ fontSize: '14px', color: '#475569' }}>
+                      <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                         {user.department || '—'}
                       </span>
                     </td>
@@ -513,7 +514,7 @@ export default function UsersPage() {
 
                     {/* Wajah */}
                     <td style={{ padding: '16px 20px' }}>
-                      <span style={{ fontSize: '14px', color: '#475569', fontWeight: 500 }}>
+                      <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
                         {user.face_count || 0} foto
                       </span>
                     </td>
@@ -532,9 +533,9 @@ export default function UsersPage() {
                             width: '32px',
                             height: '32px',
                             borderRadius: '8px',
-                            background: '#f8fafc',
-                            border: '1px solid #e2e8f0',
-                            color: '#64748b',
+                            background: 'var(--color-bg-base)',
+                            border: '1px solid var(--color-border)',
+                            color: 'var(--color-text-secondary)',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
                           }}
@@ -563,9 +564,9 @@ export default function UsersPage() {
                             width: '32px',
                             height: '32px',
                             borderRadius: '8px',
-                            background: '#f8fafc',
-                            border: '1px solid #e2e8f0',
-                            color: '#64748b',
+                            background: 'var(--color-bg-base)',
+                            border: '1px solid var(--color-border)',
+                            color: 'var(--color-text-secondary)',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
                           }}
@@ -594,9 +595,9 @@ export default function UsersPage() {
                             width: '32px',
                             height: '32px',
                             borderRadius: '8px',
-                            background: '#f8fafc',
-                            border: '1px solid #e2e8f0',
-                            color: '#64748b',
+                            background: 'var(--color-bg-base)',
+                            border: '1px solid var(--color-border)',
+                            color: 'var(--color-text-secondary)',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
                           }}
@@ -631,7 +632,7 @@ export default function UsersPage() {
             padding: '16px 20px',
             borderTop: '1px solid #f1f5f9',
           }}>
-            <p style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, margin: 0 }}>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 500, margin: 0 }}>
               Halaman {page} dari {totalPages} ({total} total)
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -644,8 +645,8 @@ export default function UsersPage() {
                   gap: '4px',
                   padding: '6px 12px',
                   borderRadius: '8px',
-                  background: '#ffffff',
-                  border: '1px solid #cbd5e1',
+                  background: 'var(--color-bg-surface)',
+                  border: '1px solid var(--color-border)',
                   color: page <= 1 ? '#cbd5e1' : '#475569',
                   fontSize: '13px',
                   fontWeight: 500,
@@ -717,8 +718,8 @@ export default function UsersPage() {
                   gap: '4px',
                   padding: '6px 12px',
                   borderRadius: '8px',
-                  background: '#ffffff',
-                  border: '1px solid #cbd5e1',
+                  background: 'var(--color-bg-surface)',
+                  border: '1px solid var(--color-border)',
                   color: page >= totalPages ? '#cbd5e1' : '#475569',
                   fontSize: '13px',
                   fontWeight: 500,
@@ -748,16 +749,18 @@ export default function UsersPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setModalOpen(false)} />
-          <div className="relative w-full max-w-md rounded-2xl shadow-2xl p-6 animate-fade-up"
+          <div className="relative w-full max-w-md shadow-2xl animate-fade-up"
             style={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
+              padding: '32px',
+              borderRadius: '24px',
+              background: 'var(--color-bg-surface)',
+              border: '1px solid var(--color-border)',
             }}
           >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-slate-900">
+              <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>
                 {modalMode === 'create' ? 'Tambah Pengguna Baru' : 'Edit Pengguna'}
-              </h3>
+              </h2>
               <button
                 onClick={() => setModalOpen(false)}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
@@ -766,93 +769,157 @@ export default function UsersPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">NIP / Employee ID</label>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '6px' }}>
+                  NIP / Employee ID
+                </label>
                 <input
                   type="text"
                   value={form.employee_id}
                   onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                   style={{
-                    background: '#f8fafc',
-                    border: '1px solid #cbd5e1',
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    color: 'var(--color-text)',
+                    background: 'var(--color-bg-base)',
+                    border: '1px solid var(--color-border)',
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    boxSizing: 'border-box'
                   }}
+                  onFocus={(e) => { e.target.style.borderColor = '#38bdf8'; e.target.style.boxShadow = '0 0 0 3px rgba(56, 189, 248, 0.15)' }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--color-border)'; e.target.style.boxShadow = 'none' }}
                   placeholder="Contoh: NIP001"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nama Lengkap</label>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '6px' }}>
+                  Nama Lengkap
+                </label>
                 <input
                   type="text"
                   value={form.full_name}
                   onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                   style={{
-                    background: '#f8fafc',
-                    border: '1px solid #cbd5e1',
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    color: 'var(--color-text)',
+                    background: 'var(--color-bg-base)',
+                    border: '1px solid var(--color-border)',
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    boxSizing: 'border-box'
                   }}
+                  onFocus={(e) => { e.target.style.borderColor = '#38bdf8'; e.target.style.boxShadow = '0 0 0 3px rgba(56, 189, 248, 0.15)' }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--color-border)'; e.target.style.boxShadow = 'none' }}
                   placeholder="Nama lengkap"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email (opsional)</label>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '6px' }}>
+                  Email (opsional)
+                </label>
                 <input
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                   style={{
-                    background: '#f8fafc',
-                    border: '1px solid #cbd5e1',
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    color: 'var(--color-text)',
+                    background: 'var(--color-bg-base)',
+                    border: '1px solid var(--color-border)',
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    boxSizing: 'border-box'
                   }}
+                  onFocus={(e) => { e.target.style.borderColor = '#38bdf8'; e.target.style.boxShadow = '0 0 0 3px rgba(56, 189, 248, 0.15)' }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--color-border)'; e.target.style.boxShadow = 'none' }}
                   placeholder="email@contoh.com"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Departemen (opsional)</label>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '6px' }}>
+                  Departemen (opsional)
+                </label>
                 <input
                   type="text"
                   value={form.department}
                   onChange={(e) => setForm({ ...form, department: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl text-slate-900 placeholder-slate-400 text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                   style={{
-                    background: '#f8fafc',
-                    border: '1px solid #cbd5e1',
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    color: 'var(--color-text)',
+                    background: 'var(--color-bg-base)',
+                    border: '1px solid var(--color-border)',
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    boxSizing: 'border-box'
                   }}
+                  onFocus={(e) => { e.target.style.borderColor = '#38bdf8'; e.target.style.boxShadow = '0 0 0 3px rgba(56, 189, 248, 0.15)' }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--color-border)'; e.target.style.boxShadow = 'none' }}
                   placeholder="IT, HRD, Finance, dll"
                 />
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl text-slate-600 font-medium text-sm
-                             hover:bg-slate-100 transition-all cursor-pointer"
-                  style={{ border: '1px solid #cbd5e1' }}
+                  style={{ 
+                    flex: 1, 
+                    padding: '10px', 
+                    borderRadius: '8px', 
+                    fontWeight: 600, 
+                    fontSize: '14px', 
+                    border: '1px solid var(--color-border)', 
+                    color: 'var(--color-text-secondary)', 
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = 'var(--color-bg-base)'}
+                  onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 py-2.5 text-white text-sm font-semibold
-                             rounded-xl transition-all disabled:opacity-50 cursor-pointer
-                             active:scale-[0.98] inline-flex items-center justify-center gap-2"
                   style={{
-                    background: '#2563eb',
-                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    fontSize: '14px',
+                    color: '#ffffff',
+                    background: 'var(--color-primary)',
+                    border: 'none',
+                    cursor: saving ? 'not-allowed' : 'pointer',
+                    opacity: saving ? 0.7 : 1,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 4px 12px rgba(56, 189, 248, 0.25)'
                   }}
+                  onMouseOver={(e) => { if(!saving) e.currentTarget.style.filter = 'brightness(1.1)' }}
+                  onMouseOut={(e) => { if(!saving) e.currentTarget.style.filter = 'none' }}
                 >
                   {saving && <Loader2 size={14} className="animate-spin" />}
                   {modalMode === 'create' ? 'Tambah' : 'Simpan'}
@@ -865,42 +932,87 @@ export default function UsersPage() {
 
       {/* Delete Confirmation */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
-          <div className="relative w-full max-w-sm rounded-2xl shadow-2xl p-6 animate-fade-up"
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={() => setDeleteTarget(null)} />
+          <div className="animate-fade-up"
             style={{
-              background: '#ffffff',
-              border: '1px solid #fca5a5',
+              position: 'relative',
+              width: '100%',
+              maxWidth: '400px',
+              padding: '32px',
+              borderRadius: '24px',
+              background: 'var(--color-bg-surface)',
+              border: '1px solid var(--color-border)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              textAlign: 'center',
             }}
           >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 rounded-xl bg-red-100">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">Hapus Pengguna</h3>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: '#fee2e2',
+              color: '#ef4444',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px auto',
+            }}>
+              <Trash2 size={32} />
             </div>
-            <p className="text-sm text-slate-600 mb-6">
-              Yakin ingin menghapus <strong className="text-slate-900 font-semibold">{deleteTarget.full_name}</strong>?
-              Tindakan ini tidak dapat dibatalkan.
+            <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--color-text)', marginBottom: '12px', marginTop: 0 }}>Hapus Pengguna</h2>
+            <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: '0 0 32px 0' }}>
+              Apakah Anda yakin ingin menghapus pengguna <br />
+              <strong style={{ color: 'var(--color-text)' }}>{deleteTarget?.full_name}</strong>?<br />
+              Data ini tidak dapat dikembalikan.
             </p>
-            <div className="flex gap-3">
+            
+            <div style={{ display: 'flex', gap: '12px' }}>
               <button
+                type="button"
                 onClick={() => setDeleteTarget(null)}
-                className="flex-1 py-2.5 rounded-xl text-slate-600 font-medium text-sm
-                           hover:bg-slate-100 transition-all cursor-pointer"
-                style={{ border: '1px solid #cbd5e1' }}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '12px',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text)',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'var(--color-bg-base)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 Batal
               </button>
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className="flex-1 py-2.5 bg-red-600
-                           hover:bg-red-700 text-white text-sm font-semibold
-                           rounded-xl transition-all disabled:opacity-50 cursor-pointer
-                           inline-flex items-center justify-center gap-2"
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '12px',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  color: '#ffffff',
+                  background: '#ef4444',
+                  border: 'none',
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                  opacity: deleting ? 0.7 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)'
+                }}
+                onMouseOver={(e) => { if(!deleting) e.currentTarget.style.filter = 'brightness(1.1)' }}
+                onMouseOut={(e) => { if(!deleting) e.currentTarget.style.filter = 'none' }}
               >
-                {deleting && <Loader2 size={14} className="animate-spin" />}
+                {deleting && <Loader2 size={16} className="animate-spin" />}
                 Hapus
               </button>
             </div>

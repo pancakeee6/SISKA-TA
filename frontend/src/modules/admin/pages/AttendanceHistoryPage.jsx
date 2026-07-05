@@ -222,7 +222,7 @@ export default function AttendanceHistoryPage() {
   const getAvatarColor = (name) => {
     const colors = [
       { bg: 'rgba(56,189,248,0.15)', border: 'rgba(56,189,248,0.3)', text: '#7dd3fc' },
-      { bg: 'rgba(52,211,153,0.15)', border: 'rgba(52,211,153,0.3)', text: '#6ee7b7' },
+      { bg: 'rgba(52,211,153,0.15)', border: 'rgba(52,211,153,0.3)', text: 'var(--color-text)' },
       { bg: 'rgba(251,191,36,0.15)', border: 'rgba(251,191,36,0.3)', text: '#fcd34d' },
       { bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)', text: '#c4b5fd' },
       { bg: 'rgba(251,113,133,0.15)', border: 'rgba(251,113,133,0.3)', text: '#fda4af' },
@@ -240,10 +240,10 @@ export default function AttendanceHistoryPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
             Riwayat Absensi
           </h1>
-          <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0 0' }}>
+          <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
             Lihat dan kelola riwayat kehadiran
           </p>
         </div>
@@ -303,8 +303,8 @@ export default function AttendanceHistoryPage() {
         <div style={{
           padding: '20px',
           borderRadius: '16px',
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
+          background: 'var(--color-bg-surface)',
+          border: '1px solid var(--color-border)',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
           display: 'flex',
           alignItems: 'center',
@@ -320,10 +320,10 @@ export default function AttendanceHistoryPage() {
             <CheckCircle2 size={22} style={{ color: '#059669' }} />
           </div>
           <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: 0, lineHeight: 1.1 }}>
+            <p style={{ fontSize: '28px', fontWeight: 700, color: 'var(--color-text)', margin: 0, lineHeight: 1.1 }}>
               {loading ? '—' : presentToday}
             </p>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>Hadir Hari Ini</p>
+            <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0 0' }}>Hadir Hari Ini</p>
             <p style={{ fontSize: '10px', color: '#059669', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 600 }}>
               <TrendingUp size={10} /> 5% dari kemarin
             </p>
@@ -334,8 +334,8 @@ export default function AttendanceHistoryPage() {
         <div style={{
           padding: '20px',
           borderRadius: '16px',
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
+          background: 'var(--color-bg-surface)',
+          border: '1px solid var(--color-border)',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
           display: 'flex',
           alignItems: 'center',
@@ -351,10 +351,10 @@ export default function AttendanceHistoryPage() {
             <Clock size={22} style={{ color: '#d97706' }} />
           </div>
           <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: 0, lineHeight: 1.1 }}>
+            <p style={{ fontSize: '28px', fontWeight: 700, color: 'var(--color-text)', margin: 0, lineHeight: 1.1 }}>
               {loading ? '—' : lateToday}
             </p>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>Terlambat Hari Ini</p>
+            <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0 0' }}>Terlambat Hari Ini</p>
             <p style={{ fontSize: '10px', color: '#d97706', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 600 }}>
               <TrendingDown size={10} /> 1 dari kemarin
             </p>
@@ -365,8 +365,8 @@ export default function AttendanceHistoryPage() {
         <div style={{
           padding: '20px',
           borderRadius: '16px',
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
+          background: 'var(--color-bg-surface)',
+          border: '1px solid var(--color-border)',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
           display: 'flex',
           alignItems: 'center',
@@ -382,10 +382,10 @@ export default function AttendanceHistoryPage() {
             <XCircle size={22} style={{ color: '#dc2626' }} />
           </div>
           <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: 0, lineHeight: 1.1 }}>
+            <p style={{ fontSize: '28px', fontWeight: 700, color: 'var(--color-text)', margin: 0, lineHeight: 1.1 }}>
               {loading ? '—' : absentToday}
             </p>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>Tidak Hadir Hari Ini</p>
+            <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0 0' }}>Tidak Hadir Hari Ini</p>
             <p style={{ fontSize: '10px', color: '#dc2626', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 600 }}>
               <TrendingDown size={10} /> 3 dari kemarin
             </p>
@@ -396,8 +396,8 @@ export default function AttendanceHistoryPage() {
         <div style={{
           padding: '20px',
           borderRadius: '16px',
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
+          background: 'var(--color-bg-surface)',
+          border: '1px solid var(--color-border)',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
           display: 'flex',
           alignItems: 'center',
@@ -413,10 +413,10 @@ export default function AttendanceHistoryPage() {
             <TrendingUp size={22} style={{ color: '#059669' }} />
           </div>
           <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: 0, lineHeight: 1.1 }}>
+            <p style={{ fontSize: '28px', fontWeight: 700, color: 'var(--color-text)', margin: 0, lineHeight: 1.1 }}>
               {loading ? '—' : `${attendanceRate}%`}
             </p>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>Rata-rata Kehadiran</p>
+            <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0 0' }}>Rata-rata Kehadiran</p>
             <p style={{ fontSize: '10px', color: '#059669', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 600 }}>
               <TrendingUp size={10} /> 2% dari minggu lalu
             </p>
@@ -438,12 +438,12 @@ export default function AttendanceHistoryPage() {
           gap: '6px',
           padding: '8px 14px',
           borderRadius: '10px',
-          background: '#ffffff',
-          border: '1px solid #cbd5e1',
+          background: 'var(--color-bg-surface)',
+          border: '1px solid var(--color-border)',
           boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
           minWidth: '220px',
         }}>
-          <Calendar size={14} style={{ color: '#64748b', flexShrink: 0 }} />
+          <Calendar size={14} style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }} />
           <input
             type="date"
             value={dateFrom}
@@ -452,14 +452,14 @@ export default function AttendanceHistoryPage() {
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#0f172a',
+              color: 'var(--color-text)',
               fontSize: '12px',
               outline: 'none',
               width: '110px',
               colorScheme: 'light',
             }}
           />
-          <span style={{ color: '#64748b', fontSize: '12px' }}>–</span>
+          <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>–</span>
           <input
             type="date"
             value={dateTo}
@@ -469,7 +469,7 @@ export default function AttendanceHistoryPage() {
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#0f172a',
+              color: 'var(--color-text)',
               fontSize: '12px',
               outline: 'none',
               width: '110px',
@@ -485,14 +485,14 @@ export default function AttendanceHistoryPage() {
           gap: '8px',
           padding: '8px 14px',
           borderRadius: '10px',
-          background: '#ffffff',
-          border: '1px solid #cbd5e1',
+          background: 'var(--color-bg-surface)',
+          border: '1px solid var(--color-border)',
           boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
           flex: '1',
           maxWidth: '250px',
           minWidth: '160px',
         }}>
-          <Search size={14} style={{ color: '#64748b', flexShrink: 0 }} />
+          <Search size={14} style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }} />
           <input
             type="text"
             value={search}
@@ -501,7 +501,7 @@ export default function AttendanceHistoryPage() {
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#0f172a',
+              color: 'var(--color-text)',
               fontSize: '12px',
               outline: 'none',
               width: '100%',
@@ -519,10 +519,10 @@ export default function AttendanceHistoryPage() {
               WebkitAppearance: 'none',
               padding: '8px 32px 8px 14px',
               borderRadius: '10px',
-              background: '#ffffff',
-              border: '1px solid #cbd5e1',
+              background: 'var(--color-bg-surface)',
+              border: '1px solid var(--color-border)',
               boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-              color: '#0f172a',
+              color: 'var(--color-text)',
               fontSize: '12px',
               outline: 'none',
               cursor: 'pointer',
@@ -539,7 +539,7 @@ export default function AttendanceHistoryPage() {
             top: '50%',
             transform: 'translateY(-50%)',
             pointerEvents: 'none',
-            color: '#64748b',
+            color: 'var(--color-text-secondary)',
           }}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -552,7 +552,7 @@ export default function AttendanceHistoryPage() {
 
         {/* Data info text */}
         {!loading && (
-          <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+          <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
             Menampilkan {Math.min(page * PER_PAGE, total) - (page - 1) * PER_PAGE > 0
               ? `${(page - 1) * PER_PAGE + 1}-${Math.min(page * PER_PAGE, total)}`
               : '0'} dari {total} data
@@ -563,7 +563,7 @@ export default function AttendanceHistoryPage() {
       {/* Active Filter Tags */}
       {activeFilters > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '-8px' }}>
-          <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>Filter Aktif:</span>
+          <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Filter Aktif:</span>
           {(dateFrom || dateTo) && (
             <span style={{
               display: 'inline-flex',
@@ -610,21 +610,21 @@ export default function AttendanceHistoryPage() {
       <div style={{
         borderRadius: '16px',
         overflow: 'hidden',
-        background: '#ffffff',
-        border: '1px solid #e2e8f0',
+        background: 'var(--color-bg-surface)',
+        border: '1px solid var(--color-border)',
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
       }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+              <tr style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-base)' }}>
                 {['Nama', 'NIM', 'Tanggal', 'Waktu', 'Jenis', 'Status', 'Keterlambatan'].map((col) => (
                   <th key={col} style={{
                     textAlign: 'left',
                     padding: '14px 20px',
                     fontSize: '11px',
                     fontWeight: 600,
-                    color: '#475569',
+                    color: 'var(--color-text-secondary)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                     whiteSpace: 'nowrap',
@@ -637,7 +637,7 @@ export default function AttendanceHistoryPage() {
             <tbody>
               {loading ? (
                 [...Array(5)].map((_, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
                     {[...Array(7)].map((_, j) => (
                       <td key={j} style={{ padding: '14px 20px' }}>
                         <div style={{
@@ -654,12 +654,12 @@ export default function AttendanceHistoryPage() {
                 <tr>
                   <td colSpan={7} style={{ padding: '60px 20px', textAlign: 'center' }}>
                     <div style={{ fontSize: '36px', marginBottom: '12px' }}>📋</div>
-                    <p style={{ color: '#0f172a', fontSize: '14px', fontWeight: 600 }}>
+                    <p style={{ color: 'var(--color-text)', fontSize: '14px', fontWeight: 600 }}>
                       {activeFilters > 0
                         ? 'Tidak ada data kehadiran yang cocok'
                         : 'Belum ada riwayat absensi'}
                     </p>
-                    <p style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>
+                    <p style={{ color: 'var(--color-text-secondary)', fontSize: '12px', marginTop: '4px' }}>
                       {activeFilters > 0 ? 'Coba ubah filter pencarian' : 'Data akan muncul saat pengguna melakukan check in.'}
                     </p>
                     {activeFilters > 0 && (
@@ -688,10 +688,10 @@ export default function AttendanceHistoryPage() {
                     <tr
                       key={log.id}
                       style={{
-                        borderBottom: '1px solid #f1f5f9',
+                        borderBottom: '1px solid var(--color-border)',
                         transition: 'background 0.15s',
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-bg-base)'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                     >
                       {/* Nama */}
@@ -713,7 +713,7 @@ export default function AttendanceHistoryPage() {
                           }}>
                             {log.user_name?.[0]?.toUpperCase() || '?'}
                           </div>
-                          <span style={{ fontSize: '13px', color: '#0f172a', fontWeight: 600 }}>
+                          <span style={{ fontSize: '13px', color: 'var(--color-text)', fontWeight: 600 }}>
                             {log.user_name || 'Unknown'}
                           </span>
                         </div>
@@ -721,21 +721,21 @@ export default function AttendanceHistoryPage() {
 
                       {/* NIM */}
                       <td style={{ padding: '12px 20px' }}>
-                        <span style={{ fontSize: '13px', color: '#64748b', fontFamily: 'monospace' }}>
+                        <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>
                           {log.employee_id || '-'}
                         </span>
                       </td>
 
                       {/* Tanggal */}
                       <td style={{ padding: '12px 20px' }}>
-                        <span style={{ fontSize: '13px', color: '#475569' }}>
+                        <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
                           {formatDate(log.timestamp)}
                         </span>
                       </td>
 
                       {/* Waktu */}
                       <td style={{ padding: '12px 20px' }}>
-                        <span style={{ fontSize: '13px', color: '#0f172a', fontFamily: 'monospace', fontWeight: 500 }}>
+                        <span style={{ fontSize: '13px', color: 'var(--color-text)', fontFamily: 'monospace', fontWeight: 500 }}>
                           {formatTime(log.timestamp)}
                         </span>
                       </td>
@@ -820,7 +820,7 @@ export default function AttendanceHistoryPage() {
             justifyContent: 'center',
             padding: '16px 20px',
             borderTop: '1px solid #e2e8f0',
-            background: '#ffffff',
+            background: 'var(--color-bg-surface)',
             gap: '6px',
           }}>
             {/* Sebelumnya */}
@@ -835,9 +835,9 @@ export default function AttendanceHistoryPage() {
                 borderRadius: '10px',
                 fontSize: '12px',
                 fontWeight: 500,
-                color: page <= 1 ? '#cbd5e1' : '#475569',
-                background: '#f8fafc',
-                border: '1px solid #cbd5e1',
+                color: page <= 1 ? '#cbd5e1' : 'var(--color-text-secondary)',
+                background: 'var(--color-bg-base)',
+                border: '1px solid var(--color-border)',
                 cursor: page <= 1 ? 'not-allowed' : 'pointer',
                 transition: 'all 0.15s',
                 opacity: page <= 1 ? 0.6 : 1,
@@ -873,7 +873,7 @@ export default function AttendanceHistoryPage() {
                         }
                       : {
                           background: 'transparent',
-                          color: '#475569',
+                          color: 'var(--color-text-secondary)',
                         }),
                   }}
                 >
@@ -894,9 +894,9 @@ export default function AttendanceHistoryPage() {
                 borderRadius: '10px',
                 fontSize: '12px',
                 fontWeight: 500,
-                color: page >= totalPages ? '#cbd5e1' : '#475569',
-                background: '#f8fafc',
-                border: '1px solid #cbd5e1',
+                color: page >= totalPages ? '#cbd5e1' : 'var(--color-text-secondary)',
+                background: 'var(--color-bg-base)',
+                border: '1px solid var(--color-border)',
                 cursor: page >= totalPages ? 'not-allowed' : 'pointer',
                 transition: 'all 0.15s',
                 opacity: page >= totalPages ? 0.6 : 1,
@@ -935,8 +935,8 @@ export default function AttendanceHistoryPage() {
             maxWidth: '380px',
             borderRadius: '20px',
             padding: '28px',
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
+            background: 'var(--color-bg-surface)',
+            border: '1px solid var(--color-border)',
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
@@ -947,12 +947,12 @@ export default function AttendanceHistoryPage() {
               }}>
                 <Download size={20} style={{ color: '#2563eb' }} />
               </div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Export CSV</h3>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Export CSV</h3>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
               <div>
-                <label style={{ fontSize: '11px', color: '#64748b', marginBottom: '6px', display: 'block', fontWeight: 600 }}>Dari Tanggal</label>
+                <label style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '6px', display: 'block', fontWeight: 600 }}>Dari Tanggal</label>
                 <input
                   type="date"
                   value={exportFrom}
@@ -961,9 +961,9 @@ export default function AttendanceHistoryPage() {
                     width: '100%',
                     padding: '10px 14px',
                     borderRadius: '10px',
-                    background: '#f8fafc',
-                    border: '1px solid #cbd5e1',
-                    color: '#0f172a',
+                    background: 'var(--color-bg-base)',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-text)',
                     fontSize: '13px',
                     outline: 'none',
                     colorScheme: 'light',
@@ -972,7 +972,7 @@ export default function AttendanceHistoryPage() {
                 />
               </div>
               <div>
-                <label style={{ fontSize: '11px', color: '#64748b', marginBottom: '6px', display: 'block', fontWeight: 600 }}>Sampai Tanggal</label>
+                <label style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '6px', display: 'block', fontWeight: 600 }}>Sampai Tanggal</label>
                 <input
                   type="date"
                   value={exportTo}
@@ -981,9 +981,9 @@ export default function AttendanceHistoryPage() {
                     width: '100%',
                     padding: '10px 14px',
                     borderRadius: '10px',
-                    background: '#f8fafc',
-                    border: '1px solid #cbd5e1',
-                    color: '#0f172a',
+                    background: 'var(--color-bg-base)',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-text)',
                     fontSize: '13px',
                     outline: 'none',
                     colorScheme: 'light',
@@ -991,7 +991,7 @@ export default function AttendanceHistoryPage() {
                   }}
                 />
               </div>
-              <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>Kosongkan untuk export semua data</p>
+              <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)', margin: 0 }}>Kosongkan untuk export semua data</p>
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>
