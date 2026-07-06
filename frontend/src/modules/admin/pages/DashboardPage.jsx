@@ -8,7 +8,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import dashboardApi from '../services/dashboardApi'
 import userApi from '../services/userApi'
 import api from '@shared/services/api'
-import useWebSocket from '@shared/hooks/useWebSocket'
+import useSSE from '@shared/hooks/useSSE'
 import { useAuthStore } from '@shared/store/authStore'
 
 
@@ -153,7 +153,7 @@ export default function DashboardPage() {
     }
   }, [fetchDashboardData])
 
-  useWebSocket({
+  useSSE({
     enabled: true,
     onMessage: handleWsMessage,
   })

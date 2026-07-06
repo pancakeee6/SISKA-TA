@@ -10,7 +10,7 @@ from app.models.attendance import AttendanceLog
 from app.models.user import User
 from app.schemas.attendance import AttendanceLogResponse, AttendanceListResponse
 from app.services import ai_service
-from app.core.websocket import ws_manager
+from app.core.sse import sse_manager
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -106,8 +106,8 @@ async def recognize_attendance(
                 },
             }
 
-            # Broadcast to admin dashboard via WebSocket
-            await ws_manager.broadcast(event_data)
+            # Broadcast to admin dashboard via SSE
+            await sse_manager.broadcast(event_data)
             
             # Append result for the frontend (whether ok or cooldown)
             results.append({

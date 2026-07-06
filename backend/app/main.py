@@ -1,10 +1,13 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
+import json
+import asyncio
 
 from app.core.config import settings
-from app.core.websocket import ws_manager
+from app.core.sse import sse_manager
 from app.api.v1 import auth, users, attendance, dashboard, faces, tts
 
 # Import all models so SQLAlchemy resolves relationships at startup
@@ -44,16 +47,27 @@ os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 app.mount("/api/v1/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 
-# WebSocket endpoint for realtime attendance updates
-@app.websocket("/ws/attendance")
-async def websocket_attendance(websocket: WebSocket):
-    await ws_manager.connect(websocket)
-    try:
-        while True:
-            # Keep connection alive, listen for any client messages
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        ws_manager.disconnect(websocket)
+# SSE endpoint for realtime attendance updates
+@app.get("/stream/attendance")
+async def stream_attendance(request: Request):
+    queue = sse_manager.connect()
+
+    async def event_generator():
+        try:
+            while True:
+                # Check if client disconnected
+                if await request.is_disconnected():
+                    break
+                
+                # Wait for new message in the queue
+                message = await queue.get()
+                yield f"data: {json.dumps(message)}\n\n"
+        except asyncio.CancelledError:
+            pass
+        finally:
+            sse_manager.disconnect(queue)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @app.get("/", tags=["Root"])
