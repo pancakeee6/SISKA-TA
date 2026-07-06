@@ -53,7 +53,9 @@ export default function App() {
   if (initializing) return <PageLoader />
 
   return (
-    <Suspense fallback={<PageLoader />}>
+    <>
+      <Toaster position="top-right" />
+      <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Public Routes */}
         <Route path="/attendance" element={<AttendancePage />} />
@@ -79,5 +81,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/attendance" replace />} />
       </Routes>
     </Suspense>
+    </>
   )
 }

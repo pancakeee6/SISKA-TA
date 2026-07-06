@@ -258,7 +258,7 @@ export default function SiskaMascot({
         clearInterval(idleTimerIntervalRef.current);
       }
     };
-  }, [faceDetected, playAnimationSmooth, isCameraEnabled]);
+  }, [faceDetected, playAnimationSmooth, isCameraEnabled, rive]);
 
   // Reaksi terhadap faceDetected
   useEffect(() => {
@@ -329,7 +329,7 @@ export default function SiskaMascot({
       }
       hasFiredMotionRef.current = false;
     }
-  }, [faceDetected, rive, setInputOrPlay, goToSleepSequence]);
+  }, [faceDetected, rive, setInputOrPlay, goToSleepSequence, isCameraEnabled]);
 
   // Reaksi terhadap attendanceResult
   useEffect(() => {
@@ -394,7 +394,7 @@ export default function SiskaMascot({
         }
       }
     }
-  }, [attendanceResult, rive, setInputOrPlay, goToSleepSequence]);
+  }, [attendanceResult, rive, setInputOrPlay, goToSleepSequence, isCameraEnabled]);
 
   return (
     <div style={{

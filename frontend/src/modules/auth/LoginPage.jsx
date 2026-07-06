@@ -4,7 +4,6 @@ import { useAuthStore } from '@shared/store/authStore'
 import authApi from './services/authApi'
 import toast from 'react-hot-toast'
 import { Eye, EyeOff } from 'lucide-react'
-import siskaMascot from '@/assets/siska-mascot.png'
 
 export default function LoginPage() {
   const navigate = useNavigate()

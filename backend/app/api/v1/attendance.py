@@ -38,7 +38,7 @@ async def recognize_attendance(
     # ─── LOG RAW AI RESPONSE untuk debugging salah deteksi ───
     logger.info(f"[AI RAW RESPONSE] {ai_result}")
 
-    if ai_result.get("status") != "ok" or not ai_result.get("faces"):
+    if not ai_result.get("faces") or ai_result.get("status") in ("error", "failed", "unrecognized"):
         return {
             "status": "unrecognized",
             "message": "Wajah tidak dikenali",

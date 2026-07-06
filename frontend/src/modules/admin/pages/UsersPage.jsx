@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Users, Plus, Search, Edit2, Trash2, X,
-  ChevronLeft, ChevronRight, AlertCircle, Loader2,
+  ChevronLeft, ChevronRight, Loader2,
   UserCheck, UserX, ScanFace, ChevronDown
 } from 'lucide-react'
 import userApi from '../services/userApi'
