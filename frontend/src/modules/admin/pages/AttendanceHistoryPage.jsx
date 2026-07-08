@@ -14,6 +14,29 @@ import { id as localeID } from 'date-fns/locale'
 
 const PER_PAGE = 10
 
+// Helper untuk normalisasi event_type (Scan 1 = IN, Scan 2 = OUT) langsung di Admin Dashboard
+const normalizeAttendanceLogs = (logs) => {
+  if (!logs || !Array.isArray(logs)) return [];
+  const userDayCounts = {};
+  const sorted = [...logs].sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
+  const normalizedMap = new Map();
+  
+  sorted.forEach(log => {
+    const dateStr = log.timestamp ? log.timestamp.split('T')[0] : 'unknown-date';
+    const key = `${log.user_name || log.user_id || log.employee_id || 'unknown'}_${dateStr}`;
+    const count = (userDayCounts[key] || 0) + 1;
+    userDayCounts[key] = count;
+    
+    const correctedType = (count % 2 !== 0) ? 'IN' : 'OUT';
+    normalizedMap.set(log.id, {
+      ...log,
+      event_type: correctedType
+    });
+  });
+  
+  return logs.map(log => normalizedMap.get(log.id) || log);
+};
+
 export default function AttendanceHistoryPage() {
   const [logs, setLogs] = useState([])
   const [total, setTotal] = useState(0)
@@ -65,7 +88,7 @@ export default function AttendanceHistoryPage() {
       if (search) params.search = search
 
       const res = await attendanceAdminApi.getLogs(params)
-      setLogs(res.data.logs || [])
+      setLogs(normalizeAttendanceLogs(res.data.logs || []))
       setTotal(res.data.total || 0)
     } catch {
       toast.error('Gagal memuat riwayat kehadiran')

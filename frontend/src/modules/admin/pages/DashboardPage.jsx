@@ -86,6 +86,30 @@ const statCards = [
 // Day labels for chart
 const dayLabels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
 
+// Helper untuk normalisasi event_type (Scan 1 = IN, Scan 2 = OUT) langsung di Admin Dashboard
+// Tanpa membebani proses pengenalan wajah di STB (Set-Top Box)
+const normalizeAttendanceLogs = (logs) => {
+  if (!logs || !Array.isArray(logs)) return [];
+  const userDayCounts = {};
+  const sorted = [...logs].sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
+  const normalizedMap = new Map();
+  
+  sorted.forEach(log => {
+    const dateStr = log.timestamp ? log.timestamp.split('T')[0] : 'unknown-date';
+    const key = `${log.user_name || log.user_id || 'unknown'}_${dateStr}`;
+    const count = (userDayCounts[key] || 0) + 1;
+    userDayCounts[key] = count;
+    
+    const correctedType = (count % 2 !== 0) ? 'IN' : 'OUT';
+    normalizedMap.set(log.id, {
+      ...log,
+      event_type: correctedType
+    });
+  });
+  
+  return logs.map(log => normalizedMap.get(log.id) || log);
+};
+
 export default function DashboardPage() {
   const navigate = useNavigate()
   const { logout } = useAuthStore()
@@ -129,7 +153,7 @@ export default function DashboardPage() {
           timestamp: r.timestamp,
           late: r.late
         }))
-        setActivities(latestEvents)
+        setActivities(normalizeAttendanceLogs(latestEvents))
       }
     } catch {
       // Silently fail
@@ -148,7 +172,7 @@ export default function DashboardPage() {
         timestamp: message.data?.timestamp || new Date().toISOString(),
         late: message.data?.late || false,
       }
-      setActivities((prev) => [newAct, ...prev].slice(0, 6))
+      setActivities((prev) => normalizeAttendanceLogs([newAct, ...prev]).slice(0, 6))
       fetchDashboardData()
     }
   }, [fetchDashboardData])

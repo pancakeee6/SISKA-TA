@@ -173,13 +173,23 @@ async def get_recent_activities(
     act_result = await db.execute(act_query)
     activity_logs = act_result.scalars().all()
     
+    # Normalize event_type (1st scan = IN, 2nd scan = OUT) for dashboard display
+    user_day_counts = {}
+    sorted_att = sorted(attendance_logs, key=lambda x: x.timestamp or datetime.min.replace(tzinfo=timezone.utc))
+    normalized_types = {}
+    for l in sorted_att:
+        date_key = f"{l.user_id}_{l.timestamp.strftime('%Y-%m-%d') if l.timestamp else 'unknown'}"
+        count = user_day_counts.get(date_key, 0) + 1
+        user_day_counts[date_key] = count
+        normalized_types[l.id] = "IN" if count % 2 != 0 else "OUT"
+
     # 3. Combine and map to common schema
     unified = []
     for log in attendance_logs:
         unified.append({
             "id": f"att-{log.id}",
             "user_name": log.user.full_name if log.user else "Unknown",
-            "event_type": log.event_type, # "IN" or "OUT"
+            "event_type": normalized_types.get(log.id, log.event_type), # "IN" or "OUT"
             "timestamp": log.timestamp.isoformat() if log.timestamp else None,
             "late": log.late,
             "category": "ATTENDANCE"

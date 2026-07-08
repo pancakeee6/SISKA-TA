@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import logging
 
 from app.db.database import get_db
@@ -13,7 +13,6 @@ from app.services import ai_service
 from app.core.sse import sse_manager
 from app.core.config import settings
 from app.services.settings_service import get_settings
-from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +85,7 @@ async def recognize_attendance(
 
         if user:
             # Calculate is_late locally based on settings
-            wib = ZoneInfo("Asia/Jakarta")
+            wib = timezone(timedelta(hours=7))
             now_local = datetime.now(wib)
             current_time_str = now_local.strftime("%H:%M")
             
@@ -222,6 +221,16 @@ async def attendance_logs(
     result = await db.execute(query)
     logs = result.scalars().all()
 
+    # Normalize event_type for Admin Dashboard (1st scan = IN, 2nd scan = OUT)
+    user_day_counts = {}
+    sorted_logs = sorted(logs, key=lambda x: x.timestamp or datetime.min.replace(tzinfo=timezone.utc))
+    normalized_types = {}
+    for l in sorted_logs:
+        date_key = f"{l.user_id}_{l.timestamp.strftime('%Y-%m-%d') if l.timestamp else 'unknown'}"
+        count = user_day_counts.get(date_key, 0) + 1
+        user_day_counts[date_key] = count
+        normalized_types[l.id] = "IN" if count % 2 != 0 else "OUT"
+
     # Map with user names and employee IDs
     log_responses = []
     for log in logs:
@@ -235,6 +244,7 @@ async def attendance_logs(
         resp = AttendanceLogResponse.model_validate(log)
         resp.user_name = user_name
         resp.employee_id = employee_id
+        resp.event_type = normalized_types.get(log.id, log.event_type)
         log_responses.append(resp)
 
     return AttendanceListResponse(
@@ -288,6 +298,16 @@ async def export_attendance(
         "No", "Nama Pegawai", "NIP / ID Pegawai", "Tipe Absensi", "Tanggal", "Jam / Waktu", "Status Kehadiran", "Keterangan Waktu", "ID Perangkat"
     ])
 
+    # Normalize event_type for Admin Export (1st scan = IN, 2nd scan = OUT)
+    user_day_counts = {}
+    sorted_logs = sorted(logs, key=lambda x: x.timestamp or datetime.min.replace(tzinfo=timezone.utc))
+    normalized_types = {}
+    for l in sorted_logs:
+        date_key = f"{l.user_id}_{l.timestamp.strftime('%Y-%m-%d') if l.timestamp else 'unknown'}"
+        count = user_day_counts.get(date_key, 0) + 1
+        user_day_counts[date_key] = count
+        normalized_types[l.id] = "IN" if count % 2 != 0 else "OUT"
+
     for idx, log in enumerate(logs, 1):
         # Get user info
         user_result = await db.execute(
@@ -297,10 +317,11 @@ async def export_attendance(
         user_name = user_row[0] if user_row else "Unknown"
         employee_id = user_row[1] if user_row else "-"
 
+        norm_event = normalized_types.get(log.id, log.event_type)
         # Readable labels
-        tipe_absensi = "Check In (Masuk)" if log.event_type == "IN" else "Check Out (Keluar)"
+        tipe_absensi = "Check In (Masuk)" if norm_event == "IN" else "Check Out (Keluar)"
         status_label = "Terlambat" if (log.late or log.status == "late") else (
-            "Hadir" if log.event_type == "IN" else "Keluar"
+            "Hadir" if norm_event == "IN" else "Keluar"
         )
         keterangan_waktu = "Terlambat" if log.late else "Tepat Waktu"
 
