@@ -52,8 +52,7 @@ export default function UsersPage() {
       const res = await userApi.list({ 
         page, 
         limit, 
-        search: search || undefined,
-        status: statusFilter !== 'all' ? statusFilter : undefined
+        search: search || undefined
       })
       setUsers(res.data.items || res.data)
       setTotal(res.data.total || (res.data.items || res.data).length)
@@ -65,18 +64,18 @@ export default function UsersPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, statusFilter])
+  }, [page, search])
 
   useEffect(() => {
     // eslint-disable-next-line
     fetchUsers()
   }, [fetchUsers])
 
-  // Reset page when search or filter changes
+  // Reset page when search changes
   useEffect(() => {
     // eslint-disable-next-line
     setPage(1)
-  }, [search, statusFilter])
+  }, [search])
 
   // Modal handlers
   const openCreate = () => {
@@ -182,7 +181,7 @@ export default function UsersPage() {
       {/* Mini Stats Row */}
       <div className="animate-fade-up stagger-1" style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
+        gridTemplateColumns: 'repeat(2, 1fr)',
         gap: '16px',
       }}>
         {[
@@ -197,30 +196,6 @@ export default function UsersPage() {
             borderColor: 'var(--color-border)',
             iconColor: '#2563eb',
             iconBg: 'rgba(37, 99, 235, 0.1)'
-          },
-          {
-            key: 'active',
-            label: 'Aktif',
-            value: stats.active,
-            icon: UserCheck,
-            trend: `${stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}% dari total`,
-            trendColor: '#10b981',
-            bgColor: 'var(--color-bg-surface)',
-            borderColor: 'var(--color-border)',
-            iconColor: '#10b981',
-            iconBg: 'rgba(16, 185, 129, 0.1)'
-          },
-          {
-            key: 'inactive',
-            label: 'Nonaktif',
-            value: stats.inactive,
-            icon: UserX,
-            trend: `${stats.total > 0 ? Math.round((stats.inactive / stats.total) * 100) : 0}% dari total`,
-            trendColor: '#d97706',
-            bgColor: 'var(--color-bg-surface)',
-            borderColor: 'var(--color-border)',
-            iconColor: '#d97706',
-            iconBg: 'rgba(245, 158, 11, 0.1)'
           },
           {
             key: 'has_face',
@@ -317,30 +292,6 @@ export default function UsersPage() {
               />
             </div>
 
-            {/* Dropdown status */}
-            <div style={{ position: 'relative' }}>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={{
-                  appearance: 'none',
-                  padding: '10px 36px 10px 16px',
-                  borderRadius: '10px',
-                  background: 'var(--color-bg-base)',
-                  border: '1px solid var(--color-border)',
-                  color: 'var(--color-text)',
-                  fontSize: '13px',
-                  outline: 'none',
-                  cursor: 'pointer',
-                  minWidth: '130px',
-                }}
-              >
-                <option value="all">Semua Status</option>
-                <option value="aktif">Aktif</option>
-                <option value="nonaktif">Nonaktif</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-            </div>
           </div>
 
           {!loading && (
@@ -359,7 +310,6 @@ export default function UsersPage() {
                 <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>NIM</th>
                 <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Email</th>
                 <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Program Studi</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Status</th>
                 <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Wajah</th>
                 <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none', textAlign: 'right' }}>Aksi</th>
               </tr>
@@ -368,7 +318,7 @@ export default function UsersPage() {
               {loading ? (
                 [...Array(5)].map((_, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    {[...Array(7)].map((_, j) => (
+                    {[...Array(6)].map((_, j) => (
                       <td key={j} style={{ padding: '16px 20px' }}>
                         <div className="h-4 bg-slate-100 rounded animate-pulse" />
                       </td>
@@ -377,7 +327,7 @@ export default function UsersPage() {
                 ))
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ padding: '64px 20px', textAlign: 'center' }}>
+                  <td colSpan={6} style={{ padding: '64px 20px', textAlign: 'center' }}>
                     <div className="text-4xl mb-3">🐱</div>
                     <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', fontWeight: 600, margin: 0 }}>
                       {search ? 'Tidak ada pengguna yang cocok' : 'Belum ada pengguna'}
@@ -481,35 +431,6 @@ export default function UsersPage() {
                       <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                         {user.department || '—'}
                       </span>
-                    </td>
-
-                    {/* Status */}
-                    <td style={{ padding: '16px 20px' }}>
-                      {user.is_active !== false ? (
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '4px 10px',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          background: 'rgba(16, 185, 129, 0.1)',
-                          color: '#10b981',
-                        }}>
-                          Aktif
-                        </span>
-                      ) : (
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '4px 10px',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          background: 'rgba(245, 158, 11, 0.1)',
-                          color: '#d97706',
-                        }}>
-                          Nonaktif
-                        </span>
-                      )}
                     </td>
 
                     {/* Wajah */}

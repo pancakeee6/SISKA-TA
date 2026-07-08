@@ -242,7 +242,7 @@ export default function DashboardPage() {
       user_name: act.user_name,
       action: actionText,
       time: act.timestamp
-        ? new Date(act.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        ? new Date(act.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
         : '-',
       status: statusText,
       statusColor: sColor,
@@ -514,8 +514,13 @@ export default function DashboardPage() {
                       </p>
                     </div>
                     
-                    <div style={{ padding: '4px 12px', borderRadius: '6px', background: act.statusBg, color: act.statusColor, fontSize: '11px', fontWeight: 600 }}>
-                      {act.status}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
+                      <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>
+                        {act.time}
+                      </span>
+                      <div style={{ padding: '4px 12px', borderRadius: '6px', background: act.statusBg, color: act.statusColor, fontSize: '11px', fontWeight: 600, textAlign: 'center' }}>
+                        {act.status}
+                      </div>
                     </div>
                   </div>
                 </div>

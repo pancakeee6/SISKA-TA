@@ -1,12 +1,13 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAuthStore } from '@shared/store/authStore'
-import { Save, User, Lock, Shield, Camera } from 'lucide-react'
+import { Save, User, Lock, Shield, Camera, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '@shared/services/api'
 
 export default function SettingsPage() {
   const { admin, setAdmin } = useAuthStore()
   const [loading, setLoading] = useState(false)
+  const [shiftSettings, setShiftSettings] = useState(null)
   const fileInputRef = useRef(null)
 
   const [form, setForm] = useState({
@@ -19,6 +20,18 @@ export default function SettingsPage() {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  useEffect(() => {
+    api.get('/api/v1/settings/shifts')
+      .then(res => setShiftSettings(res.data))
+      .catch(err => console.error("Gagal mengambil pengaturan shift", err))
+  }, [])
+
+  const handleShiftChange = (index, field, value) => {
+    const newShifts = [...shiftSettings.shifts];
+    newShifts[index][field] = value;
+    setShiftSettings({ ...shiftSettings, shifts: newShifts });
   }
 
   const handlePhotoUpload = (e) => {
@@ -58,7 +71,13 @@ export default function SettingsPage() {
       
       // Update store lokal
       setAdmin(data.admin)
-      toast.success('Profil berhasil diperbarui!')
+      
+      // Update shift settings
+      if (shiftSettings) {
+        await api.put('/api/v1/settings/shifts', shiftSettings)
+      }
+
+      toast.success('Pengaturan berhasil diperbarui!')
       
       // Kosongkan form password setelah save
       setForm(prev => ({
@@ -235,6 +254,56 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+
+            {shiftSettings && (
+              <>
+                <hr style={{ border: 'none', borderBottom: '1px solid var(--color-border)', margin: '8px 0' }} />
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                    <Clock size={20} color="#334155" />
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#334155', margin: 0 }}>Pengaturan Jam Shift (Batas Absen)</h3>
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {shiftSettings.shifts.map((shift, idx) => (
+                      <div key={shift.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '8px' }}>
+                            {shift.name} - Jam Masuk (Batas Telat)
+                          </label>
+                          <input
+                            type="time"
+                            value={shift.start_time}
+                            onChange={(e) => handleShiftChange(idx, 'start_time', e.target.value)}
+                            style={{
+                              width: '100%', padding: '10px 14px', borderRadius: '8px',
+                              border: '1px solid var(--color-border)', background: '#fff',
+                              fontSize: '14px', color: 'var(--color-text)', outline: 'none'
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '8px' }}>
+                            {shift.name} - Jam Berakhir
+                          </label>
+                          <input
+                            type="time"
+                            value={shift.end_time}
+                            onChange={(e) => handleShiftChange(idx, 'end_time', e.target.value)}
+                            style={{
+                              width: '100%', padding: '10px 14px', borderRadius: '8px',
+                              border: '1px solid var(--color-border)', background: '#fff',
+                              fontSize: '14px', color: 'var(--color-text)', outline: 'none'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
           </div>
 
           <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>

@@ -8,7 +8,7 @@ import asyncio
 
 from app.core.config import settings
 from app.core.sse import sse_manager
-from app.api.v1 import auth, users, attendance, dashboard, faces, tts
+from app.api.v1 import auth, users, attendance, dashboard, faces, tts, settings as app_settings
 
 # Import all models so SQLAlchemy resolves relationships at startup
 import app.models.admin  # noqa: F401
@@ -41,6 +41,7 @@ app.include_router(attendance.router, prefix="/api/v1/attendance", tags=["Attend
 app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
 app.include_router(faces.router, prefix="/api/v1/faces", tags=["Face Data"])
 app.include_router(tts.router, prefix="/api/v1/tts", tags=["TTS"])
+app.include_router(app_settings.router, prefix="/api/v1/settings", tags=["Settings"])
 
 # Serve uploaded face images as static files
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

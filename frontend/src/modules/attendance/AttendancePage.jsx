@@ -14,10 +14,10 @@ const STATUS = {
   NO_CAMERA: 'no_camera',
 }
 
-// Auto-capture interval in ms (dipercepat ke 1.5 detik untuk responsivitas STB maksimal)
-const CAPTURE_INTERVAL = 1500
-// How long to show result before resetting (dioptimalkan ke 5 detik agar antrean siswa lancar & tidak terkunci 18 detik)
-const RESULT_DISPLAY_MS = 5000
+// Auto-capture interval in ms
+const CAPTURE_INTERVAL = 4000
+// How long to show result before resetting
+const RESULT_DISPLAY_MS = 15000
 
 // Audio Queue helper to prevent collisions
 window.audioQueue = window.audioQueue || [];

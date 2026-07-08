@@ -12,6 +12,8 @@ from app.schemas.attendance import AttendanceLogResponse, AttendanceListResponse
 from app.services import ai_service
 from app.core.sse import sse_manager
 from app.core.config import settings
+from app.services.settings_service import get_settings
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
@@ -83,38 +85,76 @@ async def recognize_attendance(
             user = user_result.scalars().first()
 
         if user:
-            # Log attendance locally regardless of ML API cooldown status
-            # This allows the dashboard to show a raw history of all scans
-            log = AttendanceLog(
-                user_id=user.id,
-                event_type=face.get("event_type") or "IN",
-                status="late" if face.get("is_late") else "present",
-                late=face.get("is_late", False),
-                device_id=settings.DEVICE_ID,
-            )
-            db.add(log)
-            await db.flush()
-
-            event_data = {
-                "type": "attendance_marked",
-                "data": {
-                    "user_name": user.full_name,
-                    "event_type": face.get("event_type") or "IN",
-                    "status": "late" if face.get("is_late") else "present",
-                    "late": face.get("is_late", False),
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                },
-            }
-
-            # Broadcast to admin dashboard via SSE
-            await sse_manager.broadcast(event_data)
+            # Calculate is_late locally based on settings
+            wib = ZoneInfo("Asia/Jakarta")
+            now_local = datetime.now(wib)
+            current_time_str = now_local.strftime("%H:%M")
             
-            # Append result for the frontend (whether ok or cooldown)
+            app_settings = get_settings()
+            current_event = face.get("event_type") or "IN"
+            is_late_local = False
+            
+            if current_event == "IN":
+                if now_local.hour < 13:
+                    if len(app_settings.shifts) > 0:
+                        shift = app_settings.shifts[0]
+                        if current_time_str > shift.start_time:
+                            is_late_local = True
+                else:
+                    if len(app_settings.shifts) > 1:
+                        shift = app_settings.shifts[1]
+                        if current_time_str > shift.start_time:
+                            is_late_local = True
+
+            # Check how many times this user has scanned today for the same event type
+            today = datetime.now(timezone.utc).date()
+            scan_count_result = await db.execute(
+                select(func.count(AttendanceLog.id)).where(
+                    AttendanceLog.user_id == user.id,
+                    AttendanceLog.event_type == current_event,
+                    func.date(AttendanceLog.timestamp) == today
+                )
+            )
+            scan_count = scan_count_result.scalar() or 0
+
+            # Hanya rekam 1 data (scan pertama) per event_type (IN/OUT) per harinya
+            if scan_count == 0:
+                # Log attendance locally
+                log = AttendanceLog(
+                    user_id=user.id,
+                    event_type=current_event,
+                    status="late" if is_late_local else "present",
+                    late=is_late_local,
+                    device_id=settings.DEVICE_ID,
+                )
+                db.add(log)
+                await db.flush()
+
+                event_data = {
+                    "type": "attendance_marked",
+                    "data": {
+                        "user_name": user.full_name,
+                        "event_type": current_event,
+                        "status": "late" if is_late_local else "present",
+                        "late": is_late_local,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    },
+                }
+
+                # Broadcast to admin dashboard via SSE
+                await sse_manager.broadcast(event_data)
+                
+                frontend_status = "ok"
+            else:
+                logger.info(f"Skipping log and broadcast for {user.full_name} ({current_event}), already scanned {scan_count} times today.")
+                frontend_status = "cooldown"
+            
+            # Append result for the frontend (controlled strictly by SISKA backend)
             results.append({
                 "user_name": user.full_name,
-                "event_type": face.get("event_type") or "IN", # fallback for UI
-                "status": face.get("status", "ok"),
-                "late": face.get("is_late", False),
+                "event_type": current_event, # fallback for UI
+                "status": frontend_status,
+                "late": is_late_local if scan_count == 0 else False,
                 "audio_text": face.get("audio_text"),
                 "bbox": face.get("bbox") or face.get("box") or face.get("location"),
             })

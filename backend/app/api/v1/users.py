@@ -195,14 +195,18 @@ async def delete_user(
         except Exception as e:
             logger.warning(f"ML API delete gagal untuk person_id={user.ml_person_id}: {e}")
 
-    # Explicitly delete local face data since soft-delete doesn't trigger cascade
     from sqlalchemy import delete
     from app.models.face import FaceData
+    from app.models.attendance import AttendanceLog
+    
+    # Explicitly delete attendance logs to avoid foreign key constraints
+    await db.execute(delete(AttendanceLog).where(AttendanceLog.user_id == user_id))
+    
+    # Explicitly delete local face data
     await db.execute(delete(FaceData).where(FaceData.user_id == user_id))
 
-    user.is_active = False
-    # Append suffix to free up the employee_id for reuse
-    user.employee_id = f"{user.employee_id}-del-{str(user.id)[:8]}"
+    # Hard delete the user
+    await db.delete(user)
     
     # Log Activity
     try:
