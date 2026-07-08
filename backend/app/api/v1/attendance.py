@@ -105,23 +105,43 @@ async def recognize_attendance(
                         if current_time_str > shift.start_time:
                             is_late_local = True
 
-            # Check how many times this user has scanned today for the same event type
+            # Check total scans today for this user across ALL event types (Shift 1 vs Shift 2 sequence)
             today = datetime.now(timezone.utc).date()
             scan_count_result = await db.execute(
                 select(func.count(AttendanceLog.id)).where(
                     AttendanceLog.user_id == user.id,
-                    AttendanceLog.event_type == current_event,
                     func.date(AttendanceLog.timestamp) == today
                 )
             )
-            scan_count = scan_count_result.scalar() or 0
+            total_scans_today = scan_count_result.scalar() or 0
 
-            # Hanya rekam 1 data (scan pertama) per event_type (IN/OUT) per harinya
-            if scan_count == 0:
+            # Determine Shift sequence: 1st scan = IN (Shift 1 check in), 2nd scan = OUT (Shift 2 clock out / 15.00+), etc.
+            resolved_event_type = "IN" if total_scans_today % 2 == 0 else "OUT"
+            if resolved_event_type == "OUT":
+                is_late_local = False # Clock out is never marked late
+
+            # Check 60-second cooldown to prevent double scans
+            is_cooldown = False
+            if total_scans_today > 0:
+                last_scan_res = await db.execute(
+                    select(AttendanceLog.timestamp).where(
+                        AttendanceLog.user_id == user.id,
+                        func.date(AttendanceLog.timestamp) == today
+                    ).order_by(AttendanceLog.timestamp.desc()).limit(1)
+                )
+                last_ts = last_scan_res.scalar_one_or_none()
+                if last_ts:
+                    now_utc = datetime.now(timezone.utc)
+                    if last_ts.tzinfo is None:
+                        last_ts = last_ts.replace(tzinfo=timezone.utc)
+                    if (now_utc - last_ts).total_seconds() < 60:
+                        is_cooldown = True
+
+            if not is_cooldown:
                 # Log attendance locally
                 log = AttendanceLog(
                     user_id=user.id,
-                    event_type=current_event,
+                    event_type=resolved_event_type,
                     status="late" if is_late_local else "present",
                     late=is_late_local,
                     device_id=settings.DEVICE_ID,
@@ -133,27 +153,28 @@ async def recognize_attendance(
                     "type": "attendance_marked",
                     "data": {
                         "user_name": user.full_name,
-                        "event_type": current_event,
+                        "event_type": resolved_event_type,
                         "status": "late" if is_late_local else "present",
                         "late": is_late_local,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     },
                 }
 
-                # Broadcast to admin dashboard via SSE
+                # Broadcast to admin dashboard via SSE and WebSocket
                 await sse_manager.broadcast(event_data)
+                await ws_manager.broadcast(event_data)
                 
                 frontend_status = "ok"
             else:
-                logger.info(f"Skipping log and broadcast for {user.full_name} ({current_event}), already scanned {scan_count} times today.")
+                logger.info(f"Skipping log and broadcast for {user.full_name} ({resolved_event_type}), within 60s cooldown.")
                 frontend_status = "cooldown"
             
             # Append result for the frontend (controlled strictly by SISKA backend)
             results.append({
                 "user_name": user.full_name,
-                "event_type": current_event, # fallback for UI
+                "event_type": resolved_event_type, # fallback for UI
                 "status": frontend_status,
-                "late": is_late_local if scan_count == 0 else False,
+                "late": is_late_local if not is_cooldown else False,
                 "audio_text": face.get("audio_text"),
                 "bbox": face.get("bbox") or face.get("box") or face.get("location"),
             })
@@ -162,6 +183,38 @@ async def recognize_attendance(
         "status": "recognized",
         "faces": results,
     }
+
+
+async def normalize_logs_event_types(db: AsyncSession, logs: list) -> dict:
+    """
+    Compute true chronological sequence index for each user on each day across the database.
+    1st scan = IN (Shift 1), 2nd scan = OUT (Shift 2), 3rd scan = IN, etc.
+    """
+    if not logs:
+        return {}
+    pairs = set()
+    for l in logs:
+        if l.user_id and l.timestamp:
+            pairs.add((l.user_id, l.timestamp.date()))
+    if not pairs:
+        return {}
+    user_ids = list({p[0] for p in pairs})
+    query = select(AttendanceLog.id, AttendanceLog.user_id, AttendanceLog.timestamp).where(
+        AttendanceLog.user_id.in_(user_ids)
+    ).order_by(AttendanceLog.timestamp.asc())
+    result = await db.execute(query)
+    all_user_logs = result.all()
+    user_day_counts = {}
+    normalized_map = {}
+    for row_id, u_id, ts in all_user_logs:
+        if not ts:
+            continue
+        d_str = ts.strftime('%Y-%m-%d')
+        key = f"{u_id}_{d_str}"
+        count = user_day_counts.get(key, 0) + 1
+        user_day_counts[key] = count
+        normalized_map[row_id] = "IN" if count % 2 != 0 else "OUT"
+    return normalized_map
 
 
 @router.get("/logs", response_model=AttendanceListResponse)
@@ -221,15 +274,8 @@ async def attendance_logs(
     result = await db.execute(query)
     logs = result.scalars().all()
 
-    # Normalize event_type for Admin Dashboard (1st scan = IN, 2nd scan = OUT)
-    user_day_counts = {}
-    sorted_logs = sorted(logs, key=lambda x: x.timestamp or datetime.min.replace(tzinfo=timezone.utc))
-    normalized_types = {}
-    for l in sorted_logs:
-        date_key = f"{l.user_id}_{l.timestamp.strftime('%Y-%m-%d') if l.timestamp else 'unknown'}"
-        count = user_day_counts.get(date_key, 0) + 1
-        user_day_counts[date_key] = count
-        normalized_types[l.id] = "IN" if count % 2 != 0 else "OUT"
+    # Normalize event_type for Admin Dashboard across entire day (1st scan = IN, 2nd scan = OUT)
+    normalized_types = await normalize_logs_event_types(db, logs)
 
     # Map with user names and employee IDs
     log_responses = []
@@ -298,15 +344,8 @@ async def export_attendance(
         "No", "Nama Pegawai", "NIP / ID Pegawai", "Tipe Absensi", "Tanggal", "Jam / Waktu", "Status Kehadiran", "Keterangan Waktu", "ID Perangkat"
     ])
 
-    # Normalize event_type for Admin Export (1st scan = IN, 2nd scan = OUT)
-    user_day_counts = {}
-    sorted_logs = sorted(logs, key=lambda x: x.timestamp or datetime.min.replace(tzinfo=timezone.utc))
-    normalized_types = {}
-    for l in sorted_logs:
-        date_key = f"{l.user_id}_{l.timestamp.strftime('%Y-%m-%d') if l.timestamp else 'unknown'}"
-        count = user_day_counts.get(date_key, 0) + 1
-        user_day_counts[date_key] = count
-        normalized_types[l.id] = "IN" if count % 2 != 0 else "OUT"
+    # Normalize event_type for Admin Export across entire day (1st scan = IN, 2nd scan = OUT)
+    normalized_types = await normalize_logs_event_types(db, logs)
 
     for idx, log in enumerate(logs, 1):
         # Get user info

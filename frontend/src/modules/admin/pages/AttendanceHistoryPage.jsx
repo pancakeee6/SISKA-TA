@@ -813,7 +813,19 @@ export default function AttendanceHistoryPage() {
                             {log.late ? 'Terlambat' : 'Tepat Waktu'}
                           </span>
                         ) : (
-                          <span style={{ fontSize: '13px', color: '#94a3b8' }}>-</span>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            background: '#eff6ff',
+                            color: '#2563eb',
+                            border: '1px solid #bfdbfe',
+                          }}>
+                            Pulang (Shift 2)
+                          </span>
                         )}
                       </td>
 

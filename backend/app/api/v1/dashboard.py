@@ -11,6 +11,7 @@ from app.models.activity_log import ActivityLog
 from app.models.admin import Admin
 from sqlalchemy.orm import selectinload
 from app.schemas.dashboard import DashboardStats
+from app.api.v1.attendance import normalize_logs_event_types
 
 router = APIRouter()
 
@@ -173,15 +174,8 @@ async def get_recent_activities(
     act_result = await db.execute(act_query)
     activity_logs = act_result.scalars().all()
     
-    # Normalize event_type (1st scan = IN, 2nd scan = OUT) for dashboard display
-    user_day_counts = {}
-    sorted_att = sorted(attendance_logs, key=lambda x: x.timestamp or datetime.min.replace(tzinfo=timezone.utc))
-    normalized_types = {}
-    for l in sorted_att:
-        date_key = f"{l.user_id}_{l.timestamp.strftime('%Y-%m-%d') if l.timestamp else 'unknown'}"
-        count = user_day_counts.get(date_key, 0) + 1
-        user_day_counts[date_key] = count
-        normalized_types[l.id] = "IN" if count % 2 != 0 else "OUT"
+    # Normalize event_type across entire day (1st scan = IN, 2nd scan = OUT) for dashboard display
+    normalized_types = await normalize_logs_event_types(db, attendance_logs)
 
     # 3. Combine and map to common schema
     unified = []
