@@ -1,14 +1,13 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
-import json
-import asyncio
 
 from app.core.config import settings
-from app.core.sse import sse_manager
-from app.api.v1 import auth, users, attendance, dashboard, faces, tts, settings as app_settings
+from app.core.websocket import ws_manager
+from app.db.database import engine, Base
+from app.api.v1 import auth, users, attendance, dashboard, faces, tts, settings as settings_api
 
 # Import all models so SQLAlchemy resolves relationships at startup
 import app.models.admin  # noqa: F401
@@ -16,6 +15,16 @@ import app.models.user  # noqa: F401
 import app.models.face  # noqa: F401
 import app.models.attendance  # noqa: F401
 import app.models.activity_log  # noqa: F401
+import app.models.shift  # noqa: F401
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    await engine.dispose()
+
 
 app = FastAPI(
     title="SISKA API",
@@ -23,6 +32,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # CORS Middleware
@@ -41,34 +51,23 @@ app.include_router(attendance.router, prefix="/api/v1/attendance", tags=["Attend
 app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
 app.include_router(faces.router, prefix="/api/v1/faces", tags=["Face Data"])
 app.include_router(tts.router, prefix="/api/v1/tts", tags=["TTS"])
-app.include_router(app_settings.router, prefix="/api/v1/settings", tags=["Settings"])
+app.include_router(settings_api.router, prefix="/api/v1/settings", tags=["Settings"])
 
 # Serve uploaded face images as static files
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 app.mount("/api/v1/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 
-# SSE endpoint for realtime attendance updates
-@app.get("/stream/attendance")
-async def stream_attendance(request: Request):
-    queue = sse_manager.connect()
-
-    async def event_generator():
-        try:
-            while True:
-                # Check if client disconnected
-                if await request.is_disconnected():
-                    break
-                
-                # Wait for new message in the queue
-                message = await queue.get()
-                yield f"data: {json.dumps(message)}\n\n"
-        except asyncio.CancelledError:
-            pass
-        finally:
-            sse_manager.disconnect(queue)
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+# WebSocket endpoint for realtime attendance updates
+@app.websocket("/ws/attendance")
+async def websocket_attendance(websocket: WebSocket):
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            # Keep connection alive, listen for any client messages
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
 
 
 @app.get("/", tags=["Root"])

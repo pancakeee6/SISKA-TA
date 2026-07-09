@@ -39,7 +39,7 @@ async def upload_face(
         try:
             ml_person_id = await ai_service.create_person(user.full_name)
             user.ml_person_id = ml_person_id
-            await db.flush()
+            await db.commit()
             logger.info(f"Auto-created ML person for '{user.full_name}': id={ml_person_id}")
         except Exception as e:
             raise HTTPException(
@@ -80,7 +80,7 @@ async def upload_face(
         image_path=filepath,
     )
     db.add(face_data)
-    await db.flush()
+    await db.commit()
     await db.refresh(face_data)
 
     return {
@@ -132,6 +132,6 @@ async def delete_face(
         os.remove(face.image_path)
 
     await db.delete(face)
-    await db.flush()
+    await db.commit()
 
     return {"message": "Data wajah berhasil dihapus"}

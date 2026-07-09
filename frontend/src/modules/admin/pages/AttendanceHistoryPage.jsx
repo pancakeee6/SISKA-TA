@@ -14,27 +14,75 @@ import { id as localeID } from 'date-fns/locale'
 
 const PER_PAGE = 10
 
-// Helper untuk normalisasi event_type (Scan 1 = IN, Scan 2 = OUT) langsung di Admin Dashboard
+// Helper untuk normalisasi event_type (Masuk & Pulang) serta deduplikasi absen per Shift:
+// Shift 1: 08.00 - 15.00 (hour < 15.0)
+// Shift 2: 15.00 - 21.00 (hour >= 15.0)
+// Mengabaikan duplikat kamera dalam jeda singkat (< 5 menit) agar hanya absen pertama yang tersimpan/tampil sebagai Masuk,
+// dan scan berikutnya di atas 5 menit dalam shift yang sama menjadi Pulang.
 const normalizeAttendanceLogs = (logs) => {
   if (!logs || !Array.isArray(logs)) return [];
-  const userDayCounts = {};
+  
   const sorted = [...logs].sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
+  const shiftTrackers = {};
   const normalizedMap = new Map();
+  const resultIds = [];
   
   sorted.forEach(log => {
-    const dateStr = log.timestamp ? log.timestamp.split('T')[0] : 'unknown-date';
-    const key = `${log.user_name || log.user_id || log.employee_id || 'unknown'}_${dateStr}`;
-    const count = (userDayCounts[key] || 0) + 1;
-    userDayCounts[key] = count;
+    if (!log.timestamp) return;
+    const dt = new Date(log.timestamp);
+    if (isNaN(dt.getTime())) {
+      normalizedMap.set(log.id || Math.random(), log);
+      return;
+    }
     
-    const correctedType = (count % 2 !== 0) ? 'IN' : 'OUT';
-    normalizedMap.set(log.id, {
-      ...log,
-      event_type: correctedType
-    });
+    const dateStr = log.timestamp.split('T')[0];
+    const hour = dt.getHours() + (dt.getMinutes() / 60);
+    
+    const shiftLabel = hour < 15 ? 'Shift 1' : 'Shift 2';
+    const userId = log.user_name || log.user_id || log.employee_id || log.full_name || 'unknown';
+    const userShiftKey = `${userId}_${dateStr}_${shiftLabel}`;
+    
+    if (!shiftTrackers[userShiftKey]) {
+      shiftTrackers[userShiftKey] = {
+        firstScanTime: dt,
+        lastScanTime: dt,
+        inLogId: log.id,
+        outLogId: null
+      };
+      normalizedMap.set(log.id, {
+        ...log,
+        event_type: 'IN',
+        shift_label: shiftLabel
+      });
+      resultIds.push(log.id);
+    } else {
+      const diffSec = (dt - shiftTrackers[userShiftKey].lastScanTime) / 1000;
+      
+      if (diffSec < 300 && !shiftTrackers[userShiftKey].outLogId) {
+        shiftTrackers[userShiftKey].lastScanTime = dt;
+        return;
+      }
+      
+      shiftTrackers[userShiftKey].lastScanTime = dt;
+      if (shiftTrackers[userShiftKey].outLogId) {
+        const oldOutId = shiftTrackers[userShiftKey].outLogId;
+        normalizedMap.delete(oldOutId);
+        const idx = resultIds.indexOf(oldOutId);
+        if (idx !== -1) resultIds.splice(idx, 1);
+      }
+      
+      shiftTrackers[userShiftKey].outLogId = log.id;
+      normalizedMap.set(log.id, {
+        ...log,
+        event_type: 'OUT',
+        shift_label: shiftLabel
+      });
+      resultIds.push(log.id);
+    }
   });
   
-  return logs.map(log => normalizedMap.get(log.id) || log);
+  const finalLogs = resultIds.map(id => normalizedMap.get(id)).filter(Boolean);
+  return finalLogs.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
 };
 
 export default function AttendanceHistoryPage() {
@@ -194,14 +242,33 @@ export default function AttendanceHistoryPage() {
     }
   }
 
-  // Calculate deterministic late minutes from timestamp
-  const getLateMinutes = (ts) => {
+  // Calculate real late duration from shift or exact timestamp
+  const formatLateDuration = (log) => {
+    if (log && log.late_duration && log.late_duration !== '-') {
+      return log.late_duration
+    }
+    if (log && typeof log.late_minutes === 'number' && log.late_minutes >= 0) {
+      const hours = Math.floor(log.late_minutes / 60)
+      const mins = log.late_minutes % 60
+      if (hours > 0 && mins > 0) return `${hours} jam ${mins} menit`
+      if (hours > 0) return `${hours} jam`
+      return `${mins || 1} menit`
+    }
     try {
+      const ts = log && log.timestamp ? log.timestamp : log
       const d = new Date(ts)
-      const mins = d.getMinutes()
-      const secs = d.getSeconds()
-      const val = ((mins + secs) % 20) + 2
-      return `${val} menit`
+      const hour = d.getHours()
+      const min = d.getMinutes()
+      let shiftHour = 8
+      if (hour >= 15) {
+        shiftHour = 15
+      }
+      const diffMins = Math.max(1, (hour - shiftHour) * 60 + min)
+      const hours = Math.floor(diffMins / 60)
+      const mins = diffMins % 60
+      if (hours > 0 && mins > 0) return `${hours} jam ${mins} menit`
+      if (hours > 0) return `${hours} jam`
+      return `${mins} menit`
     } catch {
       return '-'
     }
@@ -784,7 +851,7 @@ export default function AttendanceHistoryPage() {
                                 border: '1px solid #bfdbfe',
                               }),
                         }}>
-                          {log.event_type === 'IN' ? 'Masuk' : 'Keluar'}
+                          {log.event_type === 'IN' ? 'Masuk' : 'Pulang'}
                         </span>
                       </td>
 
@@ -824,7 +891,7 @@ export default function AttendanceHistoryPage() {
                             color: '#2563eb',
                             border: '1px solid #bfdbfe',
                           }}>
-                            Pulang (Shift 2)
+                            {log.shift_label ? `Pulang (${log.shift_label})` : 'Pulang'}
                           </span>
                         )}
                       </td>
@@ -833,7 +900,7 @@ export default function AttendanceHistoryPage() {
                       <td style={{ padding: '12px 20px' }}>
                         {log.late ? (
                           <span style={{ fontSize: '13px', color: '#dc2626', fontWeight: 600 }}>
-                            {getLateMinutes(log.timestamp)}
+                            {formatLateDuration(log)}
                           </span>
                         ) : (
                           <span style={{ fontSize: '13px', color: '#94a3b8' }}>-</span>

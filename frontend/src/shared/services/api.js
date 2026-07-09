@@ -6,7 +6,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000,
+  timeout: 20000,
 })
 
 // Request interceptor - attach JWT token
@@ -26,16 +26,27 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// Response interceptor - handle unauthorized
+// Response interceptor - handle unauthorized & auto-retry transient network/server failures
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const config = error.config
     if (error.response?.status === 401) {
       useAuthStore.getState().logout()
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login'
       }
+      return Promise.reject(error)
     }
+
+    // Auto-retry GET requests up to 2 times on network drops/timeouts or temporary 5xx errors
+    if (config && (config.method === 'get' || !error.response || error.response?.status >= 500) && (!config.__retryCount || config.__retryCount < 2)) {
+      config.__retryCount = (config.__retryCount || 0) + 1
+      const delayMs = config.__retryCount * 800
+      await new Promise(resolve => setTimeout(resolve, delayMs))
+      return api(config)
+    }
+
     return Promise.reject(error)
   }
 )

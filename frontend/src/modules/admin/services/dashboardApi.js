@@ -18,6 +18,11 @@ const dashboardApi = {
    * @returns {Promise<Array<{ day: string, present: number, late: number, absent: number }>>}
    */
   getMonthly: () => api.get('/api/v1/dashboard/monthly'),
+
+  /**
+   * Get all dashboard data in a single high-speed summary call.
+   */
+  getSummary: () => api.get('/api/v1/dashboard/summary'),
 }
 
 export default dashboardApi

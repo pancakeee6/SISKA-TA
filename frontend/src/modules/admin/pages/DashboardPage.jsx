@@ -1,23 +1,22 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Users, UserCheck, Clock, TrendingUp, TrendingDown,
-  UserPlus, Download, ArrowRight, Activity
+  Users, UserCheck, Clock, TrendingUp, TrendingDown, Activity, Download, UserPlus, ArrowRight
 } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts'
 import dashboardApi from '../services/dashboardApi'
-import userApi from '../services/userApi'
 import api from '@shared/services/api'
-import useSSE from '@shared/hooks/useSSE'
+import useWebSocket from '@shared/hooks/useWebSocket'
 import { useAuthStore } from '@shared/store/authStore'
 
 
 
 // --- Donut Ring Component ---
 function AttendanceDonut({ percentage, size = 64, strokeWidth = 6 }) {
+  const cappedPercentage = Math.min(100, Math.max(0, Math.round(percentage || 0)))
   const radius = (size - strokeWidth) / 2
   const circumference = 2 * Math.PI * radius
-  const offset = circumference - (percentage / 100) * circumference
+  const offset = circumference - (cappedPercentage / 100) * circumference
 
   return (
     <div style={{ position: 'relative', width: size, height: size }}>
@@ -33,15 +32,15 @@ function AttendanceDonut({ percentage, size = 64, strokeWidth = 6 }) {
           fill="none"
           stroke="url(#donut-gradient)"
           strokeWidth={strokeWidth}
-          strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          className="donut-ring"
+          strokeLinecap="round"
+          style={{ transition: 'stroke-dashoffset 0.8s ease-in-out' }}
         />
         <defs>
-          <linearGradient id="donut-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#818cf8" />
-            <stop offset="100%" stopColor="#4f46e5" />
+          <linearGradient id="donut-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#4f46e5" />
+            <stop offset="100%" stopColor="#818cf8" />
           </linearGradient>
         </defs>
       </svg>
@@ -52,7 +51,7 @@ function AttendanceDonut({ percentage, size = 64, strokeWidth = 6 }) {
         alignItems: 'center',
         justifyContent: 'center',
       }}>
-        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text)' }}>{percentage}%</span>
+        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text)' }}>{cappedPercentage}%</span>
       </div>
     </div>
   )
@@ -86,34 +85,86 @@ const statCards = [
 // Day labels for chart
 const dayLabels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
 
-// Helper untuk normalisasi event_type (Scan 1 = IN, Scan 2 = OUT) langsung di Admin Dashboard
-// Tanpa membebani proses pengenalan wajah di STB (Set-Top Box)
+// Helper untuk normalisasi event_type (Masuk & Pulang) serta deduplikasi absen per Shift:
+// Shift 1: 08.00 - 15.00 (hour < 15.0)
+// Shift 2: 15.00 - 21.00 (hour >= 15.0)
+// Mengabaikan duplikat kamera dalam jeda singkat (< 5 menit) agar hanya absen pertama yang tersimpan/tampil sebagai Masuk,
+// dan scan berikutnya di atas 5 menit dalam shift yang sama menjadi Pulang.
 const normalizeAttendanceLogs = (logs) => {
   if (!logs || !Array.isArray(logs)) return [];
-  const userDayCounts = {};
+
   const sorted = [...logs].sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
+  const shiftTrackers = {};
   const normalizedMap = new Map();
-  
+  const resultIds = [];
+
   sorted.forEach(log => {
-    const dateStr = log.timestamp ? log.timestamp.split('T')[0] : 'unknown-date';
-    const key = `${log.user_name || log.user_id || 'unknown'}_${dateStr}`;
-    const count = (userDayCounts[key] || 0) + 1;
-    userDayCounts[key] = count;
-    
-    const correctedType = (count % 2 !== 0) ? 'IN' : 'OUT';
-    normalizedMap.set(log.id, {
-      ...log,
-      event_type: correctedType
-    });
+    if (!log.timestamp) return;
+    if (log.category === 'ADMIN' || (log.event_type !== 'IN' && log.event_type !== 'OUT')) {
+      normalizedMap.set(log.id || Math.random(), log);
+      resultIds.push(log.id || Math.random());
+      return;
+    }
+    const dt = new Date(log.timestamp);
+    if (isNaN(dt.getTime())) {
+      normalizedMap.set(log.id || Math.random(), log);
+      return;
+    }
+
+    const dateStr = log.timestamp.split('T')[0];
+    const hour = dt.getHours() + (dt.getMinutes() / 60);
+
+    const shiftLabel = hour < 15 ? 'Shift 1' : 'Shift 2';
+    const userId = log.user_name || log.user_id || log.employee_id || log.full_name || 'unknown';
+    const userShiftKey = `${userId}_${dateStr}_${shiftLabel}`;
+
+    if (!shiftTrackers[userShiftKey]) {
+      shiftTrackers[userShiftKey] = {
+        firstScanTime: dt,
+        lastScanTime: dt,
+        inLogId: log.id,
+        outLogId: null
+      };
+      normalizedMap.set(log.id, {
+        ...log,
+        event_type: 'IN',
+        shift_label: shiftLabel
+      });
+      resultIds.push(log.id);
+    } else {
+      const diffSec = (dt - shiftTrackers[userShiftKey].lastScanTime) / 1000;
+
+      if (diffSec < 300 && !shiftTrackers[userShiftKey].outLogId) {
+        shiftTrackers[userShiftKey].lastScanTime = dt;
+        return;
+      }
+
+      shiftTrackers[userShiftKey].lastScanTime = dt;
+      if (shiftTrackers[userShiftKey].outLogId) {
+        const oldOutId = shiftTrackers[userShiftKey].outLogId;
+        normalizedMap.delete(oldOutId);
+        const idx = resultIds.indexOf(oldOutId);
+        if (idx !== -1) resultIds.splice(idx, 1);
+      }
+
+      shiftTrackers[userShiftKey].outLogId = log.id;
+      normalizedMap.set(log.id, {
+        ...log,
+        event_type: 'OUT',
+        shift_label: shiftLabel
+      });
+      resultIds.push(log.id);
+    }
   });
-  
-  return logs.map(log => normalizedMap.get(log.id) || log);
+
+  const finalLogs = resultIds.map(id => normalizedMap.get(id)).filter(Boolean);
+  return finalLogs.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
 };
 
 export default function DashboardPage() {
   const navigate = useNavigate()
   const { logout } = useAuthStore()
-  
+
   const [stats, setStats] = useState({ total: 0, present: 0, late: 0, absent: 0 })
   const [weeklyStats, setWeeklyStats] = useState([])
   const [monthlyStats, setMonthlyStats] = useState([])
@@ -123,20 +174,47 @@ export default function DashboardPage() {
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      const [statsRes, weeklyRes, monthlyRes, usersRes, eventsRes] = await Promise.allSettled([
+      try {
+        const summaryRes = await dashboardApi.getSummary()
+        if (summaryRes.data) {
+          const { stats: statsData = {}, weekly = [], monthly = [], activities: rawActivities = [] } = summaryRes.data
+          const totalUsers = statsData.total || 0
+          setStats({
+            ...statsData,
+            total: totalUsers,
+            absent: Math.max(0, totalUsers - (statsData.present || 0))
+          })
+          setWeeklyStats(weekly)
+          setMonthlyStats(monthly)
+          
+          const latestEvents = (rawActivities || [])
+            .filter(r => r.category === 'ATTENDANCE' || (r.category !== 'ADMIN' && (r.event_type === 'IN' || r.event_type === 'OUT')))
+            .map(r => ({
+              id: r.id || `${r.timestamp}-${r.user_name}`,
+              user_name: r.user_name || 'Unknown',
+              event_type: r.event_type || 'IN',
+              timestamp: r.timestamp,
+              late: r.late,
+              category: 'ATTENDANCE'
+            }))
+          setActivities(normalizeAttendanceLogs(latestEvents))
+          return
+        }
+      } catch {
+        // Fallback to individual calls if summary endpoint is unavailable
+      }
+
+      const [statsRes, weeklyRes, monthlyRes, eventsRes] = await Promise.allSettled([
         dashboardApi.getStats(),
         dashboardApi.getWeekly(),
         dashboardApi.getMonthly(),
-        userApi.list({ limit: 1, status: 'aktif' }),
         api.get('/api/v1/dashboard/activities', { params: { limit: 5 } })
       ])
 
       if (statsRes.status === 'fulfilled') {
         const statsData = statsRes.value.data
-        const totalUsers = usersRes.status === 'fulfilled'
-          ? (usersRes.value.data.total || usersRes.value.data.items?.length || usersRes.value.data.users?.length || 0)
-          : 0
-        setStats({ ...statsData, total: totalUsers, absent: Math.max(0, totalUsers - statsData.present) })
+        const totalUsers = statsData.total || 0
+        setStats({ ...statsData, total: totalUsers, absent: Math.max(0, totalUsers - (statsData.present || 0)) })
       }
       if (weeklyRes.status === 'fulfilled') {
         setWeeklyStats(weeklyRes.value.data)
@@ -146,13 +224,16 @@ export default function DashboardPage() {
       }
       if (eventsRes.status === 'fulfilled') {
         const rawLogs = eventsRes.value.data?.logs || eventsRes.value.data?.items || []
-        const latestEvents = rawLogs.map(r => ({
-          id: r.id || `${r.timestamp}-${r.user_name}`,
-          user_name: r.user_name || 'Unknown',
-          event_type: r.event_type || 'IN',
-          timestamp: r.timestamp,
-          late: r.late
-        }))
+        const latestEvents = rawLogs
+          .filter(r => r.category === 'ATTENDANCE' || (r.category !== 'ADMIN' && (r.event_type === 'IN' || r.event_type === 'OUT')))
+          .map(r => ({
+            id: r.id || `${r.timestamp}-${r.user_name}`,
+            user_name: r.user_name || 'Unknown',
+            event_type: r.event_type || 'IN',
+            timestamp: r.timestamp,
+            late: r.late,
+            category: 'ATTENDANCE'
+          }))
         setActivities(normalizeAttendanceLogs(latestEvents))
       }
     } catch {
@@ -177,7 +258,7 @@ export default function DashboardPage() {
     }
   }, [fetchDashboardData])
 
-  useSSE({
+  useWebSocket({
     enabled: true,
     onMessage: handleWsMessage,
   })
@@ -195,35 +276,35 @@ export default function DashboardPage() {
   const activeStats = chartRange === 'monthly' ? monthlyStats : weeklyStats
   const chartData = activeStats.length > 0
     ? activeStats.map((d, i) => {
-        if (chartRange === 'monthly') {
-          return {
-            day: d.day, // "Jan", "Feb", etc.
-            fullDay: d.full_name || d.day, // "Jan 2026"
-            hadir: d.present || 0,
-            terlambat: d.late || 0
-          }
-        }
-
-        const [enDay, datePart] = (d.day || '').split(' ')
-        const dayMap = { Mon: 'Senin', Tue: 'Selasa', Wed: 'Rabu', Thu: 'Kamis', Fri: 'Jumat', Sat: 'Sabtu', Sun: 'Minggu' }
-        const shortDayMap = { Mon: 'Sen', Tue: 'Sel', Wed: 'Rab', Thu: 'Kam', Fri: 'Jum', Sat: 'Sab', Sun: 'Min' }
-        
-        // Format date from "DD/MM" to "D MMM" (e.g., "04/07" -> "4 Jul")
-        const [dDate, mMonth] = (datePart || '').split('/')
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"]
-        const monthName = mMonth ? monthNames[parseInt(mMonth, 10) - 1] : ''
-        const formattedDate = dDate && mMonth ? `${parseInt(dDate, 10)} ${monthName}` : datePart
-        
-        let idDay = shortDayMap[enDay] || enDay || dayLabels[i] || `H-${i+1}`
-        if (!idDay) idDay = d.day
-        
+      if (chartRange === 'monthly') {
         return {
-          day: idDay,
-          fullDay: dayMap[enDay] ? `${dayMap[enDay]}, ${formattedDate}` : d.day,
+          day: d.day, // "Jan", "Feb", etc.
+          fullDay: d.full_name || d.day, // "Jan 2026"
           hadir: d.present || 0,
           terlambat: d.late || 0
         }
-      })
+      }
+
+      const [enDay, datePart] = (d.day || '').split(' ')
+      const dayMap = { Mon: 'Senin', Tue: 'Selasa', Wed: 'Rabu', Thu: 'Kamis', Fri: 'Jumat', Sat: 'Sabtu', Sun: 'Minggu' }
+      const shortDayMap = { Mon: 'Sen', Tue: 'Sel', Wed: 'Rab', Thu: 'Kam', Fri: 'Jum', Sat: 'Sab', Sun: 'Min' }
+
+      // Format date from "DD/MM" to "D MMM" (e.g., "04/07" -> "4 Jul")
+      const [dDate, mMonth] = (datePart || '').split('/')
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"]
+      const monthName = mMonth ? monthNames[parseInt(mMonth, 10) - 1] : ''
+      const formattedDate = dDate && mMonth ? `${parseInt(dDate, 10)} ${monthName}` : datePart
+
+      let idDay = shortDayMap[enDay] || enDay || dayLabels[i] || `H-${i + 1}`
+      if (!idDay) idDay = d.day
+
+      return {
+        day: idDay,
+        fullDay: dayMap[enDay] ? `${dayMap[enDay]}, ${formattedDate}` : d.day,
+        hadir: d.present || 0,
+        terlambat: d.late || 0
+      }
+    })
     : dayLabels.map((day) => ({ day, hadir: 0, terlambat: 0 }))
 
   // Display activities (strictly real data from API/WS + demo mock)
@@ -233,14 +314,41 @@ export default function DashboardPage() {
     const isExport = act.event_type === 'EXPORT'
     const isRegister = act.event_type === 'REGISTER'
     const isDelete = act.event_type === 'DELETE'
-    
+
     let actionText = 'Berhasil melakukan presensi pulang'
     let statusText = 'Pulang'
     let sColor = '#4f46e5'
     let sBg = '#e0e7ff'
-    
+
     if (isCheckIn) {
       actionText = 'Berhasil melakukan presensi masuk'
+      if (isLate) {
+        let lateInfo = act.late_duration
+        if (!lateInfo) {
+          try {
+            const d = new Date(act.timestamp)
+            const hour = d.getHours()
+            const min = d.getMinutes()
+            let shiftHour = 8
+            if (hour >= 15) shiftHour = 15
+            const diffMins = Math.max(1, (hour - shiftHour) * 60 + min)
+            const hours = Math.floor(diffMins / 60)
+            const mins = diffMins % 60
+            if (hours > 0 && mins > 0) {
+              lateInfo = `${hours} jam ${mins} menit`
+            } else if (hours > 0) {
+              lateInfo = `${hours} jam`
+            } else {
+              lateInfo = `${mins} menit`
+            }
+          } catch {
+            lateInfo = ''
+          }
+        }
+        if (lateInfo) {
+          actionText = `Berhasil melakukan presensi masuk (Terlambat ${lateInfo})`
+        }
+      }
       statusText = isLate ? 'Terlambat' : 'Hadir'
       sColor = isLate ? '#d97706' : '#059669'
       sBg = isLate ? '#fef3c7' : '#d1fae5'
@@ -279,7 +387,7 @@ export default function DashboardPage() {
   // --- Dynamic Trend Logic ---
   const todayData = chartData[chartData.length - 1]
   const yesterdayData = chartData[chartData.length - 2]
-  
+
   let trendMessage = "Data kehadiran belum cukup untuk membandingkan tren."
   let TrendIcon = Activity
   let trendIconColor = "#6b7280"
@@ -319,7 +427,7 @@ export default function DashboardPage() {
 
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '32px' }} className="animate-fade-in dashboard-main">
-      
+
 
 
       {/* 2. QUICK ACCESS CARDS */}
@@ -363,7 +471,7 @@ export default function DashboardPage() {
       <div>
         <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text)', marginBottom: '16px' }}>Ringkasan Hari Ini</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
-          
+
           {/* Loop for the first 3 simple stats */}
           {statCards.map(({ key, label, icon: Icon, iconBg, iconColor }) => {
             const trend = getTrendData(key)
@@ -401,7 +509,7 @@ export default function DashboardPage() {
               </div>
             )
           })}
-          
+
           {/* Attendance Donut Card */}
           <div
             className="hover-card"
@@ -438,12 +546,12 @@ export default function DashboardPage() {
 
       {/* 4. CHARTS & ACTIVITY */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '24px' }}>
-        
+
         {/* Analytics Chart */}
         <div style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '24px', padding: '32px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Statistik Kehadiran</h2>
-            <select 
+            <select
               value={chartRange}
               onChange={(e) => setChartRange(e.target.value)}
               style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text)', outline: 'none', cursor: 'pointer' }}
@@ -452,7 +560,7 @@ export default function DashboardPage() {
               <option value="monthly">6 Bulan Terakhir</option>
             </select>
           </div>
-          
+
           <div style={{ display: 'flex', gap: '24px', marginBottom: '24px', paddingLeft: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }}></div>
@@ -465,23 +573,23 @@ export default function DashboardPage() {
           </div>
 
           {loading ? (
-             <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', height: '300px' }}>
-               {[...Array(7)].map((_, i) => (
-                 <div key={i} style={{ flex: 1, height: `${30 + ((i * 17) % 60)}%`, background: 'var(--color-bg-base)', borderRadius: '8px' }} className="animate-pulse" />
-               ))}
-             </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', height: '300px' }}>
+              {[...Array(7)].map((_, i) => (
+                <div key={i} style={{ flex: 1, height: `${30 + ((i * 17) % 60)}%`, background: 'var(--color-bg-base)', borderRadius: '8px' }} className="animate-pulse" />
+              ))}
+            </div>
           ) : (
             <div style={{ height: '300px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 10, right: 30, left: -20, bottom: 20 }}>
                   <defs>
                     <linearGradient id="colorHadir" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="colorLate" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
@@ -511,10 +619,15 @@ export default function DashboardPage() {
           <div style={{ marginBottom: '24px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>Aktivitas Terbaru</h2>
           </div>
-          
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {displayActivities.length === 0 ? (
-              <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '14px', padding: '40px 0' }}>Belum ada aktivitas.</div>
+              <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '14px', padding: '48px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'var(--color-bg-base)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                  <Clock size={24} className="animate-pulse" />
+                </div>
+                <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Menunggu aktivitas absen...</span>
+              </div>
             ) : (
               displayActivities.map((act, i) => (
                 <div key={act.id || i} style={{ display: 'flex', gap: '16px', position: 'relative', zIndex: 1, alignItems: 'center' }}>
@@ -526,7 +639,7 @@ export default function DashboardPage() {
                   }}>
                     {act.user_name?.[0]?.toUpperCase() || '?'}
                   </div>
-                  
+
                   {/* Content */}
                   <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0, gap: '12px' }}>
                     <div style={{ minWidth: 0 }}>
@@ -537,7 +650,7 @@ export default function DashboardPage() {
                         {act.action}
                       </p>
                     </div>
-                    
+
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
                       <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>
                         {act.time}
@@ -551,13 +664,13 @@ export default function DashboardPage() {
               ))
             )}
           </div>
-          
+
           {/* Lihat Semua Button at the bottom, plain text */}
           <div style={{ marginTop: 'auto', textAlign: 'center', paddingTop: '24px' }}>
             <button
               onClick={() => navigate('/admin/attendance')}
-              style={{ 
-                background: 'transparent', border: 'none', padding: '8px 16px', fontSize: '14px', 
+              style={{
+                background: 'transparent', border: 'none', padding: '8px 16px', fontSize: '14px',
                 fontWeight: 600, color: 'var(--color-primary)', cursor: 'pointer',
                 transition: 'color 0.2s'
               }}
