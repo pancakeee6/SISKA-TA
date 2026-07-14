@@ -132,13 +132,13 @@ async def recognize_attendance(
             calculated_event_type = "IN"
             calculated_is_late = False
             status_text = "present"
+            late_duration_str = None
+            diff_minutes_late = None
 
             if not in_logs:
                 # Absen pertama kali hari ini -> Masuk (IN)
                 calculated_event_type = "IN"
                 # Cek batas waktu toleransi 20 menit dari jam masuk active_shift
-                late_duration_str = None
-                diff_minutes_late = None
                 try:
                     sh, sm = map(int, active_shift.start_time.split(":"))
                     shift_start_dt = now_wib.replace(hour=sh, minute=sm, second=0, microsecond=0)
