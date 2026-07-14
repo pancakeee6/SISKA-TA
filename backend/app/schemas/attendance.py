@@ -11,6 +11,9 @@ class FaceRecognitionResult(BaseModel):
     status: str
     event_type: str  # "IN" or "OUT"
     late: bool
+    shift_label: Optional[str] = None
+    late_duration: Optional[str] = None
+    late_minutes: Optional[int] = None
 
 
 class RecognizeResponse(BaseModel):
@@ -31,6 +34,9 @@ class AttendanceLogResponse(BaseModel):
     late: bool
     device_id: Optional[str]
     created_at: datetime
+    shift_label: Optional[str] = None
+    late_duration: Optional[str] = None
+    late_minutes: Optional[int] = None
 
     class Config:
         from_attributes = True

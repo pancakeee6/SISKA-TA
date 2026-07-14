@@ -1,16 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import logging
 
 from app.db.database import get_db
 from app.api.deps import get_current_admin
 from app.models.attendance import AttendanceLog
 from app.models.user import User
+from app.models.shift import WorkShift
 from app.schemas.attendance import AttendanceLogResponse, AttendanceListResponse
 from app.services import ai_service
-from app.core.sse import sse_manager
+from app.core.websocket import ws_manager
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -83,40 +84,146 @@ async def recognize_attendance(
             user = user_result.scalars().first()
 
         if user:
-            # Log attendance locally regardless of ML API cooldown status
-            # This allows the dashboard to show a raw history of all scans
-            log = AttendanceLog(
-                user_id=user.id,
-                event_type=face.get("event_type") or "IN",
-                status="late" if face.get("is_late") else "present",
-                late=face.get("is_late", False),
-                device_id=settings.DEVICE_ID,
+            # ─── Evaluasi Shift, Waktu WIB, Toleransi 20 Menit, & Mencegah Duplikasi ───
+            now_utc = datetime.now(timezone.utc)
+            wib_tz = timezone(timedelta(hours=7))
+            now_wib = now_utc.astimezone(wib_tz)
+            today_date = now_wib.date()
+
+            # Ambil semua WorkShift dari database atau gunakan default
+            shift_result = await db.execute(select(WorkShift).order_by(WorkShift.start_time.asc()))
+            shifts = shift_result.scalars().all()
+            if not shifts:
+                shifts = [
+                    WorkShift(name="Shift 1 (Pagi/Siang)", start_time="08:00", end_time="15:00"),
+                    WorkShift(name="Shift 2 (Sore/Malam)", start_time="15:00", end_time="21:00")
+                ]
+
+            # Tentukan shift mana yang aktif berdasarkan jam saat ini (WIB)
+            active_shift = shifts[0]
+            for s in shifts:
+                try:
+                    s_hour, s_min = map(int, s.start_time.split(":"))
+                    if now_wib.time() >= datetime(2000, 1, 1, s_hour, s_min).time():
+                        active_shift = s
+                except Exception:
+                    pass
+
+            # Cari log kehadiran user hari ini (dalam rentang waktu WIB hari ini)
+            start_of_day_wib = datetime.combine(today_date, datetime.min.time(), tzinfo=wib_tz)
+            start_of_day_utc = start_of_day_wib.astimezone(timezone.utc)
+            end_of_day_utc = start_of_day_utc + timedelta(days=1)
+
+            existing_logs_result = await db.execute(
+                select(AttendanceLog)
+                .where(
+                    AttendanceLog.user_id == user.id,
+                    AttendanceLog.timestamp >= start_of_day_utc,
+                    AttendanceLog.timestamp < end_of_day_utc
+                )
+                .order_by(AttendanceLog.timestamp.asc())
             )
-            db.add(log)
-            await db.flush()
+            today_logs = existing_logs_result.scalars().all()
 
-            event_data = {
-                "type": "attendance_marked",
-                "data": {
-                    "user_name": user.full_name,
-                    "event_type": face.get("event_type") or "IN",
-                    "status": "late" if face.get("is_late") else "present",
-                    "late": face.get("is_late", False),
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                },
-            }
+            in_logs = [l for l in today_logs if l.event_type == "IN"]
+            out_logs = [l for l in today_logs if l.event_type == "OUT"]
 
-            # Broadcast to admin dashboard via SSE
-            await sse_manager.broadcast(event_data)
+            skip_log = False
+            calculated_event_type = "IN"
+            calculated_is_late = False
+            status_text = "present"
+            late_duration_str = None
+            diff_minutes_late = None
+
+            if not in_logs:
+                # Absen pertama kali hari ini -> Masuk (IN)
+                calculated_event_type = "IN"
+                # Cek batas waktu toleransi 20 menit dari jam masuk active_shift
+                try:
+                    sh, sm = map(int, active_shift.start_time.split(":"))
+                    shift_start_dt = now_wib.replace(hour=sh, minute=sm, second=0, microsecond=0)
+                    late_threshold_dt = shift_start_dt + timedelta(minutes=20)
+                    if now_wib > late_threshold_dt:
+                        calculated_is_late = True
+                        status_text = "late"
+                        diff_minutes_late = int((now_wib - shift_start_dt).total_seconds() / 60.0)
+                        if diff_minutes_late < 0:
+                            diff_minutes_late = 0
+                        hours = diff_minutes_late // 60
+                        mins = diff_minutes_late % 60
+                        if hours > 0 and mins > 0:
+                            late_duration_str = f"{hours} jam {mins} menit"
+                        elif hours > 0:
+                            late_duration_str = f"{hours} jam"
+                        else:
+                            late_duration_str = f"{mins} menit" if mins > 0 else "1 menit"
+                    else:
+                        calculated_is_late = False
+                        status_text = "present"
+                except Exception:
+                    calculated_is_late = bool(face.get("is_late", False))
+                    status_text = "late" if calculated_is_late else "present"
+            else:
+                # Sudah pernah absen IN hari ini
+                last_in_time = in_logs[-1].timestamp
+                if last_in_time.tzinfo is None:
+                    last_in_time = last_in_time.replace(tzinfo=timezone.utc)
+                diff_minutes = (now_utc - last_in_time).total_seconds() / 60.0
+
+                if not out_logs and diff_minutes < 15.0:
+                    # Terlalu cepat setelah absen IN (kurang dari 15 menit), abaikan agar tidak duplikat
+                    skip_log = True
+                    calculated_event_type = "IN"
+                    calculated_is_late = in_logs[0].late
+                    status_text = "cooldown"
+                elif not out_logs:
+                    # Absen kedua kalinya hari ini (setelah > 15 menit) -> Pulang (OUT)
+                    calculated_event_type = "OUT"
+                    calculated_is_late = False
+                    status_text = "present"
+                else:
+                    # Sudah pernah absen IN dan OUT hari ini -> Abaikan duplikat agar tidak bertabrakan
+                    skip_log = True
+                    calculated_event_type = "OUT"
+                    calculated_is_late = False
+                    status_text = "cooldown"
+
+            if not skip_log:
+                log = AttendanceLog(
+                    user_id=user.id,
+                    event_type=calculated_event_type,
+                    status=status_text,
+                    late=calculated_is_late,
+                    device_id=settings.DEVICE_ID,
+                )
+                db.add(log)
+                await db.commit()
+
+                event_data = {
+                    "type": "attendance_marked",
+                    "data": {
+                        "user_name": user.full_name,
+                        "event_type": calculated_event_type,
+                        "status": status_text,
+                        "late": calculated_is_late,
+                        "timestamp": now_utc.isoformat(),
+                        "shift_label": active_shift.name,
+                        "late_duration": late_duration_str,
+                        "late_minutes": diff_minutes_late,
+                    },
+                }
+                await ws_manager.broadcast(event_data)
             
-            # Append result for the frontend (whether ok or cooldown)
             results.append({
                 "user_name": user.full_name,
-                "event_type": face.get("event_type") or "IN", # fallback for UI
-                "status": face.get("status", "ok"),
-                "late": face.get("is_late", False),
+                "event_type": calculated_event_type,
+                "status": "cooldown" if skip_log else "ok",
+                "late": calculated_is_late,
                 "audio_text": face.get("audio_text"),
                 "bbox": face.get("bbox") or face.get("box") or face.get("location"),
+                "shift_label": active_shift.name,
+                "late_duration": late_duration_str,
+                "late_minutes": diff_minutes_late,
             })
 
     return {
@@ -182,19 +289,63 @@ async def attendance_logs(
     result = await db.execute(query)
     logs = result.scalars().all()
 
-    # Map with user names and employee IDs
+    # Batch fetch all users in 1 query to prevent N+1 queries
+    user_ids = {log.user_id for log in logs if log.user_id}
+    user_map = {}
+    if user_ids:
+        users_result = await db.execute(
+            select(User.id, User.full_name, User.employee_id).where(User.id.in_(user_ids))
+        )
+        for u_id, u_name, u_emp in users_result.all():
+            user_map[u_id] = (u_name, u_emp)
+
+    shift_result = await db.execute(select(WorkShift).order_by(WorkShift.start_time.asc()))
+    shifts = shift_result.scalars().all()
+    if not shifts:
+        shifts = [
+            WorkShift(name="Shift 1 (Pagi/Siang)", start_time="08:00", end_time="15:00"),
+            WorkShift(name="Shift 2 (Sore/Malam)", start_time="15:00", end_time="21:00")
+        ]
+    wib_tz = timezone(timedelta(hours=7))
+
     log_responses = []
     for log in logs:
-        user_result = await db.execute(
-            select(User.full_name, User.employee_id).where(User.id == log.user_id)
-        )
-        user_row = user_result.one_or_none()
-        user_name = user_row[0] if user_row else "Unknown"
-        employee_id = user_row[1] if user_row else "-"
-
+        user_name, employee_id = user_map.get(log.user_id, ("Unknown", "-"))
         resp = AttendanceLogResponse.model_validate(log)
         resp.user_name = user_name
         resp.employee_id = employee_id
+
+        if log.timestamp:
+            log_utc = log.timestamp if log.timestamp.tzinfo else log.timestamp.replace(tzinfo=timezone.utc)
+            log_wib = log_utc.astimezone(wib_tz)
+            active_shift = shifts[0]
+            for s in shifts:
+                try:
+                    sh, sm = map(int, s.start_time.split(":"))
+                    if log_wib.time() >= datetime(2000, 1, 1, sh, sm).time():
+                        active_shift = s
+                except Exception:
+                    pass
+            resp.shift_label = active_shift.name
+            if log.late and log.event_type == "IN":
+                try:
+                    sh, sm = map(int, active_shift.start_time.split(":"))
+                    shift_start_dt = log_wib.replace(hour=sh, minute=sm, second=0, microsecond=0)
+                    diff_minutes = int((log_wib - shift_start_dt).total_seconds() / 60.0)
+                    if diff_minutes < 0:
+                        diff_minutes = 0
+                    resp.late_minutes = diff_minutes
+                    hours = diff_minutes // 60
+                    mins = diff_minutes % 60
+                    if hours > 0 and mins > 0:
+                        resp.late_duration = f"{hours} jam {mins} menit"
+                    elif hours > 0:
+                        resp.late_duration = f"{hours} jam"
+                    else:
+                        resp.late_duration = f"{mins} menit" if mins > 0 else "1 menit"
+                except Exception:
+                    resp.late_duration = "-"
+
         log_responses.append(resp)
 
     return AttendanceListResponse(
@@ -237,6 +388,16 @@ async def export_attendance(
     result = await db.execute(query)
     logs = result.scalars().all()
 
+    # Batch fetch users in 1 query
+    user_ids = {log.user_id for log in logs if log.user_id}
+    user_map = {}
+    if user_ids:
+        users_result = await db.execute(
+            select(User.id, User.full_name, User.employee_id).where(User.id.in_(user_ids))
+        )
+        for u_id, u_name, u_emp in users_result.all():
+            user_map[u_id] = (u_name, u_emp)
+
     # Build CSV in memory with UTF-8 BOM and semicolon delimiter for clean column separation in Excel
     output = io.StringIO()
     output.write('\ufeff')  # UTF-8 BOM for proper character encoding in Excel
@@ -249,13 +410,7 @@ async def export_attendance(
     ])
 
     for idx, log in enumerate(logs, 1):
-        # Get user info
-        user_result = await db.execute(
-            select(User.full_name, User.employee_id).where(User.id == log.user_id)
-        )
-        user_row = user_result.one_or_none()
-        user_name = user_row[0] if user_row else "Unknown"
-        employee_id = user_row[1] if user_row else "-"
+        user_name, employee_id = user_map.get(log.user_id, ("Unknown", "-"))
 
         # Readable labels
         tipe_absensi = "Check In (Masuk)" if log.event_type == "IN" else "Check Out (Keluar)"

@@ -70,8 +70,8 @@ export default function LoginPage() {
         .login-input:-webkit-autofill:hover, 
         .login-input:-webkit-autofill:focus, 
         .login-input:-webkit-autofill:active {
-          -webkit-box-shadow: 0 0 0 30px #f8fafc inset !important;
-          -webkit-text-fill-color: #0f172a !important;
+          -webkit-box-shadow: 0 0 0 30px #0c1426 inset !important;
+          -webkit-text-fill-color: #e2e8f0 !important;
           transition: background-color 5000s ease-in-out 0s;
         }
         .login-btn:hover:not(:disabled) {
@@ -129,6 +129,31 @@ export default function LoginPage() {
           animationDelay: '4s',
         }} />
 
+        {/* Tiny star dots */}
+        {[
+          { top: '10%', left: '15%', size: 3, delay: '0s' },
+          { top: '20%', left: '75%', size: 2, delay: '1s' },
+          { top: '55%', left: '8%', size: 2, delay: '2s' },
+          { top: '80%', left: '85%', size: 3, delay: '0.5s' },
+          { top: '35%', left: '90%', size: 2, delay: '3s' },
+          { top: '90%', left: '25%', size: 2, delay: '1.5s' },
+          { top: '12%', left: '55%', size: 3, delay: '2.5s' },
+          { top: '70%', left: '45%', size: 2, delay: '4s' },
+          { top: '45%', left: '20%', size: 2, delay: '0.8s' },
+          { top: '30%', left: '60%', size: 3, delay: '3.5s' },
+        ].map((star, i) => (
+          <div key={i} style={{
+            position: 'absolute',
+            top: star.top,
+            left: star.left,
+            width: `${star.size}px`,
+            height: `${star.size}px`,
+            borderRadius: '50%',
+            background: '#38bdf8',
+            animation: `loginPulseGlow 3s ease-in-out infinite`,
+            animationDelay: star.delay,
+          }} />
+        ))}
 
         {/* Clean layout for Internal Admin */}
         <div style={{
@@ -199,8 +224,8 @@ export default function LoginPage() {
         flexDirection: 'column',
         justifyContent: 'center',
         padding: '60px 50px',
-        background: '#fffffff3',
-        borderLeft: '1px solid rgba(0, 0, 0, 0.06)',
+        background: '#0c1426',
+        borderLeft: '1px solid rgba(255, 255, 255, 0.06)',
         position: 'relative',
         zIndex: 3,
       }}>
@@ -210,7 +235,7 @@ export default function LoginPage() {
             <h2 style={{
               fontSize: '26px',
               fontWeight: 700,
-              color: '#0f172a',
+              color: '#ffffff',
               margin: '0 0 8px 0',
             }}>
               Masuk ke Admin
@@ -232,7 +257,7 @@ export default function LoginPage() {
                 display: 'block',
                 fontSize: '13px',
                 fontWeight: 500,
-                color: '#334155',
+                color: '#94a3b8',
                 marginBottom: '8px',
               }}>
                 Username / Email
@@ -250,9 +275,9 @@ export default function LoginPage() {
                   width: '100%',
                   padding: '12px 16px',
                   borderRadius: '10px',
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  color: '#0f172a',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  color: '#e2e8f0',
                   fontSize: '14px',
                   outline: 'none',
                   transition: 'all 0.2s',
@@ -267,7 +292,7 @@ export default function LoginPage() {
                 display: 'block',
                 fontSize: '13px',
                 fontWeight: 500,
-                color: '#334155',
+                color: '#94a3b8',
                 marginBottom: '8px',
               }}>
                 Password
@@ -285,9 +310,9 @@ export default function LoginPage() {
                     width: '100%',
                     padding: '12px 44px 12px 16px',
                     borderRadius: '10px',
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    color: '#0f172a',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    color: '#e2e8f0',
                     fontSize: '14px',
                     outline: 'none',
                     transition: 'all 0.2s',
@@ -305,15 +330,15 @@ export default function LoginPage() {
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    color: '#94a3b8',
+                    color: '#64748b',
                     cursor: 'pointer',
                     padding: '4px',
                     display: 'flex',
                     alignItems: 'center',
                     transition: 'color 0.15s',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = '#0284c7'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = '#38bdf8'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = '#64748b'; }}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>

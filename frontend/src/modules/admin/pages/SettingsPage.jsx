@@ -1,12 +1,13 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAuthStore } from '@shared/store/authStore'
-import { Save, User, Lock, Shield, Camera } from 'lucide-react'
+import { Save, User, Lock, Shield, Camera, Clock, Plus, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '@shared/services/api'
 
 export default function SettingsPage() {
   const { admin, setAdmin } = useAuthStore()
   const [loading, setLoading] = useState(false)
+  const [shiftSettings, setShiftSettings] = useState(null)
   const fileInputRef = useRef(null)
 
   const [form, setForm] = useState({
@@ -19,6 +20,45 @@ export default function SettingsPage() {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  useEffect(() => {
+    api.get('/api/v1/settings/shifts')
+      .then(res => setShiftSettings(res.data))
+      .catch(err => {
+        console.error("Gagal mengambil pengaturan shift", err)
+        setShiftSettings({
+          shifts: [
+            { id: 1, name: "Shift 1 (Pagi/Siang)", start_time: "08:00", end_time: "15:00" },
+            { id: 2, name: "Shift 2 (Sore/Malam)", start_time: "15:00", end_time: "21:00" }
+          ]
+        })
+      })
+  }, [])
+
+  const handleShiftChange = (index, field, value) => {
+    const newShifts = [...shiftSettings.shifts];
+    newShifts[index][field] = value;
+    setShiftSettings({ ...shiftSettings, shifts: newShifts });
+  }
+
+  const handleAddShift = () => {
+    const newShifts = shiftSettings?.shifts ? [...shiftSettings.shifts] : [];
+    const nextNum = newShifts.length + 1;
+    newShifts.push({
+      id: Date.now(),
+      name: `Shift ${nextNum}`,
+      start_time: '08:00',
+      end_time: '16:00'
+    });
+    setShiftSettings({ shifts: newShifts });
+  }
+
+  const handleDeleteShift = (index) => {
+    if (!shiftSettings?.shifts) return;
+    const newShifts = shiftSettings.shifts.filter((_, i) => i !== index);
+    setShiftSettings({ ...shiftSettings, shifts: newShifts });
+    toast.success('Shift dihapus dari daftar. Klik Simpan Perubahan untuk memperbarui permanen.');
   }
 
   const handlePhotoUpload = (e) => {
@@ -58,7 +98,13 @@ export default function SettingsPage() {
       
       // Update store lokal
       setAdmin(data.admin)
-      toast.success('Profil berhasil diperbarui!')
+      
+      // Update shift settings
+      if (shiftSettings) {
+        await api.put('/api/v1/settings/shifts', shiftSettings)
+      }
+
+      toast.success('Pengaturan berhasil diperbarui!')
       
       // Kosongkan form password setelah save
       setForm(prev => ({
@@ -235,6 +281,115 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+
+            {shiftSettings && (
+              <>
+                <hr style={{ border: 'none', borderBottom: '1px solid var(--color-border)', margin: '8px 0' }} />
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Clock size={20} color="#334155" />
+                      <div>
+                        <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#334155', margin: 0 }}>Pengaturan Jam Shift (Batas Absen)</h3>
+                        <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0 0' }}>Atur nama dan jam shift kerja untuk validasi absensi.</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddShift}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd',
+                        padding: '8px 14px', borderRadius: '8px', fontWeight: 600, fontSize: '13px',
+                        cursor: 'pointer', transition: 'all 0.2s'
+                      }}
+                      onMouseOver={(e) => { e.currentTarget.style.background = '#bae6fd' }}
+                      onMouseOut={(e) => { e.currentTarget.style.background = '#e0f2fe' }}
+                    >
+                      <Plus size={16} />
+                      Tambah Shift
+                    </button>
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {(!shiftSettings.shifts || shiftSettings.shifts.length === 0) ? (
+                      <div style={{ textAlign: 'center', padding: '24px', background: 'var(--color-bg-base)', borderRadius: '12px', color: 'var(--color-text-secondary)', fontSize: '14px', border: '1px dashed var(--color-border)' }}>
+                        Belum ada shift yang dikonfigurasi. Klik tombol <b>+ Tambah Shift</b> di atas.
+                      </div>
+                    ) : (
+                      shiftSettings.shifts.map((shift, idx) => (
+                        <div key={shift.id || idx} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr auto', gap: '16px', alignItems: 'flex-end', background: '#f8fafc', padding: '18px', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 2px 6px rgba(0,0,0,0.01)' }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
+                              Nama Shift
+                            </label>
+                            <input
+                              type="text"
+                              value={shift.name || ''}
+                              onChange={(e) => handleShiftChange(idx, 'name', e.target.value)}
+                              placeholder="Contoh: Shift 1 (Pagi)"
+                              style={{
+                                width: '100%', padding: '10px 14px', borderRadius: '8px',
+                                border: '1px solid var(--color-border)', background: '#fff',
+                                fontSize: '14px', color: 'var(--color-text)', outline: 'none'
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
+                              Jam Masuk (Mulai)
+                            </label>
+                            <input
+                              type="time"
+                              value={shift.start_time || ''}
+                              onChange={(e) => handleShiftChange(idx, 'start_time', e.target.value)}
+                              style={{
+                                width: '100%', padding: '10px 14px', borderRadius: '8px',
+                                border: '1px solid var(--color-border)', background: '#fff',
+                                fontSize: '14px', color: 'var(--color-text)', outline: 'none'
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '6px' }}>
+                              Jam Pulang (Berakhir)
+                            </label>
+                            <input
+                              type="time"
+                              value={shift.end_time || ''}
+                              onChange={(e) => handleShiftChange(idx, 'end_time', e.target.value)}
+                              style={{
+                                width: '100%', padding: '10px 14px', borderRadius: '8px',
+                                border: '1px solid var(--color-border)', background: '#fff',
+                                fontSize: '14px', color: 'var(--color-text)', outline: 'none'
+                              }}
+                            />
+                          </div>
+                          <div style={{ paddingBottom: '2px' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteShift(idx)}
+                              title="Hapus Shift"
+                              style={{
+                                background: '#fee2e2', color: '#ef4444', border: '1px solid #fecaca',
+                                width: '38px', height: '38px', borderRadius: '8px', display: 'flex',
+                                alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                              onMouseOver={(e) => { e.currentTarget.style.background = '#fecaca'; e.currentTarget.style.color = '#dc2626' }}
+                              onMouseOut={(e) => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#ef4444' }}
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
           </div>
 
           <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>

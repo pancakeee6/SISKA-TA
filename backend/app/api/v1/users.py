@@ -2,7 +2,7 @@ import logging
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, case
 from sqlalchemy.orm import selectinload
 
 from app.db.database import get_db
@@ -35,10 +35,11 @@ async def list_users(
     query = select(User).options(selectinload(User.face_data))
 
     # Apply status filter
-    if status == "aktif":
+    if status == "aktif" or status is None or status == "":
         query = query.where(User.is_active == True)
     elif status == "nonaktif":
         query = query.where(User.is_active == False)
+    # If status == "semua", return all users
 
     # Search filter
     if search:
@@ -58,17 +59,21 @@ async def list_users(
     result = await db.execute(query)
     users = result.scalars().all()
 
-    # Calculate global stats (for stats cards)
-    total_users_res = await db.execute(select(func.count(User.id)))
-    total_users = total_users_res.scalar() or 0
+    # Calculate global stats (for stats cards) in ONE query
+    stats_res = await db.execute(select(
+        func.count(User.id),
+        func.sum(case((User.is_active == True, 1), else_=0)),
+        func.sum(case((User.is_active == False, 1), else_=0))
+    ))
+    stats_row = stats_res.first()
+    active_users = stats_row[1] or 0
+    inactive_users = stats_row[2] or 0
 
-    active_users_res = await db.execute(select(func.count(User.id)).where(User.is_active == True))
-    active_users = active_users_res.scalar() or 0
-
-    inactive_users_res = await db.execute(select(func.count(User.id)).where(User.is_active == False))
-    inactive_users = inactive_users_res.scalar() or 0
-
-    face_users_res = await db.execute(select(func.count(func.distinct(FaceData.user_id))))
+    face_users_res = await db.execute(
+        select(func.count(func.distinct(FaceData.user_id)))
+        .join(User, FaceData.user_id == User.id)
+        .where(User.is_active == True)
+    )
     has_face_users = face_users_res.scalar() or 0
 
     return {
@@ -77,7 +82,7 @@ async def list_users(
         "page": page,
         "per_page": actual_limit,
         "stats": {
-            "total": total_users,
+            "total": active_users,
             "active": active_users,
             "inactive": inactive_users,
             "has_face": has_face_users,
@@ -198,11 +203,21 @@ async def delete_user(
     # Explicitly delete local face data since soft-delete doesn't trigger cascade
     from sqlalchemy import delete
     from app.models.face import FaceData
+    from app.models.attendance import AttendanceLog
     await db.execute(delete(FaceData).where(FaceData.user_id == user_id))
 
-    user.is_active = False
-    # Append suffix to free up the employee_id for reuse
-    user.employee_id = f"{user.employee_id}-del-{str(user.id)[:8]}"
+    # Check if user has attendance history
+    att_check = await db.execute(select(func.count(AttendanceLog.id)).where(AttendanceLog.user_id == user_id))
+    log_count = att_check.scalar() or 0
+
+    if log_count == 0:
+        # Hard delete if no attendance history exists
+        await db.delete(user)
+    else:
+        # Soft delete to preserve attendance records
+        user.is_active = False
+        if "-del-" not in user.employee_id:
+            user.employee_id = f"{user.employee_id}-del-{str(user.id)[:8]}"
     
     # Log Activity
     try:

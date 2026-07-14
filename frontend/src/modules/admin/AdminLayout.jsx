@@ -397,11 +397,8 @@ export default function AdminLayout() {
       <div className="flex-1 flex flex-col overflow-hidden relative" style={{ background: 'var(--color-bg-base)', transition: 'background 0.3s ease' }}>
         
         {/* Top Navbar / Header */}
-        <header style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '24px 32px',
+        <header className={isDashboard ? 'flex items-center justify-between' : 'flex lg:hidden items-center justify-between'} style={{
+          padding: isDashboard ? '24px 32px' : '16px 24px 0 24px',
           background: 'transparent',
           transition: 'all 0.3s ease',
         }}>

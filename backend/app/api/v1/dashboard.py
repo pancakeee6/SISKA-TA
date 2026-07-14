@@ -20,33 +20,44 @@ async def get_stats(
     db: AsyncSession = Depends(get_db),
     _admin=Depends(get_current_admin),
 ):
-    """Get today's attendance statistics."""
-    today = datetime.now(timezone.utc).date()
+    """Get today's attendance statistics using index-friendly timestamp range query."""
+    now_utc = datetime.now(timezone.utc)
+    wib_tz = timezone(timedelta(hours=7))
+    now_wib = now_utc.astimezone(wib_tz)
+    today = now_wib.date()
+    start_dt_wib = datetime.combine(today, datetime.min.time(), tzinfo=wib_tz)
+    end_dt_wib = datetime.combine(today, datetime.max.time(), tzinfo=wib_tz)
+    start_dt = start_dt_wib.astimezone(timezone.utc)
+    end_dt = end_dt_wib.astimezone(timezone.utc)
 
     # Total active users
     total_result = await db.execute(
-        select(func.count()).select_from(User).where(User.is_active == True)
+        select(func.count(User.id)).where(User.is_active == True)
     )
-    total = total_result.scalar()
+    total = total_result.scalar() or 0
 
-    # Users who checked in today
-    present_result = await db.execute(
-        select(func.count(func.distinct(AttendanceLog.user_id))).where(
-            func.date(AttendanceLog.timestamp) == today,
+    # Present and late today in ONE single index scan query
+    att_result = await db.execute(
+        select(
+            AttendanceLog.late,
+            func.count(func.distinct(AttendanceLog.user_id))
+        ).where(
+            AttendanceLog.timestamp >= start_dt,
+            AttendanceLog.timestamp <= end_dt,
             AttendanceLog.event_type == "IN",
-        )
+        ).group_by(AttendanceLog.late)
     )
-    present = present_result.scalar()
-
-    # Late today
-    late_result = await db.execute(
-        select(func.count(func.distinct(AttendanceLog.user_id))).where(
-            func.date(AttendanceLog.timestamp) == today,
-            AttendanceLog.late == True,
-        )
-    )
-    late = late_result.scalar()
-
+    rows = att_result.all()
+    on_time_count = 0
+    late_count = 0
+    for r in rows:
+        if r[0]:
+            late_count += r[1]
+        else:
+            on_time_count += r[1]
+            
+    present = on_time_count + late_count
+    late = late_count
     absent = max(0, total - present)
 
     return DashboardStats(
@@ -62,33 +73,45 @@ async def get_weekly_stats(
     db: AsyncSession = Depends(get_db),
     _admin=Depends(get_current_admin),
 ):
-    """Get weekly attendance statistics (last 7 days)."""
+    """Get weekly attendance statistics using indexed timestamp range."""
     today = datetime.now(timezone.utc).date()
-    weekly = []
+    start_date = today - timedelta(days=6)
+    start_dt = datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc)
 
+    query = select(
+        func.date(AttendanceLog.timestamp).label("date"),
+        AttendanceLog.late,
+        func.count(func.distinct(AttendanceLog.user_id)).label("count")
+    ).where(
+        AttendanceLog.timestamp >= start_dt,
+        AttendanceLog.event_type == "IN"
+    ).group_by(
+        func.date(AttendanceLog.timestamp),
+        AttendanceLog.late
+    )
+    result = await db.execute(query)
+    rows = result.all()
+
+    stats_by_date = {}
+    for r in rows:
+        d_str = str(r.date)
+        if d_str not in stats_by_date:
+            stats_by_date[d_str] = {"present": 0, "late": 0}
+        if r.late:
+            stats_by_date[d_str]["late"] += r.count
+            stats_by_date[d_str]["present"] += r.count
+        else:
+            stats_by_date[d_str]["present"] += r.count
+
+    weekly = []
     for i in range(6, -1, -1):
         day = today - timedelta(days=i)
-
-        present_result = await db.execute(
-            select(func.count(func.distinct(AttendanceLog.user_id))).where(
-                func.date(AttendanceLog.timestamp) == day,
-                AttendanceLog.event_type == "IN",
-            )
-        )
-        present = present_result.scalar()
-
-        late_result = await db.execute(
-            select(func.count(func.distinct(AttendanceLog.user_id))).where(
-                func.date(AttendanceLog.timestamp) == day,
-                AttendanceLog.late == True,
-            )
-        )
-        late = late_result.scalar()
-
+        d_str = str(day)
+        data = stats_by_date.get(d_str, {"present": 0, "late": 0})
         weekly.append({
             "day": day.strftime("%a %d/%m"),
-            "present": present,
-            "late": late,
+            "present": data["present"],
+            "late": data["late"],
         })
 
     return weekly
@@ -99,7 +122,7 @@ async def get_monthly_stats(
     db: AsyncSession = Depends(get_db),
     _admin=Depends(get_current_admin),
 ):
-    """Get monthly attendance statistics (last 6 months)."""
+    """Get monthly attendance statistics using indexed timestamp range."""
     today = datetime.now(timezone.utc).date()
     
     monthly = []
@@ -114,13 +137,14 @@ async def get_monthly_stats(
         })
         
     start_date = datetime(monthly[0]["year"], monthly[0]["month"], 1).date()
+    start_dt = datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc)
     
     query = select(
         func.date(AttendanceLog.timestamp).label("date"),
         AttendanceLog.late,
         func.count(func.distinct(AttendanceLog.user_id)).label("count")
     ).where(
-        func.date(AttendanceLog.timestamp) >= start_date,
+        AttendanceLog.timestamp >= start_dt,
         AttendanceLog.event_type == "IN"
     ).group_by(
         func.date(AttendanceLog.timestamp),
@@ -142,7 +166,6 @@ async def get_monthly_stats(
                 else:
                     m["present"] += row.count
                     
-    # Format output
     output = []
     month_names = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"]
     for m in monthly:
@@ -162,43 +185,76 @@ async def get_recent_activities(
     db: AsyncSession = Depends(get_db),
     _admin=Depends(get_current_admin),
 ):
-    """Get unified recent activities (attendance + admin logs)"""
-    # 1. Get attendance logs
-    att_query = select(AttendanceLog).options(selectinload(AttendanceLog.user)).order_by(AttendanceLog.timestamp.desc()).limit(limit)
+    """Get unified recent activities fast via lightweight joins without heavy ORM object hydration."""
+    att_query = (
+        select(
+            AttendanceLog.id,
+            AttendanceLog.event_type,
+            AttendanceLog.timestamp,
+            AttendanceLog.late,
+            User.full_name.label("user_name")
+        )
+        .outerjoin(User, AttendanceLog.user_id == User.id)
+        .order_by(AttendanceLog.timestamp.desc())
+        .limit(limit)
+    )
     att_result = await db.execute(att_query)
-    attendance_logs = att_result.scalars().all()
+    attendance_rows = att_result.all()
     
-    # 2. Get activity logs
-    act_query = select(ActivityLog).options(selectinload(ActivityLog.admin)).order_by(ActivityLog.created_at.desc()).limit(limit)
+    act_query = (
+        select(
+            ActivityLog.id,
+            ActivityLog.action,
+            ActivityLog.created_at,
+            Admin.full_name.label("admin_name")
+        )
+        .outerjoin(Admin, ActivityLog.admin_id == Admin.id)
+        .order_by(ActivityLog.created_at.desc())
+        .limit(limit)
+    )
     act_result = await db.execute(act_query)
-    activity_logs = act_result.scalars().all()
+    activity_rows = act_result.all()
     
-    # 3. Combine and map to common schema
     unified = []
-    for log in attendance_logs:
+    for row in attendance_rows:
         unified.append({
-            "id": f"att-{log.id}",
-            "user_name": log.user.full_name if log.user else "Unknown",
-            "event_type": log.event_type, # "IN" or "OUT"
-            "timestamp": log.timestamp.isoformat() if log.timestamp else None,
-            "late": log.late,
+            "id": f"att-{row.id}",
+            "user_name": row.user_name or "Unknown",
+            "event_type": row.event_type,
+            "timestamp": row.timestamp.isoformat() if row.timestamp else None,
+            "late": row.late,
             "category": "ATTENDANCE"
         })
         
-    for log in activity_logs:
+    for row in activity_rows:
         unified.append({
-            "id": f"act-{log.id}",
-            "user_name": log.admin.full_name if log.admin else "Administrator",
-            "event_type": log.action,  
-            "timestamp": log.created_at.isoformat() if log.created_at else None,
+            "id": f"act-{row.id}",
+            "user_name": row.admin_name or "Administrator",
+            "event_type": row.action,
+            "timestamp": row.created_at.isoformat() if row.created_at else None,
             "late": False,
             "category": "ADMIN"
         })
         
-    # Remove logs without timestamp just in case
     unified = [u for u in unified if u["timestamp"] is not None]
-        
-    # Sort descending by timestamp
     unified.sort(key=lambda x: x["timestamp"], reverse=True)
     
     return {"items": unified[:limit]}
+
+
+@router.get("/summary")
+async def get_dashboard_summary(
+    db: AsyncSession = Depends(get_db),
+    admin=Depends(get_current_admin),
+):
+    """Ultra-fast all-in-one summary endpoint combining stats, weekly, monthly, and recent activities."""
+    stats = await get_stats(db, admin)
+    weekly = await get_weekly_stats(db, admin)
+    monthly = await get_monthly_stats(db, admin)
+    activities = await get_recent_activities(10, db, admin)
+    return {
+        "stats": stats,
+        "weekly": weekly,
+        "monthly": monthly,
+        "activities": activities.get("items", [])
+    }
