@@ -36,34 +36,41 @@ async def get_stats(
     )
     total = total_result.scalar() or 0
 
-    # Present and late today in ONE single index scan query
+    # Present, late, and dinas today in ONE single index scan query
     att_result = await db.execute(
         select(
             AttendanceLog.late,
+            AttendanceLog.status,
+            AttendanceLog.event_type,
             func.count(func.distinct(AttendanceLog.user_id))
         ).where(
             AttendanceLog.timestamp >= start_dt,
             AttendanceLog.timestamp <= end_dt,
-            AttendanceLog.event_type == "IN",
-        ).group_by(AttendanceLog.late)
+            AttendanceLog.event_type.in_(["IN", "DINAS"]),
+        ).group_by(AttendanceLog.late, AttendanceLog.status, AttendanceLog.event_type)
     )
     rows = att_result.all()
     on_time_count = 0
     late_count = 0
-    for r in rows:
-        if r[0]:
-            late_count += r[1]
+    dinas_count = 0
+    for late_flag, status_val, event_val, count_val in rows:
+        if status_val == "dinas" or event_val == "DINAS":
+            dinas_count += count_val
+        elif late_flag:
+            late_count += count_val
         else:
-            on_time_count += r[1]
+            on_time_count += count_val
             
     present = on_time_count + late_count
     late = late_count
-    absent = max(0, total - present)
+    dinas = dinas_count
+    absent = max(0, total - present - dinas)
 
     return DashboardStats(
         total=total,
         present=present,
         late=late,
+        dinas=dinas,
         absent=absent,
     )
 
@@ -81,13 +88,17 @@ async def get_weekly_stats(
     query = select(
         func.date(AttendanceLog.timestamp).label("date"),
         AttendanceLog.late,
+        AttendanceLog.status,
+        AttendanceLog.event_type,
         func.count(func.distinct(AttendanceLog.user_id)).label("count")
     ).where(
         AttendanceLog.timestamp >= start_dt,
-        AttendanceLog.event_type == "IN"
+        AttendanceLog.event_type.in_(["IN", "DINAS"])
     ).group_by(
         func.date(AttendanceLog.timestamp),
-        AttendanceLog.late
+        AttendanceLog.late,
+        AttendanceLog.status,
+        AttendanceLog.event_type
     )
     result = await db.execute(query)
     rows = result.all()
@@ -96,8 +107,10 @@ async def get_weekly_stats(
     for r in rows:
         d_str = str(r.date)
         if d_str not in stats_by_date:
-            stats_by_date[d_str] = {"present": 0, "late": 0}
-        if r.late:
+            stats_by_date[d_str] = {"present": 0, "late": 0, "dinas": 0}
+        if r.status == "dinas" or r.event_type == "DINAS":
+            stats_by_date[d_str]["dinas"] += r.count
+        elif r.late:
             stats_by_date[d_str]["late"] += r.count
             stats_by_date[d_str]["present"] += r.count
         else:
@@ -107,11 +120,12 @@ async def get_weekly_stats(
     for i in range(6, -1, -1):
         day = today - timedelta(days=i)
         d_str = str(day)
-        data = stats_by_date.get(d_str, {"present": 0, "late": 0})
+        data = stats_by_date.get(d_str, {"present": 0, "late": 0, "dinas": 0})
         weekly.append({
             "day": day.strftime("%a %d/%m"),
             "present": data["present"],
             "late": data["late"],
+            "dinas": data.get("dinas", 0),
         })
 
     return weekly
@@ -134,6 +148,7 @@ async def get_monthly_stats(
             "month": m,
             "present": 0,
             "late": 0,
+            "dinas": 0,
         })
         
     start_date = datetime(monthly[0]["year"], monthly[0]["month"], 1).date()
@@ -142,13 +157,17 @@ async def get_monthly_stats(
     query = select(
         func.date(AttendanceLog.timestamp).label("date"),
         AttendanceLog.late,
+        AttendanceLog.status,
+        AttendanceLog.event_type,
         func.count(func.distinct(AttendanceLog.user_id)).label("count")
     ).where(
         AttendanceLog.timestamp >= start_dt,
-        AttendanceLog.event_type == "IN"
+        AttendanceLog.event_type.in_(["IN", "DINAS"])
     ).group_by(
         func.date(AttendanceLog.timestamp),
-        AttendanceLog.late
+        AttendanceLog.late,
+        AttendanceLog.status,
+        AttendanceLog.event_type
     )
     
     result = await db.execute(query)
@@ -161,8 +180,11 @@ async def get_monthly_stats(
         
         for m in monthly:
             if m["year"] == r_year and m["month"] == r_month:
-                if row.late:
+                if row.status == "dinas" or row.event_type == "DINAS":
+                    m["dinas"] += row.count
+                elif row.late:
                     m["late"] += row.count
+                    m["present"] += row.count
                 else:
                     m["present"] += row.count
                     
@@ -173,7 +195,8 @@ async def get_monthly_stats(
             "day": month_names[m["month"] - 1],
             "full_name": f"{month_names[m['month'] - 1]} {m['year']}",
             "present": m["present"],
-            "late": m["late"]
+            "late": m["late"],
+            "dinas": m.get("dinas", 0)
         })
         
     return output
@@ -190,6 +213,8 @@ async def get_recent_activities(
         select(
             AttendanceLog.id,
             AttendanceLog.event_type,
+            AttendanceLog.status,
+            AttendanceLog.device_id,
             AttendanceLog.timestamp,
             AttendanceLog.late,
             User.full_name.label("user_name")
@@ -221,6 +246,8 @@ async def get_recent_activities(
             "id": f"att-{row.id}",
             "user_name": row.user_name or "Unknown",
             "event_type": row.event_type,
+            "status": row.status,
+            "device_id": row.device_id,
             "timestamp": row.timestamp.isoformat() if row.timestamp else None,
             "late": row.late,
             "category": "ATTENDANCE"
