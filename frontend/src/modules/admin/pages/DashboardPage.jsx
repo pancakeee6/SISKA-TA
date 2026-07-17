@@ -1,13 +1,21 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Users, UserCheck, Clock, TrendingUp, TrendingDown, Activity, Download, UserPlus, ArrowRight
+  Users, UserCheck, Clock, TrendingUp, TrendingDown, Activity, Download, UserPlus, ArrowRight, Briefcase, LayoutDashboard
 } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts'
 import dashboardApi from '../services/dashboardApi'
 import api from '@shared/services/api'
 import useWebSocket from '@shared/hooks/useWebSocket'
 import { useAuthStore } from '@shared/store/authStore'
+
+function getGreeting() {
+  const hour = new Date().getHours()
+  if (hour < 11) return 'Selamat pagi'
+  if (hour < 15) return 'Selamat siang'
+  if (hour < 18) return 'Selamat sore'
+  return 'Selamat malam'
+}
 
 
 
@@ -80,6 +88,13 @@ const statCards = [
     iconBg: 'rgba(245, 158, 11, 0.1)',
     iconColor: '#f59e0b',
   },
+  {
+    key: 'dinas',
+    label: 'Dinas Luar Kota',
+    icon: Briefcase,
+    iconBg: 'rgba(99, 102, 241, 0.1)',
+    iconColor: '#6366f1',
+  },
 ]
 
 // Day labels for chart
@@ -100,7 +115,7 @@ const normalizeAttendanceLogs = (logs) => {
 
   sorted.forEach(log => {
     if (!log.timestamp) return;
-    if (log.category === 'ADMIN' || (log.event_type !== 'IN' && log.event_type !== 'OUT')) {
+    if (log.category === 'ADMIN' || log.status === 'dinas' || (log.event_type !== 'IN' && log.event_type !== 'OUT')) {
       normalizedMap.set(log.id || Math.random(), log);
       resultIds.push(log.id || Math.random());
       return;
@@ -163,7 +178,7 @@ const normalizeAttendanceLogs = (logs) => {
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const { logout } = useAuthStore()
+  const { admin, logout } = useAuthStore()
 
   const [stats, setStats] = useState({ total: 0, present: 0, late: 0, absent: 0 })
   const [weeklyStats, setWeeklyStats] = useState([])
@@ -310,7 +325,8 @@ export default function DashboardPage() {
   // Display activities (strictly real data from API/WS + demo mock)
   const displayActivities = activities.map((act) => {
     const isLate = act.late
-    const isCheckIn = act.event_type === 'IN'
+    const isDinas = act.status === 'dinas' || act.event_type === 'DINAS'
+    const isCheckIn = act.event_type === 'IN' && !isDinas
     const isExport = act.event_type === 'EXPORT'
     const isRegister = act.event_type === 'REGISTER'
     const isDelete = act.event_type === 'DELETE'
@@ -320,7 +336,12 @@ export default function DashboardPage() {
     let sColor = '#4f46e5'
     let sBg = '#e0e7ff'
 
-    if (isCheckIn) {
+    if (isDinas) {
+      actionText = `Mencatat Dinas Luar Kota (${act.device_id || act.shift_label || 'Izin Dinas'})`
+      statusText = 'Dinas Luar'
+      sColor = '#6366f1'
+      sBg = '#e0e7ff'
+    } else if (isCheckIn) {
       actionText = 'Berhasil melakukan presensi masuk'
       if (isLate) {
         let lateInfo = act.late_duration
@@ -421,20 +442,124 @@ export default function DashboardPage() {
     if (key === 'total') return { value: '↑ 2 dari minggu lalu', color: '#10b981' }
     if (key === 'present') return { value: '↑ 5 dari kemarin', color: '#10b981' }
     if (key === 'late') return { value: '↓ 1 dari kemarin', color: '#10b981' }
+    if (key === 'dinas') return { value: 'Izin Resmi Dosen/Pegawai', color: '#6366f1' }
     if (key === 'rate') return { value: '↑ 3% dari kemarin', color: '#10b981' }
     return { value: '↑ 3% dari kemarin', color: '#10b981' }
   }
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '32px' }} className="animate-fade-in dashboard-main">
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', gap: '14px', overflow: 'hidden' }} className="animate-fade-in dashboard-main">
 
+      {/* Hero Header Card (Matching Pengguna, Manajemen Wajah, Riwayat Absensi, and Pengaturan) */}
+      <div style={{ 
+        background: 'var(--color-bg-surface)', 
+        border: '1px solid var(--color-border)', 
+        borderRadius: '24px', 
+        padding: '20px 24px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '16px',
+        flexShrink: 0
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{
+            width: '52px', height: '52px', borderRadius: '16px',
+            background: 'rgba(79, 70, 229, 0.1)', color: '#4f46e5',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+          }}>
+            <LayoutDashboard size={26} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+              {getGreeting()}, {admin?.full_name?.split(' ')[0] || 'Administrator'}! 👋
+            </h1>
+            <p style={{ fontSize: '13.5px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
+              Pantau statistik kehadiran pegawai dan aktivitas sistem SISKA secara real-time
+            </p>
+          </div>
+        </div>
+      </div>
 
+      {/* 1. SYMMETRICAL KPI CARDS (Exactly 5 items in 1 perfectly balanced row) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '14px', flexShrink: 0 }}>
+        {statCards.map(({ key, label, icon: Icon, iconBg, iconColor }) => {
+          const trend = getTrendData(key)
+          return (
+            <div
+              key={key}
+              className="hover-card"
+              style={{
+                background: 'var(--color-bg-surface)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '16px',
+                padding: '14px 16px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                display: 'flex',
+                gap: '14px',
+                alignItems: 'center',
+              }}
+            >
+              <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: iconBg, color: iconColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon size={22} strokeWidth={2.5} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                <p style={{ fontSize: '11.5px', color: 'var(--color-text-secondary)', fontWeight: 600, margin: 0, marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</p>
+                {loading ? (
+                  <div style={{ height: '24px', width: '40px', background: 'var(--color-bg-base)', borderRadius: '6px', marginBottom: '4px' }} className="animate-pulse" />
+                ) : (
+                  <p style={{ fontSize: '22px', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1, marginBottom: '4px' }}>
+                    {stats[key]}
+                  </p>
+                )}
+                <span style={{ fontSize: '11px', fontWeight: 600, color: trend.color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {trend.value}
+                </span>
+              </div>
+            </div>
+          )
+        })}
 
-      {/* 2. QUICK ACCESS CARDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
+        {/* 5th Symmetrical Card: Tingkat Kehadiran */}
+        <div
+          className="hover-card"
+          style={{
+            background: 'var(--color-bg-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '16px',
+            padding: '14px 16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+            display: 'flex',
+            gap: '14px',
+            alignItems: 'center',
+          }}
+        >
+          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.1)', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Activity size={22} strokeWidth={2.5} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: '11.5px', color: 'var(--color-text-secondary)', fontWeight: 600, margin: 0, marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Tingkat Hadir</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <p style={{ fontSize: '22px', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1 }}>
+                {attendanceRate}%
+              </p>
+              <AttendanceDonut percentage={attendanceRate} size={36} strokeWidth={4} />
+            </div>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: '#10b981', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {getTrendData('rate').value}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. SYMMETRICAL QUICK ACCESS BAR (Exactly 3 horizontal items) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '14px', flexShrink: 0 }}>
         {[
-          { label: 'Export Laporan', desc: 'Export data absensi dan laporan kehadiran', icon: Download, color: '#4f46e5', bg: '#e0e7ff', path: '/admin/attendance' },
-          { label: 'Tambah Pengguna', desc: 'Tambah pengguna baru ke sistem', icon: UserPlus, color: '#10b981', bg: '#d1fae5', path: '/admin/users' },
+          { label: 'Export Laporan', desc: 'Unduh laporan absensi bulanan', icon: Download, color: '#4f46e5', bg: '#e0e7ff', path: '/admin/attendance' },
+          { label: 'Tambah Pengguna', desc: 'Daftarkan dosen & mahasiswa baru', icon: UserPlus, color: '#10b981', bg: '#d1fae5', path: '/admin/users' },
+          { label: 'Catat Dinas Luar', desc: 'Izin dinas luar kota dosen/pegawai', icon: Briefcase, color: '#6366f1', bg: '#e0e7ff', path: '/admin/attendance?action=dinas' },
         ].map((action, idx) => (
           <div
             key={idx}
@@ -446,142 +571,65 @@ export default function DashboardPage() {
               justifyContent: 'space-between',
               background: 'var(--color-bg-surface)',
               border: '1px solid var(--color-border)',
-              padding: '24px 32px',
-              borderRadius: '20px',
+              padding: '12px 18px',
+              borderRadius: '16px',
               cursor: 'pointer',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-              transition: 'all 0.3s ease',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+              transition: 'all 0.25s ease',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-              <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: action.bg, color: action.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <action.icon size={28} strokeWidth={2.5} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: action.bg, color: action.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <action.icon size={20} strokeWidth={2.5} />
               </div>
-              <div>
-                <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text)', margin: 0, marginBottom: '4px' }}>{action.label}</h3>
-                <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', margin: 0 }}>{action.desc}</p>
+              <div style={{ minWidth: 0 }}>
+                <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text)', margin: 0, marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{action.label}</h3>
+                <p style={{ fontSize: '11.5px', color: 'var(--color-text-secondary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{action.desc}</p>
               </div>
             </div>
-            <ArrowRight color="var(--color-text-secondary)" size={24} />
+            <ArrowRight color="var(--color-text-secondary)" size={18} style={{ flexShrink: 0, marginLeft: '8px' }} />
           </div>
         ))}
       </div>
 
-      {/* 3. KPI CARDS */}
-      <div>
-        <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text)', marginBottom: '16px' }}>Ringkasan Hari Ini</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
-
-          {/* Loop for the first 3 simple stats */}
-          {statCards.map(({ key, label, icon: Icon, iconBg, iconColor }) => {
-            const trend = getTrendData(key)
-            return (
-              <div
-                key={key}
-                className="hover-card"
-                style={{
-                  background: 'var(--color-bg-surface)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '20px',
-                  padding: '24px',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-                  display: 'flex',
-                  gap: '20px',
-                  alignItems: 'flex-start',
-                }}
-              >
-                <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: iconBg, color: iconColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Icon size={26} strokeWidth={2.5} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600, margin: 0, marginBottom: '6px' }}>{label}</p>
-                  {loading ? (
-                    <div style={{ height: '36px', width: '60px', background: 'var(--color-bg-base)', borderRadius: '6px', marginBottom: '8px' }} className="animate-pulse" />
-                  ) : (
-                    <p style={{ fontSize: '32px', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1, marginBottom: '8px' }}>
-                      {stats[key]}
-                    </p>
-                  )}
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: trend.color }}>
-                    {trend.value}
-                  </span>
-                </div>
-              </div>
-            )
-          })}
-
-          {/* Attendance Donut Card */}
-          <div
-            className="hover-card"
-            style={{
-              background: 'var(--color-bg-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: '20px',
-              padding: '24px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-              display: 'flex',
-              gap: '20px',
-              alignItems: 'flex-start',
-            }}
-          >
-            <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'rgba(99, 102, 241, 0.1)', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Activity size={26} strokeWidth={2.5} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600, margin: 0, marginBottom: '6px' }}>Tingkat Kehadiran</p>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <p style={{ fontSize: '32px', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1 }}>
-                  {attendanceRate}%
-                </p>
-                <AttendanceDonut percentage={attendanceRate} size={48} strokeWidth={4} />
-              </div>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: '#10b981' }}>
-                {getTrendData('rate').value}
-              </span>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* 4. CHARTS & ACTIVITY */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '24px' }}>
+      {/* 3. CHARTS & ACTIVITY (Zero-Scroll Split Container filling exact remaining height) */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1.4fr', gap: '14px', flex: 1, minHeight: 0 }}>
 
         {/* Analytics Chart */}
-        <div style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '24px', padding: '32px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Statistik Kehadiran</h2>
+        <div style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '20px', padding: '18px 22px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexShrink: 0 }}>
+            <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Statistik Kehadiran</h2>
             <select
               value={chartRange}
               onChange={(e) => setChartRange(e.target.value)}
-              style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text)', outline: 'none', cursor: 'pointer' }}
+              style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text)', outline: 'none', cursor: 'pointer' }}
             >
-              <option value="7_days">7 Hari Terakhir</option>
-              <option value="monthly">6 Bulan Terakhir</option>
+              <option value="7_days" style={{ background: 'var(--color-bg-surface)', color: 'var(--color-text)' }}>7 Hari Terakhir</option>
+              <option value="monthly" style={{ background: 'var(--color-bg-surface)', color: 'var(--color-text)' }}>6 Bulan Terakhir</option>
             </select>
           </div>
 
-          <div style={{ display: 'flex', gap: '24px', marginBottom: '24px', paddingLeft: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }}></div>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)' }}>Hadir</span>
+          <div style={{ display: 'flex', gap: '16px', marginBottom: '10px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text)' }}>Hadir</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f59e0b' }}></div>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)' }}>Terlambat</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b' }}></div>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text)' }}>Terlambat</span>
             </div>
           </div>
 
-          {loading ? (
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', height: '300px' }}>
-              {[...Array(7)].map((_, i) => (
-                <div key={i} style={{ flex: 1, height: `${30 + ((i * 17) % 60)}%`, background: 'var(--color-bg-base)', borderRadius: '8px' }} className="animate-pulse" />
-              ))}
-            </div>
-          ) : (
-            <div style={{ height: '300px' }}>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            {loading ? (
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', height: '100%' }}>
+                {[...Array(7)].map((_, i) => (
+                  <div key={i} style={{ flex: 1, height: `${30 + ((i * 17) % 60)}%`, background: 'var(--color-bg-base)', borderRadius: '6px' }} className="animate-pulse" />
+                ))}
+              </div>
+            ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 30, left: -20, bottom: 20 }}>
+                <AreaChart data={chartData} margin={{ top: 8, right: 15, left: -25, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorHadir" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
@@ -593,69 +641,70 @@ export default function DashboardPage() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
-                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--color-text-secondary)', fontWeight: 500 }} dy={15} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--color-text-secondary)', fontWeight: 500 }} dx={-15} allowDecimals={false} />
+                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)', fontWeight: 500 }} dy={8} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)', fontWeight: 500 }} dx={-10} allowDecimals={false} />
                   <RechartsTooltip
-                    contentStyle={{ borderRadius: '12px', border: '1px solid var(--color-border)', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', background: 'var(--color-bg-surface)', padding: '16px' }}
-                    labelStyle={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: '12px', fontSize: '14px' }}
+                    contentStyle={{ borderRadius: '10px', border: '1px solid var(--color-border)', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', background: 'var(--color-bg-surface)', padding: '10px 14px' }}
+                    labelStyle={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: '6px', fontSize: '13px' }}
                   />
-                  <Area type="monotone" dataKey="hadir" name="Hadir" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorHadir)" dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6, fill: '#10b981', strokeWidth: 0 }} />
-                  <Area type="monotone" dataKey="terlambat" name="Terlambat" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorLate)" dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6, fill: '#f59e0b', strokeWidth: 0 }} />
+                  <Area type="monotone" dataKey="hadir" name="Hadir" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorHadir)" dot={{ r: 3, strokeWidth: 1.5, fill: '#fff' }} activeDot={{ r: 5, fill: '#10b981', strokeWidth: 0 }} />
+                  <Area type="monotone" dataKey="terlambat" name="Terlambat" stroke="#f59e0b" strokeWidth={2.5} fillOpacity={1} fill="url(#colorLate)" dot={{ r: 3, strokeWidth: 1.5, fill: '#fff' }} activeDot={{ r: 5, fill: '#f59e0b', strokeWidth: 0 }} />
                 </AreaChart>
               </ResponsiveContainer>
-            </div>
-          )}
+            )}
+          </div>
 
-          <div style={{ marginTop: '24px', background: trendBg, borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <TrendIcon color={trendIconColor} size={20} />
-            <span style={{ fontSize: '13px', fontWeight: 600, color: trendTextColor }}>
+          <div style={{ marginTop: '10px', background: trendBg, borderRadius: '10px', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <TrendIcon color={trendIconColor} size={16} />
+            <span style={{ fontSize: '11.5px', fontWeight: 600, color: trendTextColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {trendMessage}
             </span>
           </div>
         </div>
 
-        {/* Recent Activity Timeline */}
-        <div style={{ flex: '1', minWidth: '340px', background: 'var(--color-bg-surface)', borderRadius: '24px', padding: '32px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ marginBottom: '24px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>Aktivitas Terbaru</h2>
+        {/* Recent Activity Timeline (Zero-Scroll Auto List) */}
+        <div style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '20px', padding: '18px 22px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ marginBottom: '12px', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>Aktivitas Terbaru</h2>
+            <span style={{ fontSize: '11.5px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Real-time</span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, overflowY: 'auto', minHeight: 0, paddingRight: '4px' }}>
             {displayActivities.length === 0 ? (
-              <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '14px', padding: '48px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'var(--color-bg-base)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-                  <Clock size={24} className="animate-pulse" />
+              <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '13px', padding: '24px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', margin: 'auto' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'var(--color-bg-base)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                  <Clock size={20} className="animate-pulse" />
                 </div>
                 <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Menunggu aktivitas absen...</span>
               </div>
             ) : (
-              displayActivities.map((act, i) => (
-                <div key={act.id || i} style={{ display: 'flex', gap: '16px', position: 'relative', zIndex: 1, alignItems: 'center' }}>
+              displayActivities.slice(0, 5).map((act, i) => (
+                <div key={act.id || i} style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '4px 0', borderBottom: i < Math.min(displayActivities.length, 5) - 1 ? '1px solid var(--color-border)' : 'none' }}>
                   {/* Avatar Bubble */}
                   <div style={{
-                    width: '40px', height: '40px', borderRadius: '50%', background: act.avatarBg,
+                    width: '34px', height: '34px', borderRadius: '10px', background: act.avatarBg,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: act.avatarColor, fontSize: '16px', fontWeight: 700, flexShrink: 0
+                    color: act.avatarColor, fontSize: '14px', fontWeight: 700, flexShrink: 0
                   }}>
                     {act.user_name?.[0]?.toUpperCase() || '?'}
                   </div>
 
                   {/* Content */}
-                  <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0, gap: '12px' }}>
+                  <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0, gap: '8px' }}>
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--color-text)', margin: 0, marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text)', margin: 0, marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {act.user_name}
                       </p>
-                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: 0, lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {act.action}
                       </p>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
-                      <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', flexShrink: 0 }}>
+                      <span style={{ fontSize: '10.5px', color: '#94a3b8', fontWeight: 600 }}>
                         {act.time}
                       </span>
-                      <div style={{ padding: '4px 12px', borderRadius: '6px', background: act.statusBg, color: act.statusColor, fontSize: '11px', fontWeight: 600, textAlign: 'center' }}>
+                      <div style={{ padding: '2px 8px', borderRadius: '4px', background: act.statusBg, color: act.statusColor, fontSize: '10px', fontWeight: 700 }}>
                         {act.status}
                       </div>
                     </div>
@@ -665,19 +714,19 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Lihat Semua Button at the bottom, plain text */}
-          <div style={{ marginTop: 'auto', textAlign: 'center', paddingTop: '24px' }}>
+          {/* Lihat Semua Button at the bottom */}
+          <div style={{ marginTop: 'auto', textAlign: 'center', paddingTop: '8px', flexShrink: 0 }}>
             <button
               onClick={() => navigate('/admin/attendance')}
               style={{
-                background: 'transparent', border: 'none', padding: '8px 16px', fontSize: '14px',
+                background: 'transparent', border: 'none', padding: '4px 12px', fontSize: '12.5px',
                 fontWeight: 600, color: 'var(--color-primary)', cursor: 'pointer',
                 transition: 'color 0.2s'
               }}
               onMouseOver={(e) => e.currentTarget.style.color = 'var(--color-primary-dark)'}
               onMouseOut={(e) => e.currentTarget.style.color = 'var(--color-primary)'}
             >
-              Lihat Semua Aktivitas →
+              Lihat Semua Aktivitas ({activities.length}) →
             </button>
           </div>
         </div>
