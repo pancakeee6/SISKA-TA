@@ -9,7 +9,7 @@ from app.api.deps import get_current_admin
 from app.models.attendance import AttendanceLog
 from app.models.user import User
 from app.models.shift import WorkShift
-from app.schemas.attendance import AttendanceLogResponse, AttendanceListResponse
+from app.schemas.attendance import AttendanceLogResponse, AttendanceListResponse, AttendanceDinasCreate
 from app.services import ai_service
 from app.core.websocket import ws_manager
 from app.core.config import settings
@@ -232,6 +232,50 @@ async def recognize_attendance(
     }
 
 
+@router.post("/dinas")
+async def record_dinas(
+    data: AttendanceDinasCreate,
+    db: AsyncSession = Depends(get_db),
+    _admin=Depends(get_current_admin),
+):
+    """Record out-of-town official duty (Dinas Luar Kota) for a user/lecturer."""
+    user_result = await db.execute(select(User).where(User.id == data.user_id))
+    user = user_result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Pegawai / Dosen tidak ditemukan")
+
+    wib_tz = timezone(timedelta(hours=7))
+    if data.date:
+        try:
+            target_date = datetime.strptime(data.date, "%Y-%m-%d").date()
+            dt_wib = datetime.combine(target_date, datetime.strptime("08:00:00", "%H:%M:%S").time(), tzinfo=wib_tz)
+            target_timestamp = dt_wib.astimezone(timezone.utc)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Format tanggal harus YYYY-MM-DD")
+    else:
+        target_timestamp = datetime.now(timezone.utc)
+
+    keterangan = data.keterangan or "Dinas Luar Kota"
+
+    log = AttendanceLog(
+        user_id=user.id,
+        event_type="DINAS",
+        status="dinas",
+        late=False,
+        device_id=keterangan,
+        timestamp=target_timestamp,
+    )
+    db.add(log)
+    await db.commit()
+    await db.refresh(log)
+
+    return {
+        "status": "success",
+        "message": f"Dinas Luar Kota berhasil dicatat untuk {user.full_name}",
+        "log_id": log.id
+    }
+
+
 @router.get("/logs", response_model=AttendanceListResponse)
 async def attendance_logs(
     page: int = Query(1, ge=1),
@@ -274,7 +318,9 @@ async def attendance_logs(
     if status == "late":
         query = query.where(AttendanceLog.late == True)
     elif status == "present":
-        query = query.where(AttendanceLog.late == False)
+        query = query.where(AttendanceLog.late == False, AttendanceLog.status != "dinas", AttendanceLog.event_type != "DINAS")
+    elif status == "dinas":
+        query = query.where((AttendanceLog.status == "dinas") | (AttendanceLog.event_type == "DINAS"))
 
     # Search by user name or employee_id
     if search:
@@ -326,25 +372,29 @@ async def attendance_logs(
                         active_shift = s
                 except Exception:
                     pass
-            resp.shift_label = active_shift.name
-            if log.late and log.event_type == "IN":
-                try:
-                    sh, sm = map(int, active_shift.start_time.split(":"))
-                    shift_start_dt = log_wib.replace(hour=sh, minute=sm, second=0, microsecond=0)
-                    diff_minutes = int((log_wib - shift_start_dt).total_seconds() / 60.0)
-                    if diff_minutes < 0:
-                        diff_minutes = 0
-                    resp.late_minutes = diff_minutes
-                    hours = diff_minutes // 60
-                    mins = diff_minutes % 60
-                    if hours > 0 and mins > 0:
-                        resp.late_duration = f"{hours} jam {mins} menit"
-                    elif hours > 0:
-                        resp.late_duration = f"{hours} jam"
-                    else:
-                        resp.late_duration = f"{mins} menit" if mins > 0 else "1 menit"
-                except Exception:
-                    resp.late_duration = "-"
+            if log.status == "dinas" or log.event_type == "DINAS":
+                resp.shift_label = log.device_id or "Dinas Luar Kota"
+                resp.late_duration = "-"
+            else:
+                resp.shift_label = active_shift.name
+                if log.late and log.event_type == "IN":
+                    try:
+                        sh, sm = map(int, active_shift.start_time.split(":"))
+                        shift_start_dt = log_wib.replace(hour=sh, minute=sm, second=0, microsecond=0)
+                        diff_minutes = int((log_wib - shift_start_dt).total_seconds() / 60.0)
+                        if diff_minutes < 0:
+                            diff_minutes = 0
+                        resp.late_minutes = diff_minutes
+                        hours = diff_minutes // 60
+                        mins = diff_minutes % 60
+                        if hours > 0 and mins > 0:
+                            resp.late_duration = f"{hours} jam {mins} menit"
+                        elif hours > 0:
+                            resp.late_duration = f"{hours} jam"
+                        else:
+                            resp.late_duration = f"{mins} menit" if mins > 0 else "1 menit"
+                    except Exception:
+                        resp.late_duration = "-"
 
         log_responses.append(resp)
 
@@ -413,11 +463,16 @@ async def export_attendance(
         user_name, employee_id = user_map.get(log.user_id, ("Unknown", "-"))
 
         # Readable labels
-        tipe_absensi = "Check In (Masuk)" if log.event_type == "IN" else "Check Out (Keluar)"
-        status_label = "Terlambat" if (log.late or log.status == "late") else (
-            "Hadir" if log.event_type == "IN" else "Keluar"
-        )
-        keterangan_waktu = "Terlambat" if log.late else "Tepat Waktu"
+        if log.status == "dinas" or log.event_type == "DINAS":
+            tipe_absensi = "Dinas Luar Kota (DL)"
+            status_label = "Dinas Luar Kota"
+            keterangan_waktu = log.device_id or "Dinas Luar Kota"
+        else:
+            tipe_absensi = "Check In (Masuk)" if log.event_type == "IN" else "Check Out (Keluar)"
+            status_label = "Terlambat" if (log.late or log.status == "late") else (
+                "Hadir" if log.event_type == "IN" else "Keluar"
+            )
+            keterangan_waktu = "Terlambat" if log.late else "Tepat Waktu"
 
         writer.writerow([
             idx,
