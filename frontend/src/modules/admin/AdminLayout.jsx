@@ -77,7 +77,7 @@ export default function AdminLayout() {
   const { admin, logout } = useAuthStore()
 
   const isDashboard = location.pathname === '/admin'
-  // Desktop sidebar collapsed state
+  // Desktop sidebar collapsed state (manual toggle)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   // Dark mode state
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark')
@@ -153,22 +153,22 @@ export default function AdminLayout() {
         />
       )}
 
-      {/* Sidebar - Desktop (collapsible) */}
+      {/* Desktop Sidebar (Stays visible in normal document flow, manual toggle via button) */}
       <aside
-        className={`
-          sidebar-transition hidden lg:flex flex-col
-          ${sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}
-        `}
+        className={`sidebar-transition hidden lg:flex flex-col ${sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}`}
         style={{
           width: sidebarWidth,
           minWidth: sidebarWidth,
           background: 'var(--color-sidebar)',
-          position: 'relative',
-          zIndex: 10,
-          transition: 'background 0.3s ease',
+          height: '100vh',
+          zIndex: 50,
+          boxShadow: '4px 0 25px rgba(0, 0, 0, 0.05)',
+          transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          overflowX: 'hidden',
+          flexShrink: 0
         }}
       >
-        {/* Hamburger Button */}
+        {/* Toggle / Hamburger Button */}
         <div style={{
           padding: sidebarCollapsed ? '16px 0 0 0' : '16px 16px 0 16px',
           display: 'flex',
@@ -178,7 +178,7 @@ export default function AdminLayout() {
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="sidebar-collapse-btn"
-            title={sidebarCollapsed ? 'Perluas sidebar' : 'Ciutkan sidebar'}
+            title={sidebarCollapsed ? 'Buka Sidebar' : 'Tutup Sidebar'}
             style={{
               background: 'rgba(255, 255, 255, 0.1)',
               border: 'none',
@@ -189,6 +189,7 @@ export default function AdminLayout() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              transition: 'all 0.2s'
             }}
           >
             <Menu size={16} />
@@ -397,10 +398,11 @@ export default function AdminLayout() {
       <div className="flex-1 flex flex-col overflow-hidden relative" style={{ background: 'var(--color-bg-base)', transition: 'background 0.3s ease' }}>
         
         {/* Top Navbar / Header */}
-        <header className={isDashboard ? 'flex items-center justify-between' : 'flex lg:hidden items-center justify-between'} style={{
-          padding: isDashboard ? '24px 32px' : '16px 24px 0 24px',
+        <header className="flex items-center justify-between" style={{
+          padding: '16px 24px 8px 24px',
           background: 'transparent',
           transition: 'all 0.3s ease',
+          flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             {/* Mobile hamburger — visible only on small screens */}
@@ -416,39 +418,25 @@ export default function AdminLayout() {
                 <Menu size={18} />
               </button>
             </div>
-
-            {/* Greeting (Desktop) */}
-            {isDashboard && (
-              <div className="hidden md:block">
-                <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--color-text)', marginBottom: '4px', margin: 0, letterSpacing: '-0.5px' }}>
-                  {getGreeting()}, {admin?.full_name?.split(' ')[0] || 'Administrator'}! 👋
-                </h1>
-                <p style={{ fontSize: '15px', color: 'var(--color-text-secondary)', margin: 0 }}>
-                  Pantau kehadiran dan aktivitas sistem secara real-time.
-                </p>
-              </div>
-            )}
           </div>
 
-          {isDashboard && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {/* Live Clock Pill */}
+            <div style={{ 
+              background: 'var(--color-bg-surface)', 
+              border: '1px solid var(--color-border)', 
+              borderRadius: '24px', 
+              padding: '8px 20px', 
+              alignItems: 'center',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+            }}>
+              <LiveClock />
+            </div>
 
-              {/* Live Clock Pill */}
-              <div style={{ 
-                background: 'var(--color-bg-surface)', 
-                border: '1px solid var(--color-border)', 
-                borderRadius: '24px', 
-                padding: '8px 20px', 
-                display: 'flex', 
-                alignItems: 'center',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.02)' 
-              }}>
-                <LiveClock />
-              </div>
-
-              {/* Notification Bell */}
-              <button style={{
-                position: 'relative',
+            {/* Dark Mode Toggle */}
+            <button 
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -458,55 +446,22 @@ export default function AdminLayout() {
                 border: '1px solid var(--color-border)',
                 borderRadius: '50%',
                 cursor: 'pointer',
-                color: 'var(--color-text-secondary)',
                 transition: 'all 0.3s ease',
+                color: 'var(--color-text-secondary)',
+                padding: 0,
                 boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
-              }} className="hover-card">
-                <Bell size={18} />
-                <span style={{
-                  position: 'absolute',
-                  top: '6px',
-                  right: '6px',
-                  width: '8px',
-                  height: '8px',
-                  background: '#ef4444',
-                  borderRadius: '50%',
-                  border: '2px solid var(--color-bg-surface)'
-                }}></span>
-              </button>
-
-              {/* Dark Mode Toggle */}
-              <button 
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '40px',
-                  height: '40px',
-                  background: 'var(--color-bg-surface)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '50%',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  color: 'var(--color-text-secondary)',
-                  padding: 0,
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
-                }}
-                className="hover-card"
-                title={isDarkMode ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
-              >
-                {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-
-
-            </div>
-          )}
+              }}
+              className="hover-card"
+              title={isDarkMode ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
+            >
+              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+          </div>
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto">
-          <div style={{ padding: '0 32px 32px 32px', width: '100%' }}>
+        <main className={`flex-1 ${isDashboard ? 'overflow-hidden flex flex-col' : 'overflow-auto'}`}>
+          <div style={{ padding: isDashboard ? '0 24px 16px 24px' : '0 32px 32px 32px', width: '100%', height: isDashboard ? '100%' : 'auto', display: 'flex', flexDirection: 'column' }}>
             <Outlet />
           </div>
         </main>
