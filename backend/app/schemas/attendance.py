@@ -21,6 +21,12 @@ class RecognizeResponse(BaseModel):
     faces: list[FaceRecognitionResult]
 
 
+class AttendanceDinasCreate(BaseModel):
+    user_id: UUID
+    date: Optional[str] = None  # Format YYYY-MM-DD
+    keterangan: Optional[str] = "Dinas Luar Kota"
+
+
 # --- Attendance Schemas ---
 
 class AttendanceLogResponse(BaseModel):

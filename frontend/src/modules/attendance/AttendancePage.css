@@ -232,8 +232,8 @@
   max-height: 600px;
   border-radius: 50%;
   border: 1.5px dashed rgba(99,102,241,0.2);
-  animation: att-orbitDots 20s linear infinite;
-  will-change: transform;
+  /* animation: att-orbitDots 20s linear infinite; -- disabled: saves CPU on low-spec STB */
+  will-change: auto;
   z-index: 1;
 }
 
@@ -607,7 +607,7 @@
   height: 100%;
   border-top: 2px solid rgba(99, 102, 241, 0.8);
   border-right: 2px solid rgba(99, 102, 241, 0.3);
-  animation: att-spin 8s linear infinite;
+  animation: att-spin 16s linear infinite;
 }
 
 .ai-core-ring-2 {
@@ -615,14 +615,14 @@
   height: 80%;
   border-bottom: 2px solid rgba(168, 85, 247, 0.8);
   border-left: 2px solid rgba(168, 85, 247, 0.3);
-  animation: att-spin-reverse 6s linear infinite;
+  animation: att-spin 16s linear infinite reverse;
 }
 
 .ai-core-ring-3 {
   width: 60%;
   height: 60%;
   border: 2px dashed rgba(255, 255, 255, 0.3);
-  animation: att-spin 12s linear infinite;
+  animation: att-spin 24s linear infinite;
 }
 
 [data-theme='light'] .ai-core-ring-3 {

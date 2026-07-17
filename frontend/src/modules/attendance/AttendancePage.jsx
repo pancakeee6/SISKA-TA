@@ -294,10 +294,10 @@ export default function AttendancePage() {
               prevFrameRef.current = new Uint8ClampedArray(frameData)
 
               // Jika ada pergerakan/kehadiran siswa di depan kamera
-              if (avgDiff >= 2.0) {
+              if (avgDiff >= 8.0) {
                 consecDetectedRef.current = (consecDetectedRef.current || 0) + 1
                 consecLostRef.current = 0
-                if (consecDetectedRef.current >= 1 && !hasFaceRef.current) {
+                if (consecDetectedRef.current >= 3 && !hasFaceRef.current) {
                   hasFaceRef.current = true
                   setHasFace(true)
                 }
