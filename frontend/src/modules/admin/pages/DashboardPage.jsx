@@ -295,7 +295,7 @@ export default function DashboardPage() {
         return {
           day: d.day, // "Jan", "Feb", etc.
           fullDay: d.full_name || d.day, // "Jan 2026"
-          hadir: d.present || 0,
+          hadir: Math.max(0, (d.present || 0) - (d.late || 0)),
           terlambat: d.late || 0
         }
       }
@@ -316,7 +316,7 @@ export default function DashboardPage() {
       return {
         day: idDay,
         fullDay: dayMap[enDay] ? `${dayMap[enDay]}, ${formattedDate}` : d.day,
-        hadir: d.present || 0,
+        hadir: Math.max(0, (d.present || 0) - (d.late || 0)),
         terlambat: d.late || 0
       }
     })
@@ -420,20 +420,20 @@ export default function DashboardPage() {
       trendMessage = `Tingkat kehadiran hari ini (${todayData.hadir}) lebih tinggi dibandingkan kemarin (${yesterdayData.hadir}).`
       TrendIcon = TrendingUp
       trendIconColor = "#10b981"
-      trendBg = "rgba(16, 185, 129, 0.05)"
-      trendTextColor = "#065f46"
+      trendBg = "rgba(16, 185, 129, 0.1)"
+      trendTextColor = "#10b981"
     } else if (todayData.hadir < yesterdayData.hadir) {
       trendMessage = `Tingkat kehadiran hari ini (${todayData.hadir}) lebih rendah dibandingkan kemarin (${yesterdayData.hadir}).`
       TrendIcon = TrendingDown
       trendIconColor = "#ef4444"
-      trendBg = "rgba(239, 68, 68, 0.05)"
-      trendTextColor = "#991b1b"
+      trendBg = "rgba(239, 68, 68, 0.1)"
+      trendTextColor = "#ef4444"
     } else {
       trendMessage = `Tingkat kehadiran hari ini sama persis dengan hari kemarin (${todayData.hadir} orang).`
       TrendIcon = TrendingUp
       trendIconColor = "#3b82f6"
-      trendBg = "rgba(59, 130, 246, 0.05)"
-      trendTextColor = "#1e40af"
+      trendBg = "rgba(59, 130, 246, 0.1)"
+      trendTextColor = "#3b82f6"
     }
   }
 
@@ -632,11 +632,11 @@ export default function DashboardPage() {
                 <AreaChart data={chartData} margin={{ top: 8, right: 15, left: -25, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorHadir" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.5} />
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="colorLate" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.5} />
                       <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                     </linearGradient>
                   </defs>

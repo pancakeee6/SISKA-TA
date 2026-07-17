@@ -47,6 +47,7 @@
   --color-border: rgba(255, 255, 255, 0.1);
   --color-border-subtle: rgba(255, 255, 255, 0.05);
   --color-border-hover: rgba(56, 189, 248, 0.25);
+  --color-chart-grid: rgba(255, 255, 255, 0.15);
 
   /* Spacing */
   --radius: 0.75rem;
@@ -75,7 +76,7 @@
   --color-bg-elevated: #ffffff;
   --color-bg-card: #ffffff;
   --color-sidebar: #264b5d; /* Original blue for both modes */
-  --color-sidebar-text: #93c5fd;
+  --color-sidebar-text: #ffffff; /* Ubah ke putih agar kontras dengan background gelap */
   --color-sidebar-text-active: #1e3a8a;
 
   /* Primary Brand — slightly darker blue for contrast */
@@ -99,6 +100,7 @@
   --color-border: rgba(15, 23, 42, 0.15); /* More pronounced */
   --color-border-subtle: rgba(15, 23, 42, 0.08); /* More pronounced */
   --color-border-hover: rgba(15, 23, 42, 0.25);
+  --color-chart-grid: rgba(15, 23, 42, 0.25);
 
   /* Shadows (softer for light mode) */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -328,8 +330,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* Dashboard Redesign */
 [data-theme='light'] .dashboard-main {
-  background: linear-gradient(135deg, #f8fafc 0%, #eef4ff 100%);
-  border-radius: 32px;
+  /* Background dihapus agar menyatu dengan background aplikasi di kanan kirinya */
 }
 .hover-card:hover {
   transform: translateY(-4px);

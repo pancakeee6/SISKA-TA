@@ -102,8 +102,18 @@ export default function AttendanceHistoryPage() {
   const [loading, setLoading] = useState(true)
 
   // Filters
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const getFirstDayOfMonth = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  }
+  const getLastDayOfMonth = () => {
+    const d = new Date();
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${lastDay}`;
+  }
+
+  const [dateFrom, setDateFrom] = useState(getFirstDayOfMonth())
+  const [dateTo, setDateTo] = useState(getLastDayOfMonth())
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all') // all | present | late
   const [activeFilters, setActiveFilters] = useState(0)
@@ -658,7 +668,7 @@ export default function AttendanceHistoryPage() {
         gap: '12px',
         flexWrap: 'wrap',
       }}>
-        {/* Date Range Picker */}
+        {/* Month Picker */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -668,9 +678,8 @@ export default function AttendanceHistoryPage() {
           background: 'var(--color-bg-surface)',
           border: '1px solid var(--color-border)',
           boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-          minWidth: '220px',
         }}>
-          <Calendar size={14} style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }} />
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Bulan:</span>
           <input
             type="date"
             value={dateFrom}
@@ -685,23 +694,9 @@ export default function AttendanceHistoryPage() {
               width: '110px',
             }}
           />
-          <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>–</span>
-          <input
-            type="date"
-            value={dateTo}
-            min={dateFrom}
-            max={today}
-            onChange={(e) => setDateTo(e.target.value)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--color-text)',
-              fontSize: '12px',
-              outline: 'none',
-              width: '110px',
-            }}
-          />
         </div>
+
+
 
         {/* Search Input */}
         <div style={{

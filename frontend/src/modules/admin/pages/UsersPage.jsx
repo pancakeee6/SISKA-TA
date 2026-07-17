@@ -200,8 +200,8 @@ export default function UsersPage() {
 
       {/* Mini Stats Row */}
       <div className="animate-fade-up stagger-1" style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
+        display: 'flex',
+        flexWrap: 'wrap',
         gap: '16px',
       }}>
         {[
@@ -242,6 +242,7 @@ export default function UsersPage() {
                display: 'flex',
                alignItems: 'center',
                gap: '16px',
+               minWidth: '260px',
             }}
           >
             <div style={{
@@ -486,9 +487,9 @@ export default function UsersPage() {
                             e.currentTarget.style.background = '#2563eb';
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.border = '1px solid #e2e8f0';
-                            e.currentTarget.style.color = '#64748b';
-                            e.currentTarget.style.background = '#f8fafc';
+                            e.currentTarget.style.border = '1px solid var(--color-border)';
+                            e.currentTarget.style.color = 'var(--color-text-secondary)';
+                            e.currentTarget.style.background = 'var(--color-bg-base)';
                           }}
                         >
                           <ScanFace size={16} />
@@ -517,9 +518,9 @@ export default function UsersPage() {
                             e.currentTarget.style.background = '#7c3aed';
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.border = '1px solid #e2e8f0';
-                            e.currentTarget.style.color = '#64748b';
-                            e.currentTarget.style.background = '#f8fafc';
+                            e.currentTarget.style.border = '1px solid var(--color-border)';
+                            e.currentTarget.style.color = 'var(--color-text-secondary)';
+                            e.currentTarget.style.background = 'var(--color-bg-base)';
                           }}
                         >
                           <Edit2 size={15} />
@@ -548,9 +549,9 @@ export default function UsersPage() {
                             e.currentTarget.style.background = '#ef4444';
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.border = '1px solid #e2e8f0';
-                            e.currentTarget.style.color = '#64748b';
-                            e.currentTarget.style.background = '#f8fafc';
+                            e.currentTarget.style.border = '1px solid var(--color-border)';
+                            e.currentTarget.style.color = 'var(--color-text-secondary)';
+                            e.currentTarget.style.background = 'var(--color-bg-base)';
                           }}
                         >
                           <Trash2 size={15} />

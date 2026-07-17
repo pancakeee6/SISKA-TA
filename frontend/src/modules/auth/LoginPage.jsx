@@ -93,7 +93,7 @@ export default function LoginPage() {
         justifyContent: 'flex-start',
         position: 'relative',
         overflow: 'hidden',
-        background: 'linear-gradient(160deg, rgba(11, 22, 40, 0.4) 0%, rgba(13, 31, 60, 0.6) 40%, rgba(9, 20, 40, 0.75) 100%), url("/kampus2.jpg") center/cover no-repeat',
+        background: 'linear-gradient(160deg, rgba(11, 22, 40, 0.15) 0%, rgba(13, 31, 60, 0.3) 40%, rgba(9, 20, 40, 0.5) 100%), url("/kampus2.jpg") center/cover no-repeat',
         padding: '60px 100px',
       }}>
         {/* Decorative glowing orbs */}
@@ -226,8 +226,8 @@ export default function LoginPage() {
         flexDirection: 'column',
         justifyContent: 'center',
         padding: '60px 50px',
-        background: '#0c1426',
-        borderLeft: '1px solid rgba(255, 255, 255, 0.06)',
+        background: '#f8fafc',
+        borderLeft: '1px solid rgba(0, 0, 0, 0.06)',
         position: 'relative',
         zIndex: 3,
       }}>
@@ -237,14 +237,14 @@ export default function LoginPage() {
             <h2 style={{
               fontSize: '26px',
               fontWeight: 700,
-              color: '#ffffff',
+              color: '#0f172a',
               margin: '0 0 8px 0',
             }}>
               Masuk ke Admin
             </h2>
             <p style={{
               fontSize: '14px',
-              color: '#64748b',
+              color: '#475569',
               margin: 0,
             }}>
               Kelola data absensi dan manajemen wajah
@@ -259,7 +259,7 @@ export default function LoginPage() {
                 display: 'block',
                 fontSize: '13px',
                 fontWeight: 500,
-                color: '#94a3b8',
+                color: '#475569',
                 marginBottom: '8px',
               }}>
                 Username / Email
@@ -277,9 +277,9 @@ export default function LoginPage() {
                   width: '100%',
                   padding: '12px 16px',
                   borderRadius: '10px',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  color: '#e2e8f0',
+                  background: '#ffffff',
+                  border: '1px solid #94a3b8',
+                  color: '#0f172a',
                   fontSize: '14px',
                   outline: 'none',
                   transition: 'all 0.2s',
@@ -294,7 +294,7 @@ export default function LoginPage() {
                 display: 'block',
                 fontSize: '13px',
                 fontWeight: 500,
-                color: '#94a3b8',
+                color: '#475569',
                 marginBottom: '8px',
               }}>
                 Password
@@ -312,9 +312,9 @@ export default function LoginPage() {
                     width: '100%',
                     padding: '12px 44px 12px 16px',
                     borderRadius: '10px',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    color: '#e2e8f0',
+                    background: '#ffffff',
+                    border: '1px solid #94a3b8',
+                    color: '#0f172a',
                     fontSize: '14px',
                     outline: 'none',
                     transition: 'all 0.2s',

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   ScanFace, Search, Trash2, Loader2, AlertCircle, User,
-  Plus, Check, Camera
+  Plus, Check, Camera, X, FlipHorizontal
 } from 'lucide-react'
 import Webcam from 'react-webcam'
 import userApi from '../services/userApi'
@@ -35,6 +35,7 @@ export default function FaceManagementPage() {
 
   // Camera state
   const [showCamera, setShowCamera] = useState(false)
+  const [isMirrored, setIsMirrored] = useState(false)
   const webcamRef = useRef(null)
 
   const fetchUsers = async () => {
@@ -854,68 +855,101 @@ export default function FaceManagementPage() {
       {showCamera && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowCamera(false)} />
-          <div className="relative w-full max-w-md shadow-2xl animate-fade-up flex flex-col gap-4"
+          <div className="relative w-full max-w-md shadow-2xl animate-fade-up flex flex-col gap-3"
             style={{
-              padding: '32px',
+              padding: '24px',
               borderRadius: '24px',
               background: 'var(--color-bg-surface)',
               border: '1px solid var(--color-border)',
             }}
           >
-            <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--color-text)' }}>Ambil Foto Wajah</h3>
-            <div className="rounded-xl overflow-hidden bg-black/90 aspect-video relative" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
+            <button
+              onClick={() => setShowCamera(false)}
+              style={{
+                position: 'absolute',
+                top: '20px',
+                right: '20px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--color-text-secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '4px',
+                borderRadius: '50%',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = 'var(--color-bg-base)'}
+              onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+            >
+              <X size={20} />
+            </button>
+            <h3 className="text-lg font-bold mb-1" style={{ color: 'var(--color-text)', paddingRight: '32px' }}>Ambil Foto Wajah</h3>
+            <div className="rounded-xl overflow-hidden bg-black/90 aspect-[4/3] relative" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
               <Webcam
                 audio={false}
                 ref={webcamRef}
                 screenshotFormat="image/jpeg"
-                videoConstraints={{ facingMode: "user" }}
+                mirrored={isMirrored}
+                videoConstraints={{ facingMode: "user", aspectRatio: 4/3 }}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onUserMediaError={(err) => console.error("Kamera error:", err)}
               />
-            </div>
-            <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
               <button
-                onClick={() => setShowCamera(false)}
-                style={{ 
-                  flex: 1, 
-                  padding: '10px', 
-                  borderRadius: '8px', 
-                  fontWeight: 600, 
-                  fontSize: '14px', 
-                  border: '1px solid var(--color-border)', 
-                  color: 'var(--color-text-secondary)', 
-                  background: 'transparent',
+                onClick={() => setIsMirrored(!isMirrored)}
+                title={isMirrored ? "Matikan Efek Cermin" : "Aktifkan Efek Cermin"}
+                style={{
+                  position: 'absolute',
+                  bottom: '12px',
+                  right: '12px',
+                  background: 'rgba(0,0,0,0.5)',
+                  backdropFilter: 'blur(4px)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  color: 'white',
+                  padding: '8px',
+                  borderRadius: '50%',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s',
+                  zIndex: 10
                 }}
-                onMouseOver={(e) => e.currentTarget.style.background = 'var(--color-bg-base)'}
-                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.7)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.5)'}
               >
-                Batal
+                <FlipHorizontal size={18} />
               </button>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '8px', marginBottom: '4px' }}>
               <button
                 onClick={captureFace}
                 style={{
-                  flex: 1,
-                  padding: '10px',
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  fontSize: '14px',
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
                   color: '#ffffff',
                   background: 'var(--color-primary)',
-                  border: 'none',
+                  border: '4px solid rgba(56, 189, 248, 0.3)',
                   cursor: 'pointer',
-                  display: 'inline-flex',
+                  display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px',
                   transition: 'all 0.2s',
-                  boxShadow: '0 4px 12px rgba(56, 189, 248, 0.25)'
+                  boxShadow: '0 4px 20px rgba(56, 189, 248, 0.4)'
                 }}
-                onMouseOver={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
-                onMouseOut={(e) => e.currentTarget.style.filter = 'none'}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)'
+                  e.currentTarget.style.border = '4px solid rgba(56, 189, 248, 0.5)'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                  e.currentTarget.style.border = '4px solid rgba(56, 189, 248, 0.3)'
+                }}
+                title="Jepret & Simpan"
               >
-                <Camera size={16} />
-                Jepret & Simpan
+                <Camera size={28} />
               </button>
             </div>
           </div>
