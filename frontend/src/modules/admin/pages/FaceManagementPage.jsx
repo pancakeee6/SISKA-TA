@@ -178,14 +178,34 @@ export default function FaceManagementPage() {
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-            Manajemen Wajah
-          </h1>
-          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
-            Kelola data wajah pengguna untuk pengenalan AI
-          </p>
+      <div style={{ 
+        background: 'var(--color-bg-surface)', 
+        border: '1px solid var(--color-border)', 
+        borderRadius: '24px', 
+        padding: '24px 28px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '20px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{
+            width: '52px', height: '52px', borderRadius: '16px',
+            background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <ScanFace size={26} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+              Manajemen Wajah
+            </h1>
+            <p style={{ fontSize: '13.5px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
+              Kelola data embedding wajah pengguna untuk verifikasi AI
+            </p>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button
