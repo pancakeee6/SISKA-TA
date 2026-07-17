@@ -205,7 +205,6 @@ export default function AttendancePage() {
   const [greetingText, setGreetingText] = useState('')
   const [isMirrored, setIsMirrored] = useState(true)
 
-  const [greetingStyle, setGreetingStyle] = useState(localStorage.getItem('siska_greeting_style') || 'ava')
   const [isLightMode, setIsLightMode] = useState(() => localStorage.getItem('siska_theme') === 'light')
 
   // Theme observer
@@ -675,55 +674,12 @@ export default function AttendancePage() {
           {/* Camera Card Container */}
           <div className="att-camera-card">
             
-            {/* Card Header (Voice Selector) */}
+            {/* Card Header */}
             <div className="att-camera-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '14px' }}>🎙️</span>
-                <select
-                  value={greetingStyle}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setGreetingStyle(val);
-                    localStorage.setItem('siska_greeting_style', val);
-
-                    let voice = 'en-US-AvaMultilingualNeural';
-                    let r = "+0%", p = "+0Hz";
-
-                    if (val === 'emma') { voice = 'en-US-EmmaMultilingualNeural'; }
-                    else if (val === 'andrew') { voice = 'en-US-AndrewMultilingualNeural'; }
-                    else if (val === 'brian') { voice = 'en-US-BrianMultilingualNeural'; }
-
-                    // Only play test voice if camera is disabled to prevent overlapping with actual scans
-                    if (!isCameraEnabled) {
-                      let testText = "Halo, suara saya telah berhasil diganti. Voice check complete.";
-
-                      fetch('/api/v1/tts/synthesize', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text: testText, voice: voice, rate: r, pitch: p })
-                      }).then(res => res.blob()).then(blob => {
-                        const url = URL.createObjectURL(blob);
-                        queueAudio(url);
-                      });
-                    }
-                  }}
-                  style={{
-                    background: 'transparent',
-                    color: 'var(--color-primary)',
-                    border: 'none',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    outline: 'none',
-                    textAlign: 'left'
-                  }}
-                  title="Pilih Karakter Suara"
-                >
-                  <option value="ava">Ava (Wanita - Multilingual)</option>
-                  <option value="emma">Emma (Wanita - Ramah)</option>
-                  <option value="andrew">Andrew (Pria - Profesional)</option>
-                  <option value="brian">Brian (Pria - Kasual)</option>
-                </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                  📹 Live Camera Feed
+                </span>
               </div>
               
               <div className={`att-status-dot ${cameraReady ? 'active' : 'inactive'}`} title={cameraReady ? 'Kamera Sedang Aktif' : 'Kamera Mati'} />
@@ -752,6 +708,7 @@ export default function AttendancePage() {
                     width: 640,
                     height: 480,
                     facingMode: 'user',
+                    frameRate: { ideal: 15, max: 20 },
                   }}
                   onUserMedia={() => setCameraReady(true)}
                   onUserMediaError={() => setStatus(STATUS.NO_CAMERA)}
