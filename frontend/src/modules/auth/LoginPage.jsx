@@ -26,10 +26,12 @@ export default function LoginPage() {
       const meRes = await authApi.getMe()
       setAdmin(meRes.data)
 
+      toast.dismiss()
       toast.success(`Selamat datang, ${meRes.data.full_name}!`)
       navigate('/admin')
     } catch (error) {
       const detail = error.response?.data?.detail
+      toast.dismiss()
       toast.error(detail || 'Login gagal, cek koneksi server')
     } finally {
       setLoading(false)
