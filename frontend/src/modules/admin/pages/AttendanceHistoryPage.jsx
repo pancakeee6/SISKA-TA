@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Search, Calendar, ChevronLeft, ChevronRight,
-  Clock, Loader2,
+  Clock, Loader2, ClipboardList,
   Download, X, XCircle, TrendingUp, TrendingDown, CheckCircle2,
-  Trash2
+  Trash2, Briefcase
 } from 'lucide-react'
 import attendanceAdminApi from '../services/attendanceAdminApi'
 import dashboardApi from '../services/dashboardApi'
+import userApi from '../services/userApi'
 import api from '@shared/services/api'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
@@ -29,6 +30,15 @@ const normalizeAttendanceLogs = (logs) => {
   
   sorted.forEach(log => {
     if (!log.timestamp) return;
+    if (log.status === 'dinas' || log.event_type === 'DINAS') {
+      normalizedMap.set(log.id || Math.random(), {
+        ...log,
+        event_type: 'DINAS',
+        shift_label: log.device_id || 'Dinas Luar Kota'
+      });
+      resultIds.push(log.id || Math.random());
+      return;
+    }
     const dt = new Date(log.timestamp);
     if (isNaN(dt.getTime())) {
       normalizedMap.set(log.id || Math.random(), log);
@@ -102,9 +112,20 @@ export default function AttendanceHistoryPage() {
   const [stats, setStats] = useState({
     present: 0,
     late: 0,
+    dinas: 0,
     absent: 0,
     total: 0
   })
+
+  // Dinas modal state
+  const [showDinasModal, setShowDinasModal] = useState(false)
+  const [userList, setUserList] = useState([])
+  const [dinasForm, setDinasForm] = useState({
+    user_id: '',
+    date: new Date().toISOString().split('T')[0],
+    keterangan: 'Dinas Luar Kota'
+  })
+  const [submittingDinas, setSubmittingDinas] = useState(false)
 
   // Export state
   const [showExport, setShowExport] = useState(false)
@@ -149,7 +170,48 @@ export default function AttendanceHistoryPage() {
     // eslint-disable-next-line
     fetchLogs()
     fetchStats()
+    if (window.location.search.includes('action=dinas')) {
+      openDinasModal()
+    }
   }, [fetchLogs, fetchStats])
+
+  const openDinasModal = async () => {
+    setShowDinasModal(true)
+    try {
+      const res = await userApi.list({ status: 'aktif', limit: 100 })
+      const list = res.data?.items || res.data?.users || (Array.isArray(res.data) ? res.data : [])
+      setUserList(list)
+    } catch {
+      toast.error('Gagal memuat daftar pegawai')
+    }
+  }
+
+  const handleRecordDinas = async (e) => {
+    e.preventDefault()
+    if (!dinasForm.user_id) {
+      toast.error('Pilih pegawai/dosen terlebih dahulu')
+      return
+    }
+    setSubmittingDinas(true)
+    try {
+      let finalDate = dinasForm.date
+      if (finalDate && finalDate.includes('/')) {
+        const parts = finalDate.split('/')
+        if (parts.length === 3) {
+          finalDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+        }
+      }
+      await attendanceAdminApi.recordDinas({ ...dinasForm, date: finalDate })
+      toast.success('Status Dinas Luar Kota berhasil dicatat!')
+      setShowDinasModal(false)
+      fetchLogs()
+      fetchStats()
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Gagal mencatat dinas luar kota')
+    } finally {
+      setSubmittingDinas(false)
+    }
+  }
 
   // Reset page on filter change
   useEffect(() => {
@@ -289,6 +351,7 @@ export default function AttendanceHistoryPage() {
   // Stat card data using global stats
   const presentToday = stats.present || 0
   const lateToday = stats.late || 0
+  const dinasToday = stats.dinas || 0
   const absentToday = stats.absent || 0
   const totalUsers = stats.total || 1
   const attendanceRate = totalUsers > 0 ? Math.round((presentToday / totalUsers) * 100) : 0
@@ -328,14 +391,34 @@ export default function AttendanceHistoryPage() {
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-            Riwayat Absensi
-          </h1>
-          <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
-            Lihat dan kelola riwayat kehadiran
-          </p>
+      <div style={{ 
+        background: 'var(--color-bg-surface)', 
+        border: '1px solid var(--color-border)', 
+        borderRadius: '24px', 
+        padding: '24px 28px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '20px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{
+            width: '52px', height: '52px', borderRadius: '16px',
+            background: 'rgba(16, 185, 129, 0.1)', color: '#10b981',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <ClipboardList size={26} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+              Riwayat Absensi
+            </h1>
+            <p style={{ fontSize: '13.5px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
+              Lihat, filter, dan kelola seluruh catatan kehadiran pegawai
+            </p>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button
@@ -359,6 +442,29 @@ export default function AttendanceHistoryPage() {
           >
             <Trash2 className="w-4 h-4" />
             Reset Log
+          </button>
+
+          <button
+            onClick={openDinasModal}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 20px',
+              borderRadius: '12px',
+              fontSize: '13px',
+              fontWeight: 600,
+              color: '#4f46e5',
+              cursor: 'pointer',
+              background: '#e0e7ff',
+              border: '1px solid #c7d2fe',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#c7d2fe'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#e0e7ff'; }}
+          >
+            <Briefcase size={16} />
+            Catat Dinas Luar
           </button>
           
           <button
@@ -388,7 +494,7 @@ export default function AttendanceHistoryPage() {
       </div>
 
       {/* Summary Stat Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '16px' }}>
         {/* Hadir Hari Ini */}
         <div style={{
           padding: '20px',
@@ -447,6 +553,37 @@ export default function AttendanceHistoryPage() {
             <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0 0' }}>Terlambat Hari Ini</p>
             <p style={{ fontSize: '10px', color: '#d97706', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 600 }}>
               <TrendingDown size={10} /> 1 dari kemarin
+            </p>
+          </div>
+        </div>
+
+        {/* Dinas Luar Kota Hari Ini */}
+        <div style={{
+          padding: '20px',
+          borderRadius: '16px',
+          background: 'var(--color-bg-surface)',
+          border: '1px solid var(--color-border)',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+        }}>
+          <div style={{
+            width: '48px', height: '48px', borderRadius: '50%',
+            background: '#e0e7ff',
+            border: '2px solid #c7d2fe',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <Briefcase size={22} style={{ color: '#4f46e5' }} />
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontSize: '28px', fontWeight: 700, color: 'var(--color-text)', margin: 0, lineHeight: 1.1 }}>
+              {loading ? '—' : dinasToday}
+            </p>
+            <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0 0' }}>Dinas Luar Kota</p>
+            <p style={{ fontSize: '10px', color: '#4f46e5', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 600 }}>
+              <TrendingUp size={10} /> Izin resmi dosen
             </p>
           </div>
         </div>
@@ -546,7 +683,6 @@ export default function AttendanceHistoryPage() {
               fontSize: '12px',
               outline: 'none',
               width: '110px',
-              colorScheme: 'light',
             }}
           />
           <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>–</span>
@@ -563,7 +699,6 @@ export default function AttendanceHistoryPage() {
               fontSize: '12px',
               outline: 'none',
               width: '110px',
-              colorScheme: 'light',
             }}
           />
         </div>
@@ -622,6 +757,7 @@ export default function AttendanceHistoryPage() {
             <option value="all">Semua Status</option>
             <option value="present">Tepat Waktu</option>
             <option value="late">Terlambat</option>
+            <option value="dinas">Dinas Luar Kota</option>
           </select>
           <div style={{
             position: 'absolute',
@@ -708,7 +844,7 @@ export default function AttendanceHistoryPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-base)' }}>
-                {['Nama', 'NIM', 'Tanggal', 'Waktu', 'Jenis', 'Status', 'Keterlambatan'].map((col) => (
+                {['Nama', 'NIM', 'Tanggal', 'Waktu', 'Jenis', 'Status', 'Keterangan / Info'].map((col) => (
                   <th key={col} style={{
                     textAlign: 'left',
                     padding: '14px 20px',
@@ -832,32 +968,62 @@ export default function AttendanceHistoryPage() {
 
                       {/* Jenis */}
                       <td style={{ padding: '12px 20px' }}>
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          padding: '4px 12px',
-                          borderRadius: '20px',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          ...(log.event_type === 'IN'
-                            ? {
-                                background: '#d1fae5',
-                                color: '#059669',
-                                border: '1px solid #a7f3d0',
-                              }
-                            : {
-                                background: '#eff6ff',
-                                color: '#2563eb',
-                                border: '1px solid #bfdbfe',
-                              }),
-                        }}>
-                          {log.event_type === 'IN' ? 'Masuk' : 'Pulang'}
-                        </span>
+                        {log.status === 'dinas' || log.event_type === 'DINAS' ? (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            background: '#e0e7ff',
+                            color: '#4f46e5',
+                            border: '1px solid #c7d2fe',
+                          }}>
+                            Dinas Luar
+                          </span>
+                        ) : (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            ...(log.event_type === 'IN'
+                              ? {
+                                  background: '#d1fae5',
+                                  color: '#059669',
+                                  border: '1px solid #a7f3d0',
+                                }
+                              : {
+                                  background: '#eff6ff',
+                                  color: '#2563eb',
+                                  border: '1px solid #bfdbfe',
+                                }),
+                          }}>
+                            {log.event_type === 'IN' ? 'Masuk' : 'Pulang'}
+                          </span>
+                        )}
                       </td>
 
                       {/* Status */}
                       <td style={{ padding: '12px 20px' }}>
-                        {log.event_type === 'IN' ? (
+                        {log.status === 'dinas' || log.event_type === 'DINAS' ? (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            background: '#e0e7ff',
+                            color: '#4f46e5',
+                            border: '1px solid #c7d2fe',
+                          }}>
+                            Izin Dinas
+                          </span>
+                        ) : log.event_type === 'IN' ? (
                           <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -896,9 +1062,13 @@ export default function AttendanceHistoryPage() {
                         )}
                       </td>
 
-                      {/* Keterlambatan */}
+                      {/* Keterangan / Info */}
                       <td style={{ padding: '12px 20px' }}>
-                        {log.late ? (
+                        {log.status === 'dinas' || log.event_type === 'DINAS' ? (
+                          <span style={{ fontSize: '13px', color: '#4f46e5', fontWeight: 600 }}>
+                            {log.device_id || 'Dinas Luar Kota'}
+                          </span>
+                        ) : log.late ? (
                           <span style={{ fontSize: '13px', color: '#dc2626', fontWeight: 600 }}>
                             {formatLateDuration(log)}
                           </span>
@@ -1140,6 +1310,239 @@ export default function AttendanceHistoryPage() {
                 {exporting ? 'Mengunduh...' : 'Download CSV'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dinas Luar Kota Modal */}
+      {showDinasModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50,
+          padding: '20px',
+        }} className="animate-fade-in">
+          <div style={{
+            background: 'var(--color-bg-surface)',
+            borderRadius: '20px',
+            padding: '24px',
+            width: '100%',
+            maxWidth: '440px',
+            border: '1px solid var(--color-border)',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+              <div style={{
+                width: '40px', height: '40px', borderRadius: '12px',
+                background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Briefcase size={20} style={{ color: '#4f46e5' }} />
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Catat Dinas Luar Kota</h3>
+            </div>
+
+            <form onSubmit={handleRecordDinas} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '6px', display: 'block', fontWeight: 600 }}>
+                  Pilih Pegawai / Dosen *
+                </label>
+                <select
+                  value={dinasForm.user_id}
+                  onChange={(e) => setDinasForm({ ...dinasForm, user_id: e.target.value })}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    background: 'var(--color-bg-base)',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-text)',
+                    fontSize: '13px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <option value="">-- Pilih Pegawai --</option>
+                  {(Array.isArray(userList) ? userList : []).map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.full_name} {u.employee_id ? `(${u.employee_id})` : ''} - {u.role === 'dosen' ? 'Dosen' : 'Pegawai'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '6px', display: 'block', fontWeight: 600 }}>
+                  Tanggal Dinas (Format: HH/BB/TTTT) *
+                </label>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    required
+                    placeholder="HH/BB/TTTT (Contoh: 17/07/2026)"
+                    value={
+                      dinasForm.date && dinasForm.date.includes('-') && dinasForm.date.split('-').length === 3
+                        ? `${dinasForm.date.split('-')[2]}/${dinasForm.date.split('-')[1]}/${dinasForm.date.split('-')[0]}`
+                        : dinasForm.date || ''
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value
+                      const parts = val.split('/')
+                      if (parts.length === 3 && parts[2].length === 4) {
+                        const isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+                        setDinasForm({ ...dinasForm, date: isoDate })
+                      } else {
+                        setDinasForm({ ...dinasForm, date: val })
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      background: 'var(--color-bg-base)',
+                      border: '1px solid var(--color-border)',
+                      color: 'var(--color-text)',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const picker = document.getElementById('dinas-calendar-picker')
+                        if (picker && picker.showPicker) {
+                          picker.showPicker()
+                        } else if (picker) {
+                          picker.click()
+                        }
+                      }}
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: '10px',
+                        background: 'var(--color-primary)',
+                        color: '#fff',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <Calendar size={16} /> Pilih Kalender
+                    </button>
+                    <input
+                      id="dinas-calendar-picker"
+                      type="date"
+                      value={
+                        dinasForm.date && dinasForm.date.includes('-') && dinasForm.date.split('-').length === 3
+                          ? dinasForm.date
+                          : new Date().toISOString().split('T')[0]
+                      }
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setDinasForm({ ...dinasForm, date: e.target.value })
+                        }
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        opacity: 0,
+                        cursor: 'pointer',
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  </div>
+                </div>
+                {dinasForm.date && dinasForm.date.includes('-') && dinasForm.date.split('-').length === 3 && (
+                  <p style={{ fontSize: '11.5px', color: '#10b981', marginTop: '6px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    ✔ Tanggal Terpilih: <strong style={{ color: 'var(--color-text)' }}>{dinasForm.date.split('-')[2]}/{dinasForm.date.split('-')[1]}/{dinasForm.date.split('-')[0]} (HH/BB/TTTT)</strong>
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '6px', display: 'block', fontWeight: 600 }}>
+                  Keterangan / Tujuan Dinas
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Dinas ke Jakarta / Kemendikbud"
+                  value={dinasForm.keterangan}
+                  onChange={(e) => setDinasForm({ ...dinasForm, keterangan: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    background: 'var(--color-bg-base)',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-text)',
+                    fontSize: '13px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowDinasModal(false)}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '10px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#475569',
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingDinas}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '10px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#fff',
+                    background: '#4f46e5',
+                    border: 'none',
+                    cursor: submittingDinas ? 'wait' : 'pointer',
+                    opacity: submittingDinas ? 0.7 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {submittingDinas && <Loader2 size={14} className="animate-spin" />}
+                  {submittingDinas ? 'Menyimpan...' : 'Simpan Status Dinas'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
