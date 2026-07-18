@@ -405,9 +405,17 @@ export default function DashboardPage() {
         if (!act.timestamp) return '-';
         const d = new Date(act.timestamp);
         const now = new Date();
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+        
         const isToday = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        const isYesterday = d.getDate() === yesterday.getDate() && d.getMonth() === yesterday.getMonth() && d.getFullYear() === yesterday.getFullYear();
+        
         const tStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        
         if (isToday) return tStr;
+        if (isYesterday) return 'Kemarin';
+        
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"];
         return `${d.getDate()} ${monthNames[d.getMonth()]} ${tStr}`;
       })(),
