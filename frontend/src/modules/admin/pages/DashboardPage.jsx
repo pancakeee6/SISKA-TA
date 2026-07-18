@@ -88,13 +88,6 @@ const statCards = [
     iconBg: 'rgba(245, 158, 11, 0.1)',
     iconColor: '#f59e0b',
   },
-  {
-    key: 'dinas',
-    label: 'Dinas Luar Kota',
-    icon: Briefcase,
-    iconBg: 'rgba(99, 102, 241, 0.1)',
-    iconColor: '#6366f1',
-  },
 ]
 
 // Day labels for chart
@@ -181,9 +174,10 @@ export default function DashboardPage() {
   const { admin, logout } = useAuthStore()
 
   const [stats, setStats] = useState({ total: 0, present: 0, late: 0, absent: 0 })
+  const [dailyStats, setDailyStats] = useState([])
   const [weeklyStats, setWeeklyStats] = useState([])
   const [monthlyStats, setMonthlyStats] = useState([])
-  const [chartRange, setChartRange] = useState('7_days')
+  const [chartRange, setChartRange] = useState('daily')
   const [loading, setLoading] = useState(true)
   const [activities, setActivities] = useState([])
 
@@ -192,16 +186,17 @@ export default function DashboardPage() {
       try {
         const summaryRes = await dashboardApi.getSummary()
         if (summaryRes.data) {
-          const { stats: statsData = {}, weekly = [], monthly = [], activities: rawActivities = [] } = summaryRes.data
+          const { stats: statsData = {}, daily = [], weekly = [], monthly = [], activities: rawActivities = [] } = summaryRes.data
           const totalUsers = statsData.total || 0
           setStats({
             ...statsData,
             total: totalUsers,
             absent: Math.max(0, totalUsers - (statsData.present || 0))
           })
+          setDailyStats(daily)
           setWeeklyStats(weekly)
           setMonthlyStats(monthly)
-          
+
           const latestEvents = (rawActivities || [])
             .filter(r => r.category === 'ATTENDANCE' || (r.category !== 'ADMIN' && (r.event_type === 'IN' || r.event_type === 'OUT')))
             .map(r => ({
@@ -219,8 +214,9 @@ export default function DashboardPage() {
         // Fallback to individual calls if summary endpoint is unavailable
       }
 
-      const [statsRes, weeklyRes, monthlyRes, eventsRes] = await Promise.allSettled([
+      const [statsRes, dailyRes, weeklyRes, monthlyRes, eventsRes] = await Promise.allSettled([
         dashboardApi.getStats(),
+        dashboardApi.getDaily(),
         dashboardApi.getWeekly(),
         dashboardApi.getMonthly(),
         api.get('/api/v1/dashboard/activities', { params: { limit: 5 } })
@@ -230,6 +226,9 @@ export default function DashboardPage() {
         const statsData = statsRes.value.data
         const totalUsers = statsData.total || 0
         setStats({ ...statsData, total: totalUsers, absent: Math.max(0, totalUsers - (statsData.present || 0)) })
+      }
+      if (dailyRes.status === 'fulfilled') {
+        setDailyStats(dailyRes.value.data)
       }
       if (weeklyRes.status === 'fulfilled') {
         setWeeklyStats(weeklyRes.value.data)
@@ -288,13 +287,21 @@ export default function DashboardPage() {
     : 0
 
   // Prepare chart data
-  const activeStats = chartRange === 'monthly' ? monthlyStats : weeklyStats
+  const activeStats = chartRange === 'daily' ? dailyStats : (chartRange === 'monthly' ? monthlyStats : weeklyStats)
   const chartData = activeStats.length > 0
     ? activeStats.map((d, i) => {
       if (chartRange === 'monthly') {
         return {
           day: d.day, // "Jan", "Feb", etc.
           fullDay: d.full_name || d.day, // "Jan 2026"
+          hadir: Math.max(0, (d.present || 0) - (d.late || 0)),
+          terlambat: d.late || 0
+        }
+      }
+      if (chartRange === 'daily') {
+        return {
+          day: d.day, // "08:00"
+          fullDay: d.full_name || d.day, // "Jam 08:00"
           hadir: Math.max(0, (d.present || 0) - (d.late || 0)),
           terlambat: d.late || 0
         }
@@ -394,9 +401,16 @@ export default function DashboardPage() {
       id: act.id,
       user_name: act.user_name,
       action: actionText,
-      time: act.timestamp
-        ? new Date(act.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-        : '-',
+      time: (() => {
+        if (!act.timestamp) return '-';
+        const d = new Date(act.timestamp);
+        const now = new Date();
+        const isToday = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        const tStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        if (isToday) return tStr;
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"];
+        return `${d.getDate()} ${monthNames[d.getMonth()]} ${tStr}`;
+      })(),
       status: statusText,
       statusColor: sColor,
       statusBg: sBg,
@@ -448,155 +462,189 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', gap: '14px', overflow: 'hidden' }} className="animate-fade-in dashboard-main">
+    <div style={{ width: '100%', display: 'grid', gridTemplateColumns: '1fr 1.8fr', gap: '18px' }} className="animate-fade-in dashboard-main">
 
-      {/* Hero Header Card (Matching Pengguna, Manajemen Wajah, Riwayat Absensi, and Pengaturan) */}
-      <div style={{ 
-        background: 'var(--color-bg-surface)', 
-        border: '1px solid var(--color-border)', 
-        borderRadius: '24px', 
-        padding: '20px 24px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px',
-        flexShrink: 0
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{
-            width: '52px', height: '52px', borderRadius: '16px',
-            background: 'rgba(79, 70, 229, 0.1)', color: '#4f46e5',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-          }}>
-            <LayoutDashboard size={26} />
-          </div>
-          <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
-              {getGreeting()}, {admin?.full_name?.split(' ')[0] || 'Administrator'}! 👋
-            </h1>
-            <p style={{ fontSize: '13.5px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
-              Pantau statistik kehadiran pegawai dan aktivitas sistem SISKA secara real-time
-            </p>
-          </div>
-        </div>
-      </div>
+      {/* ===== LEFT COLUMN: Quick Access + KPI Cards + Activity ===== */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-      {/* 1. SYMMETRICAL KPI CARDS (Exactly 5 items in 1 perfectly balanced row) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '14px', flexShrink: 0 }}>
-        {statCards.map(({ key, label, icon: Icon, iconBg, iconColor }) => {
-          const trend = getTrendData(key)
-          return (
+        {/* 1. QUICK ACCESS (icon-only, 3 in a row) */}
+        <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
+          {[
+            { label: 'Export Laporan', icon: Download, color: '#4f46e5', bg: '#e0e7ff', path: '/admin/attendance' },
+            { label: 'Tambah Pengguna', icon: UserPlus, color: '#10b981', bg: '#d1fae5', path: '/admin/users' },
+            { label: 'Catat Dinas Luar', icon: Briefcase, color: '#6366f1', bg: '#e0e7ff', path: '/admin/attendance?action=dinas' },
+          ].map((action, idx) => (
             <div
-              key={key}
+              key={idx}
+              onClick={() => navigate(action.path)}
               className="hover-card"
+              title={action.label}
               style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
                 background: 'var(--color-bg-surface)',
                 border: '1px solid var(--color-border)',
-                borderRadius: '16px',
-                padding: '14px 16px',
+                padding: '14px 8px',
+                borderRadius: '14px',
+                cursor: 'pointer',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-                display: 'flex',
-                gap: '14px',
-                alignItems: 'center',
+                transition: 'all 0.25s ease',
               }}
             >
-              <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: iconBg, color: iconColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Icon size={22} strokeWidth={2.5} />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                <p style={{ fontSize: '11.5px', color: 'var(--color-text-secondary)', fontWeight: 600, margin: 0, marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</p>
-                {loading ? (
-                  <div style={{ height: '24px', width: '40px', background: 'var(--color-bg-base)', borderRadius: '6px', marginBottom: '4px' }} className="animate-pulse" />
-                ) : (
-                  <p style={{ fontSize: '22px', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1, marginBottom: '4px' }}>
-                    {stats[key]}
-                  </p>
-                )}
-                <span style={{ fontSize: '11px', fontWeight: 600, color: trend.color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {trend.value}
-                </span>
-              </div>
-            </div>
-          )
-        })}
-
-        {/* 5th Symmetrical Card: Tingkat Kehadiran */}
-        <div
-          className="hover-card"
-          style={{
-            background: 'var(--color-bg-surface)',
-            border: '1px solid var(--color-border)',
-            borderRadius: '16px',
-            padding: '14px 16px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-            display: 'flex',
-            gap: '14px',
-            alignItems: 'center',
-          }}
-        >
-          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.1)', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Activity size={22} strokeWidth={2.5} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: '11.5px', color: 'var(--color-text-secondary)', fontWeight: 600, margin: 0, marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Tingkat Hadir</p>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-              <p style={{ fontSize: '22px', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1 }}>
-                {attendanceRate}%
-              </p>
-              <AttendanceDonut percentage={attendanceRate} size={36} strokeWidth={4} />
-            </div>
-            <span style={{ fontSize: '11px', fontWeight: 600, color: '#10b981', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {getTrendData('rate').value}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. SYMMETRICAL QUICK ACCESS BAR (Exactly 3 horizontal items) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '14px', flexShrink: 0 }}>
-        {[
-          { label: 'Export Laporan', desc: 'Unduh laporan absensi bulanan', icon: Download, color: '#4f46e5', bg: '#e0e7ff', path: '/admin/attendance' },
-          { label: 'Tambah Pengguna', desc: 'Daftarkan dosen & mahasiswa baru', icon: UserPlus, color: '#10b981', bg: '#d1fae5', path: '/admin/users' },
-          { label: 'Catat Dinas Luar', desc: 'Izin dinas luar kota dosen/pegawai', icon: Briefcase, color: '#6366f1', bg: '#e0e7ff', path: '/admin/attendance?action=dinas' },
-        ].map((action, idx) => (
-          <div
-            key={idx}
-            onClick={() => navigate(action.path)}
-            className="hover-card"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: 'var(--color-bg-surface)',
-              border: '1px solid var(--color-border)',
-              padding: '12px 18px',
-              borderRadius: '16px',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-              transition: 'all 0.25s ease',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: action.bg, color: action.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: action.bg, color: action.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <action.icon size={20} strokeWidth={2.5} />
               </div>
-              <div style={{ minWidth: 0 }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text)', margin: 0, marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{action.label}</h3>
-                <p style={{ fontSize: '11.5px', color: 'var(--color-text-secondary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{action.desc}</p>
-              </div>
+              <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--color-text)', textAlign: 'center', lineHeight: 1.2 }}>{action.label}</span>
             </div>
-            <ArrowRight color="var(--color-text-secondary)" size={18} style={{ flexShrink: 0, marginLeft: '8px' }} />
+          ))}
+        </div>
+
+        {/* 2. KPI CARDS (2-col grid) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', flexShrink: 0 }}>
+          {statCards.map(({ key, label, icon: Icon, iconBg, iconColor }) => {
+            const trend = getTrendData(key)
+            return (
+              <div
+                key={key}
+                className="hover-card"
+                style={{
+                  background: 'var(--color-bg-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '14px',
+                  padding: '12px 14px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                  display: 'flex',
+                  gap: '12px',
+                  alignItems: 'center',
+                }}
+              >
+                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: iconBg, color: iconColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon size={20} strokeWidth={2.5} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                  <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontWeight: 600, margin: 0, marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</p>
+                  {loading ? (
+                    <div style={{ height: '22px', width: '36px', background: 'var(--color-bg-base)', borderRadius: '6px', marginBottom: '3px' }} className="animate-pulse" />
+                  ) : (
+                    <p style={{ fontSize: '20px', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1, marginBottom: '3px' }}>
+                      {stats[key]}
+                    </p>
+                  )}
+                  <span style={{ fontSize: '10px', fontWeight: 600, color: trend.color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {trend.value}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+
+          {/* 5th Card: Tingkat Kehadiran (full width) */}
+          <div
+            className="hover-card"
+            style={{
+              background: 'var(--color-bg-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '14px',
+              padding: '12px 14px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+              display: 'flex',
+              gap: '12px',
+              alignItems: 'center',
+            }}
+          >
+            <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.1)', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Activity size={20} strokeWidth={2.5} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontWeight: 600, margin: 0, marginBottom: '2px' }}>Tingkat Hadir</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+                <p style={{ fontSize: '20px', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1 }}>
+                  {attendanceRate}%
+                </p>
+                <AttendanceDonut percentage={attendanceRate} size={34} strokeWidth={4} />
+              </div>
+              <span style={{ fontSize: '10px', fontWeight: 600, color: '#10b981' }}>
+                {getTrendData('rate').value}
+              </span>
+            </div>
           </div>
-        ))}
+        </div>
+
+        {/* 3. AKTIVITAS TERBARU */}
+        <div style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '18px', padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>Aktivitas Terbaru</h2>
+            <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Real-time</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {displayActivities.length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '13px', padding: '20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--color-bg-base)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                  <Clock size={18} className="animate-pulse" />
+                </div>
+                <span style={{ fontWeight: 600, fontSize: '12px', color: 'var(--color-text-secondary)' }}>Menunggu aktivitas absen...</span>
+              </div>
+            ) : (
+              displayActivities.slice(0, 5).map((act, i) => (
+                <div key={act.id || i} style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '4px 0', borderBottom: i < Math.min(displayActivities.length, 5) - 1 ? '1px solid var(--color-border)' : 'none' }}>
+                  <div style={{
+                    width: '30px', height: '30px', borderRadius: '8px', background: act.avatarBg,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: act.avatarColor, fontSize: '13px', fontWeight: 700, flexShrink: 0
+                  }}>
+                    {act.user_name?.[0]?.toUpperCase() || '?'}
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0, gap: '6px' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text)', margin: 0, marginBottom: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {act.user_name}
+                      </p>
+                      <p style={{ fontSize: '10px', color: 'var(--color-text-secondary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {act.action}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', flexShrink: 0 }}>
+                      <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600 }}>
+                        {act.time}
+                      </span>
+                      <div style={{ padding: '1px 6px', borderRadius: '4px', background: act.statusBg, color: act.statusColor, fontSize: '9px', fontWeight: 700 }}>
+                        {act.status}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div style={{ marginTop: '8px', textAlign: 'center' }}>
+            <button
+              onClick={() => navigate('/admin/attendance')}
+              style={{
+                background: 'transparent', border: 'none', padding: '4px 12px', fontSize: '11.5px',
+                fontWeight: 600, color: 'var(--color-primary)', cursor: 'pointer',
+                transition: 'color 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.color = 'var(--color-primary-dark)'}
+              onMouseOut={(e) => e.currentTarget.style.color = 'var(--color-primary)'}
+            >
+              Lihat Semua ({activities.length}) →
+            </button>
+          </div>
+        </div>
+
       </div>
 
-      {/* 3. CHARTS & ACTIVITY (Zero-Scroll Split Container filling exact remaining height) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1.4fr', gap: '14px', flex: 1, minHeight: 0 }}>
+      {/* ===== RIGHT COLUMN: Chart only ===== */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
         {/* Analytics Chart */}
-        <div style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '20px', padding: '18px 22px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '20px', padding: '22px 26px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexShrink: 0 }}>
             <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Statistik Kehadiran</h2>
             <select
@@ -604,6 +652,7 @@ export default function DashboardPage() {
               onChange={(e) => setChartRange(e.target.value)}
               style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text)', outline: 'none', cursor: 'pointer' }}
             >
+              <option value="daily" style={{ background: 'var(--color-bg-surface)', color: 'var(--color-text)' }}>Hari Ini</option>
               <option value="7_days" style={{ background: 'var(--color-bg-surface)', color: 'var(--color-text)' }}>7 Hari Terakhir</option>
               <option value="monthly" style={{ background: 'var(--color-bg-surface)', color: 'var(--color-text)' }}>6 Bulan Terakhir</option>
             </select>
@@ -620,7 +669,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div style={{ flex: 1, minHeight: 0 }}>
+          <div style={{ height: '380px' }}>
             {loading ? (
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', height: '100%' }}>
                 {[...Array(7)].map((_, i) => (
@@ -647,8 +696,8 @@ export default function DashboardPage() {
                     contentStyle={{ borderRadius: '10px', border: '1px solid var(--color-border)', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', background: 'var(--color-bg-surface)', padding: '10px 14px' }}
                     labelStyle={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: '6px', fontSize: '13px' }}
                   />
-                  <Area type="monotone" dataKey="hadir" name="Hadir" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorHadir)" dot={{ r: 3, strokeWidth: 1.5, fill: '#fff' }} activeDot={{ r: 5, fill: '#10b981', strokeWidth: 0 }} />
                   <Area type="monotone" dataKey="terlambat" name="Terlambat" stroke="#f59e0b" strokeWidth={2.5} fillOpacity={1} fill="url(#colorLate)" dot={{ r: 3, strokeWidth: 1.5, fill: '#fff' }} activeDot={{ r: 5, fill: '#f59e0b', strokeWidth: 0 }} />
+                  <Area type="monotone" dataKey="hadir" name="Hadir" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorHadir)" dot={{ r: 3, strokeWidth: 1.5, fill: '#fff' }} activeDot={{ r: 5, fill: '#10b981', strokeWidth: 0 }} />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -662,76 +711,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent Activity Timeline (Zero-Scroll Auto List) */}
-        <div style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '20px', padding: '18px 22px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div style={{ marginBottom: '12px', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>Aktivitas Terbaru</h2>
-            <span style={{ fontSize: '11.5px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Real-time</span>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, overflowY: 'auto', minHeight: 0, paddingRight: '4px' }}>
-            {displayActivities.length === 0 ? (
-              <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '13px', padding: '24px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', margin: 'auto' }}>
-                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'var(--color-bg-base)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
-                  <Clock size={20} className="animate-pulse" />
-                </div>
-                <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Menunggu aktivitas absen...</span>
-              </div>
-            ) : (
-              displayActivities.slice(0, 5).map((act, i) => (
-                <div key={act.id || i} style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '4px 0', borderBottom: i < Math.min(displayActivities.length, 5) - 1 ? '1px solid var(--color-border)' : 'none' }}>
-                  {/* Avatar Bubble */}
-                  <div style={{
-                    width: '34px', height: '34px', borderRadius: '10px', background: act.avatarBg,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: act.avatarColor, fontSize: '14px', fontWeight: 700, flexShrink: 0
-                  }}>
-                    {act.user_name?.[0]?.toUpperCase() || '?'}
-                  </div>
-
-                  {/* Content */}
-                  <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0, gap: '8px' }}>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text)', margin: 0, marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {act.user_name}
-                      </p>
-                      <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {act.action}
-                      </p>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', flexShrink: 0 }}>
-                      <span style={{ fontSize: '10.5px', color: '#94a3b8', fontWeight: 600 }}>
-                        {act.time}
-                      </span>
-                      <div style={{ padding: '2px 8px', borderRadius: '4px', background: act.statusBg, color: act.statusColor, fontSize: '10px', fontWeight: 700 }}>
-                        {act.status}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Lihat Semua Button at the bottom */}
-          <div style={{ marginTop: 'auto', textAlign: 'center', paddingTop: '8px', flexShrink: 0 }}>
-            <button
-              onClick={() => navigate('/admin/attendance')}
-              style={{
-                background: 'transparent', border: 'none', padding: '4px 12px', fontSize: '12.5px',
-                fontWeight: 600, color: 'var(--color-primary)', cursor: 'pointer',
-                transition: 'color 0.2s'
-              }}
-              onMouseOver={(e) => e.currentTarget.style.color = 'var(--color-primary-dark)'}
-              onMouseOut={(e) => e.currentTarget.style.color = 'var(--color-primary)'}
-            >
-              Lihat Semua Aktivitas ({activities.length}) →
-            </button>
-          </div>
-        </div>
-
       </div>
+
     </div>
   )
 }
+

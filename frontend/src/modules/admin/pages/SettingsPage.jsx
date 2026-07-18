@@ -228,7 +228,7 @@ export default function SettingsPage() {
   ]
 
   return (
-    <div style={{ maxWidth: '1160px', margin: '0 auto', fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column', gap: '24px' }} className="animate-fade-in">
+    <div style={{ maxWidth: '1160px', margin: '0 auto', fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column', gap: '24px', height: 'calc(100vh - 40px)' }} className="animate-fade-in">
       
       {/* 1. HERO HEADER WITH PROFILE OVERVIEW CARD */}
       <div style={{ 
@@ -241,7 +241,8 @@ export default function SettingsPage() {
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '24px'
+        gap: '24px',
+        flexShrink: 0
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '22px' }}>
           {/* Avatar Hero */}
@@ -320,13 +321,13 @@ export default function SettingsPage() {
       </div>
 
       {/* 2. MAIN SETTINGS GRID (SIDEBAR TABS + CONTENT FORM) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '24px', alignItems: 'flex-start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '24px', alignItems: 'flex-start', flex: 1, minHeight: 0 }}>
         
         {/* Left Tab Navigation */}
         <div style={{ 
           background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', 
           borderRadius: '20px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.02)', position: 'sticky', top: '24px'
+          boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
         }}>
           <div style={{ padding: '8px 12px', marginBottom: '4px' }}>
             <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -377,35 +378,15 @@ export default function SettingsPage() {
           <hr style={{ border: 'none', borderBottom: '1px solid var(--color-border)', margin: '8px 0' }} />
 
           {/* Master Save Button inside Sidebar for instant access */}
-          <button
-            type="button"
-            onClick={handleSaveAll}
-            disabled={loading}
-            style={{
-              display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', gap: '10px',
-              background: 'var(--color-primary)', color: '#ffffff',
-              padding: '14px 16px', borderRadius: '14px', border: 'none',
-              fontWeight: 700, fontSize: '14px', cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.3s ease', boxShadow: '0 4px 15px rgba(59, 130, 246, 0.3)',
-              marginTop: '8px'
-            }}
-            onMouseOver={(e) => { if(!loading) e.currentTarget.style.filter = 'brightness(1.1)' }}
-            onMouseOut={(e) => { if(!loading) e.currentTarget.style.filter = 'none' }}
-          >
-            {loading ? (
-              <div style={{ width: '18px', height: '18px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-            ) : (
-              <Save size={18} strokeWidth={2.5} />
-            )}
-            {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
-          </button>
+
         </div>
 
         {/* Right Content Panel */}
         <form onSubmit={handleSaveAll} style={{ 
           background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', 
-          borderRadius: '24px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)'
-        }}>
+          borderRadius: '24px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+          height: '100%', overflowY: 'auto'
+        }} className="no-scrollbar">
 
           {/* TAB 1: PROFILE & CONTACT */}
           {activeTab === 'profile' && (
@@ -848,7 +829,11 @@ export default function SettingsPage() {
                     return (
                       <div
                         key={theme.id}
-                        onClick={() => setPrefForm({ ...prefForm, theme_mode: theme.id })}
+                        onClick={() => {
+                          setPrefForm({ ...prefForm, theme_mode: theme.id })
+                          localStorage.setItem('theme', theme.id)
+                          window.dispatchEvent(new Event('theme-change'))
+                        }}
                         style={{
                           background: selected ? 'rgba(59, 130, 246, 0.08)' : 'var(--color-bg-base)',
                           border: `2px solid ${selected ? 'var(--color-primary)' : 'var(--color-border)'}`,

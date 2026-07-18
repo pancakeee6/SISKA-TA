@@ -49,9 +49,9 @@ export default function UsersPage() {
   const fetchUsers = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await userApi.list({ 
-        page, 
-        limit, 
+      const res = await userApi.list({
+        page,
+        limit,
         search: search || undefined
       })
       setUsers(res.data.items || res.data)
@@ -137,10 +137,10 @@ export default function UsersPage() {
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Header */}
-      <div style={{ 
-        background: 'var(--color-bg-surface)', 
-        border: '1px solid var(--color-border)', 
-        borderRadius: '24px', 
+      <div style={{
+        background: 'var(--color-bg-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: '24px',
         padding: '24px 28px',
         boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
         display: 'flex',
@@ -235,14 +235,14 @@ export default function UsersPage() {
             className="card-hover"
             style={{
               borderRadius: '16px',
-               padding: '20px',
-               background: bgColor,
-               border: `1px solid ${borderColor}`,
-               boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
-               display: 'flex',
-               alignItems: 'center',
-               gap: '16px',
-               minWidth: '260px',
+              padding: '20px',
+              background: bgColor,
+              border: `1px solid ${borderColor}`,
+              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              minWidth: '260px',
             }}
           >
             <div style={{
@@ -822,14 +822,14 @@ export default function UsersPage() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  style={{ 
-                    flex: 1, 
-                    padding: '10px', 
-                    borderRadius: '8px', 
-                    fontWeight: 600, 
-                    fontSize: '14px', 
-                    border: '1px solid var(--color-border)', 
-                    color: 'var(--color-text-secondary)', 
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    fontSize: '14px',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-text-secondary)',
                     background: 'transparent',
                     cursor: 'pointer',
                     transition: 'all 0.2s'
@@ -860,8 +860,8 @@ export default function UsersPage() {
                     transition: 'all 0.2s',
                     boxShadow: '0 4px 12px rgba(56, 189, 248, 0.25)'
                   }}
-                  onMouseOver={(e) => { if(!saving) e.currentTarget.style.filter = 'brightness(1.1)' }}
-                  onMouseOut={(e) => { if(!saving) e.currentTarget.style.filter = 'none' }}
+                  onMouseOver={(e) => { if (!saving) e.currentTarget.style.filter = 'brightness(1.1)' }}
+                  onMouseOut={(e) => { if (!saving) e.currentTarget.style.filter = 'none' }}
                 >
                   {saving && <Loader2 size={14} className="animate-spin" />}
                   {modalMode === 'create' ? 'Tambah' : 'Simpan'}
@@ -908,7 +908,7 @@ export default function UsersPage() {
               <strong style={{ color: 'var(--color-text)' }}>{deleteTarget?.full_name}</strong>?<br />
               Data ini tidak dapat dikembalikan.
             </p>
-            
+
             <div style={{ display: 'flex', gap: '12px' }}>
               <button
                 type="button"
@@ -951,8 +951,8 @@ export default function UsersPage() {
                   transition: 'all 0.2s',
                   boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)'
                 }}
-                onMouseOver={(e) => { if(!deleting) e.currentTarget.style.filter = 'brightness(1.1)' }}
-                onMouseOut={(e) => { if(!deleting) e.currentTarget.style.filter = 'none' }}
+                onMouseOver={(e) => { if (!deleting) e.currentTarget.style.filter = 'brightness(1.1)' }}
+                onMouseOut={(e) => { if (!deleting) e.currentTarget.style.filter = 'none' }}
               >
                 {deleting && <Loader2 size={16} className="animate-spin" />}
                 Hapus

@@ -72,8 +72,8 @@ export default function LoginPage() {
         .login-input:-webkit-autofill:hover, 
         .login-input:-webkit-autofill:focus, 
         .login-input:-webkit-autofill:active {
-          -webkit-box-shadow: 0 0 0 30px #0c1426 inset !important;
-          -webkit-text-fill-color: #e2e8f0 !important;
+          -webkit-box-shadow: 0 0 0 30px #ffffff inset !important;
+          -webkit-text-fill-color: #0f172a !important;
           transition: background-color 5000s ease-in-out 0s;
         }
         .login-btn:hover:not(:disabled) {

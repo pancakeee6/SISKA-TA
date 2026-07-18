@@ -1,17 +1,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&display=swap'); /* Font Serif Klasik */
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&display=swap');
+/* Font Serif Klasik */
 @import "tailwindcss";
 
 /* ===== SISKA DESIGN TOKENS — Dark Oceanic Blue Theme ===== */
 :root {
   /* Background layers — pure clean dark theme */
   --color-bg-base: #0c263f;
-  --color-bg-surface: #213e58; /* Matched with sidebar */
-  --color-bg-elevated: #334155; 
+  --color-bg-surface: #213e58;
+  /* Matched with sidebar */
+  --color-bg-elevated: #334155;
   --color-bg-card: #1e293b;
-  --color-sidebar: #213e58; /* Original blue for both modes */
+  --color-header: #213e58;
+  --color-sidebar: #213e58;
+  /* Original blue for both modes */
   --color-sidebar-text: #ffffff;
-  --color-sidebar-text-active: #ecf1f3; 
+  --color-sidebar-text-active: #ecf1f3;
 
   /* Primary Brand — Sky Blue (Cat Identity) */
   --color-primary: #38bdf8;
@@ -71,12 +75,15 @@
 /* ===== SISKA DESIGN TOKENS — Light Clean White Theme ===== */
 [data-theme='light'] {
   /* Background layers — pure white & soft gray */
-  --color-bg-base: #eef2ff; /* Indigo-50 for a livelier background */
+  --color-bg-base: #eef2ff;
+  /* Indigo-50 for a livelier background */
   --color-bg-surface: #ffffff;
   --color-bg-elevated: #ffffff;
   --color-bg-card: #ffffff;
-  --color-sidebar: #264b5d; /* Original blue for both modes */
-  --color-sidebar-text: #ffffff; /* Ubah ke putih agar kontras dengan background gelap */
+  --color-header: #002d88;
+  --color-sidebar: #002d88;
+  /* Blue sidebar for light mode */
+  --color-sidebar-text: #ffffff;
   --color-sidebar-text-active: #1e3a8a;
 
   /* Primary Brand — slightly darker blue for contrast */
@@ -93,12 +100,15 @@
   /* Text */
   --color-text: #0f172a;
   --color-text-secondary: #1e293b;
-  --color-text-muted: #334155; /* Darker for better readability */
+  --color-text-muted: #334155;
+  /* Darker for better readability */
   --color-text-dimmed: #475569;
 
   /* Borders */
-  --color-border: rgba(15, 23, 42, 0.15); /* More pronounced */
-  --color-border-subtle: rgba(15, 23, 42, 0.08); /* More pronounced */
+  --color-border: rgba(15, 23, 42, 0.15);
+  /* More pronounced */
+  --color-border-subtle: rgba(15, 23, 42, 0.08);
+  /* More pronounced */
   --color-border-hover: rgba(15, 23, 42, 0.25);
   --color-chart-grid: rgba(15, 23, 42, 0.25);
 
@@ -117,7 +127,9 @@
   box-sizing: border-box;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   font-family: var(--font-sans);
   color: var(--color-text);
@@ -224,58 +236,140 @@ html, body, #root {
 }
 
 /* Stagger delay utilities */
-.stagger-1 { animation-delay: 0.05s; animation-fill-mode: both; }
-.stagger-2 { animation-delay: 0.1s; animation-fill-mode: both; }
-.stagger-3 { animation-delay: 0.15s; animation-fill-mode: both; }
-.stagger-4 { animation-delay: 0.2s; animation-fill-mode: both; }
-.stagger-5 { animation-delay: 0.25s; animation-fill-mode: both; }
-.stagger-6 { animation-delay: 0.3s; animation-fill-mode: both; }
+.stagger-1 {
+  animation-delay: 0.05s;
+  animation-fill-mode: both;
+}
+
+.stagger-2 {
+  animation-delay: 0.1s;
+  animation-fill-mode: both;
+}
+
+.stagger-3 {
+  animation-delay: 0.15s;
+  animation-fill-mode: both;
+}
+
+.stagger-4 {
+  animation-delay: 0.2s;
+  animation-fill-mode: both;
+}
+
+.stagger-5 {
+  animation-delay: 0.25s;
+  animation-fill-mode: both;
+}
+
+.stagger-6 {
+  animation-delay: 0.3s;
+  animation-fill-mode: both;
+}
 
 /* ===== KEYFRAMES ===== */
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slideInLeft {
-  from { opacity: 0; transform: translateX(-20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes slideInRight {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes glowPulse {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.05); }
+
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-12px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-12px);
+  }
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 @keyframes spin-slow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ===== SPECIAL COMPONENTS ===== */
@@ -332,9 +426,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 [data-theme='light'] .dashboard-main {
   /* Background dihapus agar menyatu dengan background aplikasi di kanan kirinya */
 }
+
 .hover-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
   border-color: var(--color-primary) !important;
 }
 
@@ -344,7 +439,8 @@ select {
   background-color: var(--color-bg-surface) !important;
 }
 
-select option, select optgroup {
+select option,
+select optgroup {
   background-color: #1e293b !important;
   color: #f1f5f9 !important;
   padding: 10px 14px;
@@ -356,19 +452,21 @@ select option, select optgroup {
   background-color: #ffffff !important;
 }
 
-[data-theme='light'] select option, [data-theme='light'] select optgroup {
+[data-theme='light'] select option,
+[data-theme='light'] select optgroup {
   background-color: #ffffff !important;
   color: #0f172a !important;
 }
 
 /* Fix input contrast across themes */
-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]), textarea {
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]),
+textarea {
   color: var(--color-text);
   background-color: var(--color-bg-base);
 }
 
-[data-theme='light'] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]), [data-theme='light'] textarea {
+[data-theme='light'] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]),
+[data-theme='light'] textarea {
   color: #0f172a;
   background-color: #ffffff;
 }
-

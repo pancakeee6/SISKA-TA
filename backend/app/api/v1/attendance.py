@@ -331,7 +331,7 @@ async def attendance_logs(
     total = (await db.execute(count_query)).scalar() or 0
 
     # Paginate
-    query = query.offset((page - 1) * per_page).limit(per_page).order_by(AttendanceLog.timestamp.desc())
+    query = query.offset((page - 1) * per_page).limit(per_page).order_by(AttendanceLog.created_at.desc())
     result = await db.execute(query)
     logs = result.scalars().all()
 
