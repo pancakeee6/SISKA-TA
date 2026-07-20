@@ -135,6 +135,8 @@ async def recognize_attendance(
             late_duration_str = None
             diff_minutes_late = None
 
+            is_update = False
+
             if not in_logs:
                 # Absen pertama kali hari ini -> Masuk (IN)
                 calculated_event_type = "IN"
@@ -414,9 +416,10 @@ async def export_attendance(
     _admin=Depends(get_current_admin),
 ):
     """Export attendance data as CSV file."""
-    import csv
     import io
     from fastapi.responses import StreamingResponse
+    import openpyxl
+    from openpyxl.styles import PatternFill, Font, Alignment
 
     query = select(AttendanceLog).join(User).order_by(AttendanceLog.timestamp.desc())
 
@@ -448,44 +451,101 @@ async def export_attendance(
         for u_id, u_name, u_emp in users_result.all():
             user_map[u_id] = (u_name, u_emp)
 
-    # Build CSV in memory with UTF-8 BOM and semicolon delimiter for clean column separation in Excel
-    output = io.StringIO()
-    output.write('\ufeff')  # UTF-8 BOM for proper character encoding in Excel
-    output.write('sep=;\r\n')  # Instruction for Excel to split columns by semicolon across all regions/locales
-    writer = csv.writer(output, delimiter=';')
+    wib_tz = timezone(timedelta(hours=7))
+    grouped_logs = {}
 
-    # Header row
-    writer.writerow([
-        "No", "Nama Pegawai", "NIP / ID Pegawai", "Tipe Absensi", "Tanggal", "Jam / Waktu", "Status Kehadiran", "Keterangan Waktu", "ID Perangkat"
-    ])
-
-    for idx, log in enumerate(logs, 1):
-        user_name, employee_id = user_map.get(log.user_id, ("Unknown", "-"))
-
-        # Readable labels
+    for log in logs:
+        if not log.timestamp:
+            continue
+        dt_wib = log.timestamp.replace(tzinfo=timezone.utc).astimezone(wib_tz)
+        date_str = dt_wib.strftime("%Y-%m-%d")
+        
+        hour = dt_wib.hour
+        shift_label = "Shift 1" if hour < 15 else "Shift 2"
+        
+        key = f"{log.user_id}_{date_str}_{shift_label}"
+        if key not in grouped_logs:
+            grouped_logs[key] = {
+                "user_id": log.user_id,
+                "date": date_str,
+                "shift": shift_label,
+                "in_time": "-",
+                "out_time": "-",
+                "status": "Tidak Hadir",
+                "keterangan": "-",
+                "device_id": "-"
+            }
+            
+        group = grouped_logs[key]
+        
         if log.status == "dinas" or log.event_type == "DINAS":
-            tipe_absensi = "Dinas Luar Kota (DL)"
-            status_label = "Dinas Luar Kota"
-            keterangan_waktu = log.device_id or "Dinas Luar Kota"
-        else:
-            tipe_absensi = "Check In (Masuk)" if log.event_type == "IN" else "Check Out (Keluar)"
-            status_label = "Terlambat" if (log.late or log.status == "late") else (
-                "Hadir" if log.event_type == "IN" else "Keluar"
-            )
-            keterangan_waktu = "Terlambat" if log.late else "Tepat Waktu"
+            group["in_time"] = "Dinas Luar"
+            group["out_time"] = "Dinas Luar"
+            group["status"] = "Dinas Luar Kota"
+            group["keterangan"] = log.device_id or "Dinas Luar Kota"
+            group["device_id"] = log.device_id or "-"
+        elif log.event_type == "IN":
+            group["in_time"] = dt_wib.strftime("%H:%M:%S")
+            group["status"] = "Terlambat" if log.late else "Tepat Waktu"
+            group["keterangan"] = "Terlambat" if log.late else "Tepat Waktu"
+            if group["device_id"] == "-":
+                group["device_id"] = log.device_id or "-"
+        elif log.event_type == "OUT":
+            if group["out_time"] == "-":
+                group["out_time"] = dt_wib.strftime("%H:%M:%S")
+            if group["device_id"] == "-":
+                group["device_id"] = log.device_id or "-"
 
-        writer.writerow([
+    # Create Excel Workbook
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Laporan Kehadiran"
+
+    headers = [
+        "No", "Nama Pegawai", "NIP / ID Pegawai", "Tanggal", "Shift", "Jam Masuk", "Jam Pulang", "Status Kehadiran", "Keterangan", "ID Perangkat"
+    ]
+    ws.append(headers)
+
+    # Style Header
+    header_fill = PatternFill(start_color="3B82F6", end_color="3B82F6", fill_type="solid") # Tailwind blue-500
+    header_font = Font(color="FFFFFF", bold=True)
+    for col in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=col)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    # Append Data
+    for idx, g in enumerate(grouped_logs.values(), 1):
+        user_name, employee_id = user_map.get(g["user_id"], ("Unknown", "-"))
+        ws.append([
             idx,
             user_name,
             employee_id,
-            tipe_absensi,
-            log.timestamp.strftime("%Y-%m-%d"),
-            log.timestamp.strftime("%H:%M:%S"),
-            status_label,
-            keterangan_waktu,
-            log.device_id or "-",
+            g["date"],
+            g["shift"],
+            g["in_time"],
+            g["out_time"],
+            g["status"],
+            g["keterangan"],
+            g["device_id"]
         ])
 
+    # Auto-adjust column widths
+    for col in ws.columns:
+        max_length = 0
+        column_letter = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        ws.column_dimensions[column_letter].width = max_length + 2
+
+    # Save to BytesIO
+    output = io.BytesIO()
+    wb.save(output)
     output.seek(0)
 
     # Generate filename with date range
@@ -494,11 +554,11 @@ async def export_attendance(
         filename += f"_{date_from}"
     if date_to:
         filename += f"_sd_{date_to}"
-    filename += ".csv"
+    filename += ".xlsx"
 
     return StreamingResponse(
         iter([output.getvalue()]),
-        media_type="text/csv; charset=utf-8",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
