@@ -50,6 +50,7 @@ const normalizeAttendanceLogs = (logs) => {
     
     const shiftLabel = hour < 15 ? 'Shift 1' : 'Shift 2';
     const userId = log.user_name || log.user_id || log.employee_id || log.full_name || 'unknown';
+    // Group by user, date, and shift to split reports per shift
     const userShiftKey = `${userId}_${dateStr}_${shiftLabel}`;
     
     if (!shiftTrackers[userShiftKey]) {
@@ -257,19 +258,19 @@ export default function AttendanceHistoryPage() {
 
       const res = await attendanceAdminApi.export(params)
       // Create download link from blob
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'text/csv;charset=utf-8;' }))
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
       const link = document.createElement('a')
       link.href = url
-      link.setAttribute('download', res.headers['content-disposition']?.split('filename=')[1] || 'kehadiran.csv')
+      link.setAttribute('download', res.headers['content-disposition']?.split('filename=')[1] || 'Laporan_Kehadiran_SISKA.xlsx')
       document.body.appendChild(link)
       link.click()
       link.remove()
       window.URL.revokeObjectURL(url)
 
-      toast.success('File CSV berhasil diunduh')
+      toast.success('Laporan Kehadiran berhasil diunduh')
       setShowExport(false)
     } catch {
-      toast.error('Gagal mengunduh data')
+      toast.error('Gagal mengunduh laporan')
     } finally {
       setExporting(false)
     }
@@ -364,7 +365,7 @@ export default function AttendanceHistoryPage() {
   const dinasToday = stats.dinas || 0
   const absentToday = stats.absent || 0
   const totalUsers = stats.total || 1
-  const attendanceRate = totalUsers > 0 ? Math.round((presentToday / totalUsers) * 100) : 0
+  const attendanceRate = totalUsers > 0 ? Math.min(100, Math.round(((presentToday + dinasToday) / totalUsers) * 100)) : 0
 
   // Page numbers for pagination
   const getPageNumbers = () => {
@@ -527,9 +528,9 @@ export default function AttendanceHistoryPage() {
           </div>
           <div style={{ minWidth: 0 }}>
             <p style={{ fontSize: '28px', fontWeight: 700, color: 'var(--color-text)', margin: 0, lineHeight: 1.1 }}>
-              {loading ? '—' : presentToday}
+              {loading ? '—' : Math.max(0, presentToday - lateToday)}
             </p>
-            <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0 0' }}>Hadir Hari Ini</p>
+            <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0 0' }}>Tepat Waktu</p>
             <p style={{ fontSize: '10px', color: '#059669', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 600 }}>
               <TrendingUp size={10} /> 5% dari kemarin
             </p>
@@ -998,6 +999,11 @@ export default function AttendanceHistoryPage() {
                                 }),
                           }}>
                             {log.event_type === 'IN' ? 'Masuk' : 'Pulang'}
+                            {log.shift_label && (
+                              <span style={{ opacity: 0.85, marginLeft: '4px', fontSize: '10px' }}>
+                                ({log.shift_label})
+                              </span>
+                            )}
                           </span>
                         )}
                       </td>
