@@ -73,13 +73,15 @@ const statCards = [
     icon: Users,
     iconBg: 'rgba(59, 130, 246, 0.1)',
     iconColor: '#3b82f6',
+    getValue: (s) => s.total || 0,
   },
   {
-    key: 'present',
-    label: 'Hadir Hari Ini',
+    key: 'onTime',
+    label: 'Tepat Waktu',
     icon: UserCheck,
     iconBg: 'rgba(16, 185, 129, 0.1)',
     iconColor: '#10b981',
+    getValue: (s) => Math.max(0, (s.present || 0) - (s.late || 0)),
   },
   {
     key: 'late',
@@ -87,6 +89,7 @@ const statCards = [
     icon: Clock,
     iconBg: 'rgba(245, 158, 11, 0.1)',
     iconColor: '#f59e0b',
+    getValue: (s) => s.late || 0,
   },
 ]
 
@@ -124,6 +127,7 @@ const normalizeAttendanceLogs = (logs) => {
 
     const shiftLabel = hour < 15 ? 'Shift 1' : 'Shift 2';
     const userId = log.user_name || log.user_id || log.employee_id || log.full_name || 'unknown';
+    // Group by user, date, and shift to split reports per shift
     const userShiftKey = `${userId}_${dateStr}_${shiftLabel}`;
 
     if (!shiftTrackers[userShiftKey]) {
@@ -281,9 +285,9 @@ export default function DashboardPage() {
     setTimeout(() => fetchDashboardData(), 0)
   }, [fetchDashboardData])
 
-  // Attendance rate
+  // Attendance rate (present already includes late from backend, we add dinas for total attending)
   const attendanceRate = stats.total > 0
-    ? Math.round(((stats.present + stats.late) / stats.total) * 100)
+    ? Math.min(100, Math.round(((stats.present + (stats.dinas || 0)) / stats.total) * 100))
     : 0
 
   // Prepare chart data
@@ -338,7 +342,7 @@ export default function DashboardPage() {
     const isRegister = act.event_type === 'REGISTER'
     const isDelete = act.event_type === 'DELETE'
 
-    let actionText = 'Berhasil melakukan presensi pulang'
+    let actionText = `Berhasil melakukan presensi pulang${act.shift_label ? ` (${act.shift_label})` : ''}`
     let statusText = 'Pulang'
     let sColor = '#4f46e5'
     let sBg = '#e0e7ff'
@@ -349,7 +353,7 @@ export default function DashboardPage() {
       sColor = '#6366f1'
       sBg = '#e0e7ff'
     } else if (isCheckIn) {
-      actionText = 'Berhasil melakukan presensi masuk'
+      actionText = `Berhasil melakukan presensi masuk${act.shift_label ? ` (${act.shift_label})` : ''}`
       if (isLate) {
         let lateInfo = act.late_duration
         if (!lateInfo) {
@@ -374,7 +378,7 @@ export default function DashboardPage() {
           }
         }
         if (lateInfo) {
-          actionText = `Berhasil melakukan presensi masuk (Terlambat ${lateInfo})`
+          actionText = `Berhasil melakukan presensi masuk${act.shift_label ? ` (${act.shift_label})` : ''} (Terlambat ${lateInfo})`
         }
       }
       statusText = isLate ? 'Terlambat' : 'Hadir'
@@ -513,7 +517,8 @@ export default function DashboardPage() {
 
         {/* 2. KPI CARDS (2-col grid) */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', flexShrink: 0 }}>
-          {statCards.map(({ key, label, icon: Icon, iconBg, iconColor }) => {
+          {statCards.map((card) => {
+            const { key, label, icon: Icon, iconBg, iconColor, getValue } = card;
             const trend = getTrendData(key)
             return (
               <div
@@ -539,7 +544,7 @@ export default function DashboardPage() {
                     <div style={{ height: '22px', width: '36px', background: 'var(--color-bg-base)', borderRadius: '6px', marginBottom: '3px' }} className="animate-pulse" />
                   ) : (
                     <p style={{ fontSize: '20px', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1, marginBottom: '3px' }}>
-                      {stats[key]}
+                      {getValue ? getValue(stats) : stats[key]}
                     </p>
                   )}
                   <span style={{ fontSize: '10px', fontWeight: 600, color: trend.color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
