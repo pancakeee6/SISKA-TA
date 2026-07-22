@@ -14,10 +14,14 @@ const attendanceAdminApi = {
   export: (params = {}) => api.get('/api/v1/attendance/export', { params, responseType: 'blob' }),
 
   /**
-   * Record out-of-town official duty (Dinas Luar Kota).
-   * @param {{ user_id: string, date?: string, keterangan?: string }} data
+   * Record out-of-town official duty or permit (Perizinan).
+   * @param {FormData} formData
    */
-  recordDinas: (data) => api.post('/api/v1/attendance/dinas', data),
+  recordDinas: (formData) => api.post('/api/v1/attendance/dinas', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }),
 }
 
 export default attendanceAdminApi
