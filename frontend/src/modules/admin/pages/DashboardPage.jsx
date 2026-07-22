@@ -112,8 +112,9 @@ const normalizeAttendanceLogs = (logs) => {
   sorted.forEach(log => {
     if (!log.timestamp) return;
     if (log.category === 'ADMIN' || log.status === 'dinas' || (log.event_type !== 'IN' && log.event_type !== 'OUT')) {
-      normalizedMap.set(log.id || Math.random(), log);
-      resultIds.push(log.id || Math.random());
+      const generatedId = log.id || Math.random();
+      normalizedMap.set(generatedId, log);
+      resultIds.push(generatedId);
       return;
     }
     const dt = new Date(log.timestamp);
@@ -124,8 +125,7 @@ const normalizeAttendanceLogs = (logs) => {
 
     const dateStr = log.timestamp.split('T')[0];
     const hour = dt.getHours() + (dt.getMinutes() / 60);
-
-    const shiftLabel = hour < 15 ? 'Shift 1' : 'Shift 2';
+    const shiftLabel = hour < 15 ? 'Shift Pagi' : 'Shift Sore';
     const userId = log.user_name || log.user_id || log.employee_id || log.full_name || 'unknown';
     // Group by user, date, and shift to split reports per shift
     const userShiftKey = `${userId}_${dateStr}_${shiftLabel}`;
@@ -348,8 +348,15 @@ export default function DashboardPage() {
     let sBg = '#e0e7ff'
 
     if (isDinas) {
-      actionText = `Mencatat Dinas Luar Kota (${act.device_id || act.shift_label || 'Izin Dinas'})`
-      statusText = 'Dinas Luar'
+      let dinasKet = act.device_id || act.shift_label || 'Perizinan'
+      if (typeof act.device_id === 'string' && act.device_id.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(act.device_id)
+          dinasKet = parsed.k || 'Perizinan'
+        } catch(e) {}
+      }
+      actionText = `Mencatat Perizinan (${dinasKet})`
+      statusText = 'Izin'
       sColor = '#6366f1'
       sBg = '#e0e7ff'
     } else if (isCheckIn) {
@@ -484,7 +491,7 @@ export default function DashboardPage() {
           {[
             { label: 'Export Laporan', icon: Download, color: '#4f46e5', bg: '#e0e7ff', path: '/admin/attendance' },
             { label: 'Tambah Pengguna', icon: UserPlus, color: '#10b981', bg: '#d1fae5', path: '/admin/users' },
-            { label: 'Catat Dinas Luar', icon: Briefcase, color: '#6366f1', bg: '#e0e7ff', path: '/admin/attendance?action=dinas' },
+            { label: 'Catat Perizinan', icon: Briefcase, color: '#6366f1', bg: '#e0e7ff', path: '/admin/attendance?action=dinas' },
           ].map((action, idx) => (
             <div
               key={idx}
