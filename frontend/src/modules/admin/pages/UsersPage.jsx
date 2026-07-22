@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Users, Plus, Search, Edit2, Trash2, X,
   ChevronLeft, ChevronRight, Loader2,
-  UserCheck, UserX, ScanFace, ChevronDown
+  ScanFace, ChevronDown
 } from 'lucide-react'
 import userApi from '../services/userApi'
 import toast from 'react-hot-toast'

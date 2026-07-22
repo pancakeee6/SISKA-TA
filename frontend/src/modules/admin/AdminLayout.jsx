@@ -8,12 +8,9 @@ import {
   X,
   LogOut,
   Settings,
-  Moon,
-  Sun,
   Calendar,
   Clock,
-  ChevronDown,
-} from 'lucide-react'
+  } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '@shared/store/authStore'
 import siskaLogo from '@/assets/siska-logo.png'

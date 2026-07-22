@@ -3,7 +3,7 @@ import { useAuthStore } from '@shared/store/authStore'
 import { 
   Save, User, Lock, Shield, Camera, Clock, Plus, Trash2, Bell, 
   Smartphone, Mail, CheckCircle2, AlertTriangle, Key, Sliders, 
-  Moon, Sun, Monitor, Activity, Eye, EyeOff, Check, ArrowRight
+  Moon, Sun, Monitor, Eye, EyeOff, Check, ArrowRight
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '@shared/services/api'
@@ -46,6 +46,7 @@ export default function SettingsPage() {
   useEffect(() => {
     // Sync admin info when auth store changes
     if (admin) {
+      // eslint-disable-next-line
       setForm(prev => ({
         ...prev,
         full_name: admin.full_name || prev.full_name,

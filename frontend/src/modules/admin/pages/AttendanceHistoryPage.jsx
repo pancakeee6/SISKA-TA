@@ -172,7 +172,7 @@ export default function AttendanceHistoryPage() {
     }
   }, [fetchLogs, fetchStats])
 
-  const openDinasModal = async () => {
+  async function openDinasModal() {
     setShowDinasModal(true)
     try {
       const res = await userApi.list({ status: 'aktif', limit: 100 })

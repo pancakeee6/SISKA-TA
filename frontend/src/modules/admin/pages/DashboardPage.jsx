@@ -1,21 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Users, UserCheck, Clock, TrendingUp, TrendingDown, Activity, Download, UserPlus, ArrowRight, Briefcase, LayoutDashboard
+  Users, UserCheck, Clock, TrendingUp, TrendingDown, Activity, Download, UserPlus, Briefcase
 } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts'
 import dashboardApi from '../services/dashboardApi'
 import api from '@shared/services/api'
 import useWebSocket from '@shared/hooks/useWebSocket'
-import { useAuthStore } from '@shared/store/authStore'
-
-function getGreeting() {
-  const hour = new Date().getHours()
-  if (hour < 11) return 'Selamat pagi'
-  if (hour < 15) return 'Selamat siang'
-  if (hour < 18) return 'Selamat sore'
-  return 'Selamat malam'
-}
 
 
 
@@ -175,8 +166,7 @@ const normalizeAttendanceLogs = (logs) => {
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const { admin, logout } = useAuthStore()
-
+  
   const [stats, setStats] = useState({ total: 0, present: 0, late: 0, absent: 0 })
   const [dailyStats, setDailyStats] = useState([])
   const [weeklyStats, setWeeklyStats] = useState([])
@@ -334,7 +324,12 @@ export default function DashboardPage() {
     : dayLabels.map((day) => ({ day, hadir: 0, terlambat: 0 }))
 
   // Display activities (strictly real data from API/WS + demo mock)
-  const displayActivities = activities.map((act) => {
+  const displayActivities = activities.filter((act) => {
+    if (!act.timestamp) return false;
+    const actDate = new Date(act.timestamp).setHours(0, 0, 0, 0);
+    const todayDate = new Date().setHours(0, 0, 0, 0);
+    return actDate === todayDate;
+  }).map((act) => {
     const isLate = act.late
     const isDinas = act.status === 'dinas' || act.event_type === 'DINAS'
     const isCheckIn = act.event_type === 'IN' && !isDinas
@@ -353,7 +348,7 @@ export default function DashboardPage() {
         try {
           const parsed = JSON.parse(act.device_id)
           dinasKet = parsed.k || 'Perizinan'
-        } catch(e) {}
+        } catch { /* ignore */ }
       }
       actionText = `Mencatat Perizinan (${dinasKet})`
       statusText = 'Izin'
@@ -598,7 +593,6 @@ export default function DashboardPage() {
         <div style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '18px', padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ fontSize: '14px', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>Aktivitas Terbaru</h2>
-            <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Real-time</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
