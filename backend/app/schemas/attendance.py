@@ -24,7 +24,7 @@ class RecognizeResponse(BaseModel):
 class AttendanceDinasCreate(BaseModel):
     user_id: UUID
     date: Optional[str] = None  # Format YYYY-MM-DD
-    keterangan: Optional[str] = "Dinas Luar Kota"
+    keterangan: Optional[str] = "Perizinan"
 
 
 # --- Attendance Schemas ---
@@ -43,6 +43,7 @@ class AttendanceLogResponse(BaseModel):
     shift_label: Optional[str] = None
     late_duration: Optional[str] = None
     late_minutes: Optional[int] = None
+    attachment_path: Optional[str] = None
 
     class Config:
         from_attributes = True
