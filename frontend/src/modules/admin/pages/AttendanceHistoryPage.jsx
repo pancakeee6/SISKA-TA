@@ -13,6 +13,51 @@ import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import { id as localeID } from 'date-fns/locale'
 
+const CustomDateInput = ({ value, onChange, min, max, id, style }) => {
+  const padLeft = style?.padding?.split(' ')[1] || '14px'
+  return (
+    <div style={{ position: 'relative', width: style?.width || 'auto' }}>
+      <input
+        id={id}
+        type="date"
+        lang="id-ID"
+        min={min}
+        max={max}
+        value={value}
+        onChange={onChange}
+        style={{
+          background: 'var(--color-bg-base)',
+          border: '1px solid var(--color-border)',
+          color: 'transparent', // Native text hidden completely
+          fontSize: '13px',
+          outline: 'none',
+          colorScheme: 'light',
+          boxSizing: 'border-box',
+          ...style,
+        }}
+      />
+      <div style={{
+        position: 'absolute',
+        left: '2px',
+        top: '2px',
+        bottom: '2px',
+        width: 'calc(100% - 36px)',
+        background: 'var(--color-bg-base)',
+        pointerEvents: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        paddingLeft: `calc(${padLeft} - 2px)`,
+        borderRadius: style?.borderRadius ? `${style.borderRadius} 0 0 ${style.borderRadius}` : '8px 0 0 8px',
+        color: value ? 'var(--color-text)' : 'var(--color-text-secondary)',
+        fontSize: '13px',
+        fontFamily: style?.fontFamily || 'inherit'
+      }}>
+        {value ? value.split('-').reverse().join('/') : 'HH/BB/TTTT'}
+      </div>
+    </div>
+  )
+}
+
 const PER_PAGE = 10
 
 // Helper untuk normalisasi event_type (Masuk & Pulang) serta deduplikasi absen per Shift:
@@ -246,7 +291,7 @@ export default function AttendanceHistoryPage() {
     setSearch('')
   }
 
-  // Export CSV handler
+  // Export Excel handler
   const handleExport = async () => {
     setExporting(true)
     try {
@@ -255,20 +300,28 @@ export default function AttendanceHistoryPage() {
       if (exportTo) params.date_to = exportTo
 
       const res = await attendanceAdminApi.export(params)
-      // Create download link from blob
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
       const link = document.createElement('a')
       link.href = url
-      link.setAttribute('download', res.headers['content-disposition']?.split('filename=')[1] || 'Laporan_Kehadiran_SISKA.xlsx')
+      let filename = 'Laporan_Kehadiran_SISKA.xlsx'
+      const disposition = res.headers['content-disposition']
+      if (disposition && disposition.includes('filename=')) {
+        filename = disposition.split('filename=')[1].replace(/"/g, '')
+      }
+      link.setAttribute('download', filename)
       document.body.appendChild(link)
       link.click()
-      link.remove()
-      window.URL.revokeObjectURL(url)
+      
+      setTimeout(() => {
+        link.remove()
+        window.URL.revokeObjectURL(url)
+      }, 200)
 
       toast.success('Laporan Kehadiran berhasil diunduh')
       setShowExport(false)
-    } catch {
-      toast.error('Gagal mengunduh laporan')
+    } catch (err) {
+      console.error('Export Error:', err)
+      toast.error(err.response?.data?.detail || err.message || 'Gagal mengunduh laporan')
     } finally {
       setExporting(false)
     }
@@ -497,7 +550,7 @@ export default function AttendanceHistoryPage() {
             onMouseLeave={(e) => { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.transform = 'translateY(0)'; }}
           >
             <Download className="w-4 h-4" />
-            Export CSV
+            Export
           </button>
         </div>
       </div>
@@ -679,8 +732,7 @@ export default function AttendanceHistoryPage() {
           boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
         }}>
           <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Dari:</span>
-          <input
-            type="date"
+          <CustomDateInput
             value={dateFrom}
             max={today}
             onChange={(e) => setDateFrom(e.target.value)}
@@ -694,8 +746,7 @@ export default function AttendanceHistoryPage() {
             }}
           />
           <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', marginLeft: '4px' }}>Sampai:</span>
-          <input
-            type="date"
+          <CustomDateInput
             value={dateTo}
             min={dateFrom}
             max={today}
@@ -1011,7 +1062,7 @@ export default function AttendanceHistoryPage() {
                       {/* Waktu */}
                       <td style={{ padding: '12px 20px' }}>
                         <span style={{ fontSize: '13px', color: 'var(--color-text)', fontFamily: 'monospace', fontWeight: 500 }}>
-                          {formatTime(log.timestamp)}
+                          {log.status === 'dinas' || log.event_type === 'DINAS' ? '-' : formatTime(log.timestamp)}
                         </span>
                       </td>
 
@@ -1292,47 +1343,31 @@ export default function AttendanceHistoryPage() {
               }}>
                 <Download size={20} style={{ color: '#2563eb' }} />
               </div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Export CSV</h3>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Export</h3>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
               <div>
                 <label style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '6px', display: 'block', fontWeight: 600 }}>Dari Tanggal</label>
-                <input
-                  type="date"
+                <CustomDateInput
                   value={exportFrom}
                   onChange={(e) => setExportFrom(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
                     borderRadius: '10px',
-                    background: 'var(--color-bg-base)',
-                    border: '1px solid var(--color-border)',
-                    color: 'var(--color-text)',
-                    fontSize: '13px',
-                    outline: 'none',
-                    colorScheme: 'light',
-                    boxSizing: 'border-box',
                   }}
                 />
               </div>
               <div>
                 <label style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '6px', display: 'block', fontWeight: 600 }}>Sampai Tanggal</label>
-                <input
-                  type="date"
+                <CustomDateInput
                   value={exportTo}
                   onChange={(e) => setExportTo(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
                     borderRadius: '10px',
-                    background: 'var(--color-bg-base)',
-                    border: '1px solid var(--color-border)',
-                    color: 'var(--color-text)',
-                    fontSize: '13px',
-                    outline: 'none',
-                    colorScheme: 'light',
-                    boxSizing: 'border-box',
                   }}
                 />
               </div>
@@ -1380,7 +1415,7 @@ export default function AttendanceHistoryPage() {
                 }}
               >
                 {exporting && <Loader2 size={14} className="animate-spin" />}
-                {exporting ? 'Mengunduh...' : 'Download CSV'}
+                {exporting ? 'Mengunduh...' : 'Download'}
               </button>
             </div>
           </div>
@@ -1517,6 +1552,7 @@ export default function AttendanceHistoryPage() {
                     <input
                       id="dinas-calendar-picker"
                       type="date"
+                      lang="id-ID"
                       value={
                         dinasForm.date && dinasForm.date.includes('-') && dinasForm.date.split('-').length === 3
                           ? dinasForm.date
