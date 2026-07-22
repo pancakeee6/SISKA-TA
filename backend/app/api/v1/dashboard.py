@@ -84,7 +84,9 @@ async def get_weekly_stats(
     wib_tz = timezone(timedelta(hours=7))
     today = datetime.now(timezone.utc).astimezone(wib_tz).date()
     start_date = today - timedelta(days=6)
-    start_dt = datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc)
+    # Gunakan wib_tz untuk datetime.combine agar pukul 00:00 WIB yang dikonversi, bukan 00:00 UTC
+    start_dt_wib = datetime.combine(start_date, datetime.min.time(), tzinfo=wib_tz)
+    start_dt = start_dt_wib.astimezone(timezone.utc)
 
     query = select(
         AttendanceLog.timestamp,
