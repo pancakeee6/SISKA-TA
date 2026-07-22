@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Form, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime, timezone, timedelta
@@ -469,6 +469,7 @@ async def attendance_logs(
 
 @router.get("/export")
 async def export_attendance(
+    request: Request,
     date_from: str = Query(None, description="Start date (YYYY-MM-DD)"),
     date_to: str = Query(None, description="End date (YYYY-MM-DD)"),
     db: AsyncSession = Depends(get_db),
@@ -550,7 +551,8 @@ async def export_attendance(
                 keterangan = dinas_data.get("k", "Perizinan")
                 shift_label = dinas_data.get("s", "Seharian")
                 if dinas_data.get("f"):
-                    lampiran_path = f"/api/v1/uploads/permits/{dinas_data['f']}"
+                    base_url = str(request.base_url).rstrip("/")
+                    lampiran_path = f"{base_url}/api/v1/uploads/permits/{dinas_data['f']}"
             except Exception:
                 keterangan = log.device_id or "Izin Resmi"
                 shift_label = "Seharian"
@@ -566,7 +568,7 @@ async def export_attendance(
             group["in_time"] = dt_wib.strftime("%H:%M:%S")
             group["shift"] = shift_label # Pastikan shift IN menjadi shift utama hari itu
             group["status"] = "Terlambat" if log.late else "Tepat Waktu"
-            group["keterangan"] = "Terlambat" if log.late else "Tepat Waktu"
+            group["keterangan"] = "-"
             if group["device_id"] == "-":
                 group["device_id"] = log.device_id or "-"
         elif log.event_type == "OUT":
@@ -581,7 +583,7 @@ async def export_attendance(
     ws.title = "Laporan Kehadiran"
 
     headers = [
-        "No", "Nama Pegawai", "NIP / ID Pegawai", "Tanggal", "Shift", "Jam Masuk", "Jam Pulang", "Status Kehadiran", "Keterangan", "ID Perangkat", "Link Lampiran"
+        "No", "Nama Pegawai", "NIP / ID Pegawai", "Tanggal", "Shift", "Jam Masuk", "Jam Pulang", "Status Kehadiran", "Keterangan", "Link Lampiran"
     ]
     ws.append(headers)
 
@@ -615,7 +617,6 @@ async def export_attendance(
             g["out_time"],
             g["status"],
             g["keterangan"],
-            g["device_id"],
             g["lampiran"]
         ]
         ws.append(row_data)
@@ -630,8 +631,8 @@ async def export_attendance(
             if col_idx in [1, 4, 5, 6, 7]:
                 cell.alignment = center_aligned
                 
-            # Hyperlink for Lampiran (Column 11)
-            if col_idx == 11 and cell.value != "-":
+            # Hyperlink for Lampiran (Column 10)
+            if col_idx == 10 and cell.value != "-":
                 cell.hyperlink = cell.value  # Set URL as hyperlink
                 cell.value = "Lihat Bukti"
                 cell.font = Font(color="0000EE", underline="single")
