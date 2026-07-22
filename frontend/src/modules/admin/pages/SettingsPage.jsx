@@ -70,8 +70,8 @@ export default function SettingsPage() {
         console.error("Gagal mengambil pengaturan shift", err)
         setShiftSettings({
           shifts: [
-            { id: 1, name: "Shift 1 (Pagi/Siang)", start_time: "08:00", end_time: "15:00", tolerance: "15" },
-            { id: 2, name: "Shift 2 (Sore/Malam)", start_time: "15:00", end_time: "21:00", tolerance: "15" }
+            { id: 1, name: "Shift Pagi", start_time: "08:00", end_time: "15:00", tolerance: "15" },
+            { id: 2, name: "Shift Sore", start_time: "15:00", end_time: "21:00", tolerance: "15" }
           ]
         })
       })
@@ -718,7 +718,7 @@ export default function SettingsPage() {
                           type="text"
                           value={shift.name || ''}
                           onChange={(e) => handleShiftChange(idx, 'name', e.target.value)}
-                          placeholder="Contoh: Shift 1 (Pagi)"
+                          placeholder="Contoh: Shift Pagi"
                           style={{
                             width: '100%', padding: '10px 14px', borderRadius: '10px',
                             border: '1px solid var(--color-border)', background: 'var(--color-bg-base)',
@@ -901,7 +901,7 @@ export default function SettingsPage() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', borderRadius: '16px', border: '1px solid var(--color-border)', background: 'var(--color-bg-base)' }}>
                   <div>
                     <h4 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px 0' }}>Rekap Laporan Harian Otomatis</h4>
-                    <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: 0 }}>Siapkan rangkuman absensi shift 1 & 2 dalam bentuk berkas siap unduh setiap akhir hari.</p>
+                    <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: 0 }}>Siapkan rangkuman absensi shift pagi & sore dalam bentuk berkas siap unduh setiap akhir hari.</p>
                   </div>
                   <label style={{ position: 'relative', display: 'inline-block', width: '52px', height: '28px', cursor: 'pointer' }}>
                     <input type="checkbox" name="daily_report" checked={prefForm.daily_report} onChange={handlePrefChange} style={{ opacity: 0, width: 0, height: 0 }} />
