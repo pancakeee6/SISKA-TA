@@ -479,51 +479,39 @@ export default function AdminLayout() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col relative" style={{ background: 'var(--color-bg-base)', transition: 'background 0.3s ease' }}>
-        <main className="flex-1 overflow-auto">
-          <div style={{ padding: isDashboard ? '24px 24px 16px 24px' : '20px 24px', width: '100%', display: 'flex', flexDirection: 'column' }}>
-
-            {/* Top Bar inside Main Area */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: isDashboard ? '24px' : '16px' }}>
-
-              {/* Left Side: Greeting (Hanya pada Dashboard, halaman lain menggunakan Hero Header Card) */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                {isDashboard && (
-                  <div>
-                    <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.5px' }}>
-                      {getGreeting()}, {admin?.full_name?.split(' ')[0] || 'Administrator'}! 👋
-                    </h1>
-                    <p style={{ fontSize: '13.5px', color: 'var(--color-text-secondary)', margin: '2px 0 0 0', fontWeight: 500 }}>
-                      Pantau statistik kehadiran pegawai dan aktivitas sistem
-                    </p>
-                  </div>
-                )}
+        
+        {/* Sticky Top Bar */}
+        <div style={{ 
+          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+          padding: isDashboard ? '24px 24px 16px 24px' : '20px 24px',
+          position: 'sticky', top: 0, zIndex: 40,
+          background: 'var(--color-bg-base)',
+          borderBottom: '1px solid var(--color-border)',
+        }}>
+          {/* Left Side: Greeting (Hanya pada Dashboard) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {isDashboard && (
+              <div>
+                <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.5px' }}>
+                  {getGreeting()}, {admin?.full_name?.split(' ')[0] || 'Administrator'}! 👋
+                </h1>
+                <p style={{ fontSize: '13.5px', color: 'var(--color-text-secondary)', margin: '2px 0 0 0', fontWeight: 500 }}>
+                  Pantau statistik kehadiran pegawai dan aktivitas sistem
+                </p>
               </div>
+            )}
+          </div>
 
-              {/* Right Side: Tools (LiveClock & Dark Mode Toggle selalu tampil di setiap menu) */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ background: 'var(--color-bg-surface)', borderRadius: '24px', padding: '6px 16px', border: '1px solid var(--color-border)' }} className="hidden xl:flex">
-                  <LiveClock textColor="var(--color-text)" iconColor="var(--color-text-secondary)" />
-                </div>
-
-                <button
-                  onClick={() => {
-                    const next = isDarkMode ? 'light' : 'dark'
-                    localStorage.setItem('theme', next)
-                    window.dispatchEvent(new Event('theme-change'))
-                  }}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px',
-                    background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '50%', cursor: 'pointer',
-                    color: 'var(--color-text)', transition: 'all 0.3s ease'
-                  }}
-                  className="hover-card"
-                  title={isDarkMode ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
-                >
-                  {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-                </button>
-              </div>
+          {/* Right Side: Tools (Hanya LiveClock) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ background: 'var(--color-bg-surface)', borderRadius: '24px', padding: '6px 16px', border: '1px solid var(--color-border)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }} className="hidden xl:flex">
+              <LiveClock textColor="var(--color-text)" iconColor="var(--color-text-secondary)" />
             </div>
+          </div>
+        </div>
 
+        <main className="flex-1 overflow-auto">
+          <div style={{ padding: '0 24px 24px 24px', paddingTop: isDashboard ? '24px' : '20px', width: '100%', display: 'flex', flexDirection: 'column' }}>
             <Outlet />
           </div>
         </main>
