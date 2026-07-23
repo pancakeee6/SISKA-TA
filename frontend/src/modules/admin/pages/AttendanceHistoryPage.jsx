@@ -1089,7 +1089,11 @@ export default function AttendanceHistoryPage() {
                           </span>
                         ) : (
                           <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                            {log.shift_label ? log.shift_label.replace('Shift ', '') : '-'}
+                            {log.shift_label 
+                              ? (log.shift_label.toLowerCase().includes('pagi') ? 'Pagi' 
+                                : log.shift_label.toLowerCase().includes('sore') ? 'Sore' 
+                                : log.shift_label.replace('Shift ', ''))
+                              : '-'}
                           </span>
                         )}
                       </td>
