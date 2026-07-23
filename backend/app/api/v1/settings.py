@@ -16,6 +16,7 @@ class ShiftItem(BaseModel):
     name: str
     start_time: str
     end_time: str
+    tolerance: Optional[int] = 15
 
     class Config:
         from_attributes = True
@@ -52,6 +53,7 @@ async def get_shifts(
                 "name": s.name,
                 "start_time": s.start_time,
                 "end_time": s.end_time,
+                "tolerance": getattr(s, "late_tolerance", 15),
             }
             for s in shifts
         ]
@@ -80,6 +82,7 @@ async def update_shifts(
             shift_obj.name = item.name
             shift_obj.start_time = item.start_time
             shift_obj.end_time = item.end_time
+            shift_obj.late_tolerance = item.tolerance
             kept_ids.add(item.id)
         else:
             # Create new shift
@@ -87,6 +90,7 @@ async def update_shifts(
                 name=item.name or "Shift Baru",
                 start_time=item.start_time or "08:00",
                 end_time=item.end_time or "16:00",
+                late_tolerance=item.tolerance or 15,
             )
             db.add(new_shift)
 

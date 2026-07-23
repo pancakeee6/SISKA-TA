@@ -155,14 +155,26 @@ async def recognize_attendance(
                     status_text = "cooldown"
                 else:
                     # Validasi Time Window untuk OUT
+                    # Cari shift dari waktu IN awal untuk menentukan batas pulang (end_time) yang benar
                     unclosed_wib = unclosed_in_time.astimezone(wib_tz)
-                    is_pagi = unclosed_wib.hour < 14  # Anggap IN sebelum 14:00 adalah Pagi
+                    original_shift = shifts[0]
+                    for s in shifts:
+                        try:
+                            s_hour, s_min = map(int, s.start_time.split(":"))
+                            if unclosed_wib.time() >= datetime(2000, 1, 1, s_hour, s_min).time():
+                                original_shift = s
+                        except Exception:
+                            pass
+                            
+                    # Gunakan original_shift.end_time sebagai batas minimal waktu Pulang
                     now_time = now_wib.time()
+                    try:
+                        end_h, end_m = map(int, original_shift.end_time.split(":"))
+                        shift_end_time = datetime(2000, 1, 1, end_h, end_m).time()
+                    except Exception:
+                        shift_end_time = datetime(2000, 1, 1, 12, 0).time()
                     
-                    if is_pagi and now_time < datetime.strptime("12:00", "%H:%M").time():
-                        skip_log = True
-                        status_text = "early_out"
-                    elif not is_pagi and now_time < datetime.strptime("21:00", "%H:%M").time():
+                    if now_time < shift_end_time:
                         skip_log = True
                         status_text = "early_out"
                     else:
@@ -191,7 +203,8 @@ async def recognize_attendance(
                         try:
                             sh, sm = map(int, active_shift.start_time.split(":"))
                             shift_start_dt = now_wib.replace(hour=sh, minute=sm, second=0, microsecond=0)
-                            late_threshold_dt = shift_start_dt + timedelta(minutes=15)
+                            late_tol = getattr(active_shift, 'late_tolerance', 15)
+                            late_threshold_dt = shift_start_dt + timedelta(minutes=late_tol)
                             if now_wib > late_threshold_dt:
                                 calculated_is_late = True
                                 status_text = "late"
