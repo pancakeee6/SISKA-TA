@@ -452,106 +452,114 @@ export default function AttendanceHistoryPage() {
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Header */}
-      <div style={{ 
-        background: 'var(--color-bg-surface)', 
-        border: '1px solid var(--color-border)', 
-        borderRadius: '24px', 
-        padding: '24px 28px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '20px'
+      {/* Sticky Header Wrapper */}
+      <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 40,
+        background: 'var(--color-bg-base)',
+        margin: '-20px -24px -24px -24px',
+        padding: '20px 24px 24px 24px',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{
-            width: '52px', height: '52px', borderRadius: '16px',
-            background: 'rgba(16, 185, 129, 0.1)', color: '#10b981',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <ClipboardList size={26} />
+        <div style={{ 
+          background: '#ffffff', 
+          border: '1px solid #e2e8f0', 
+          borderRadius: '16px', 
+          padding: '16px 24px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '20px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{
+              width: '48px', height: '48px', borderRadius: '12px',
+              background: '#d1fae5', color: '#10b981',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <ClipboardList size={24} strokeWidth={2} />
+            </div>
+            <div>
+              <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>
+                Riwayat Absensi
+              </h1>
+              <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}>
+                Lihat, filter, dan kelola seluruh catatan kehadiran pegawai
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
-              Riwayat Absensi
-            </h1>
-            <p style={{ fontSize: '13.5px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
-              Lihat, filter, dan kelola seluruh catatan kehadiran pegawai
-            </p>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={handleResetLogs}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '10px 16px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: '#dc2626',
+                cursor: 'pointer',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#fee2e2'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#fef2f2'; }}
+            >
+              <Trash2 size={16} strokeWidth={2.5} />
+              Reset Log
+            </button>
+  
+            <button
+              onClick={openDinasModal}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '10px 16px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: '#4f46e5',
+                cursor: 'pointer',
+                background: '#e0e7ff',
+                border: '1px solid #c7d2fe',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#c7d2fe'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#e0e7ff'; }}
+            >
+              <Briefcase size={16} strokeWidth={2.5} />
+              Input Perizinan
+            </button>
+            
+            <button
+              onClick={() => setShowExport(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '10px 16px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: '#fff',
+                cursor: 'pointer',
+                background: '#2563eb',
+                border: 'none',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#1d4ed8'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#2563eb'; }}
+            >
+              <Download size={16} strokeWidth={2.5} />
+              Export
+            </button>
           </div>
-        </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button
-            onClick={handleResetLogs}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 20px',
-              borderRadius: '12px',
-              fontSize: '13px',
-              fontWeight: 600,
-              color: '#dc2626',
-              cursor: 'pointer',
-              background: '#fef2f2',
-              border: '1px solid #fecaca',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#fee2e2'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = '#fef2f2'; }}
-          >
-            <Trash2 className="w-4 h-4" />
-            Reset Log
-          </button>
-
-          <button
-            onClick={openDinasModal}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 20px',
-              borderRadius: '12px',
-              fontSize: '13px',
-              fontWeight: 600,
-              color: '#4f46e5',
-              cursor: 'pointer',
-              background: '#e0e7ff',
-              border: '1px solid #c7d2fe',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#c7d2fe'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = '#e0e7ff'; }}
-          >
-            <Briefcase size={16} />
-            Input Perizinan
-          </button>
-          
-          <button
-            onClick={() => setShowExport(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 20px',
-              borderRadius: '12px',
-              fontSize: '13px',
-              fontWeight: 600,
-              color: '#fff',
-              cursor: 'pointer',
-              background: '#2563eb',
-              border: 'none',
-              boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#1d4ed8'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = '#2563eb'; e.currentTarget.style.transform = 'translateY(0)'; }}
-          >
-            <Download className="w-4 h-4" />
-            Export
-          </button>
         </div>
       </div>
 
@@ -783,7 +791,7 @@ export default function AttendanceHistoryPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari nama atau NIM..."
+            placeholder="Cari nama atau NIP..."
             style={{
               background: 'transparent',
               border: 'none',
@@ -857,7 +865,7 @@ export default function AttendanceHistoryPage() {
             <option value="all">Semua Shift</option>
             <option value="pagi">Shift Pagi</option>
             <option value="sore">Shift Sore</option>
-            <option value="seharian">Seharian (Izin)</option>
+            <option value="seharian">Full Shift</option>
           </select>
           <div style={{
             position: 'absolute',
@@ -944,9 +952,9 @@ export default function AttendanceHistoryPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-base)' }}>
-                {['Nama', 'NIM', 'Tanggal', 'Waktu', 'Shift', 'Jenis', 'Status', 'Info'].map((col) => (
+                {['Nama', 'NIP', 'Tanggal', 'Waktu', 'Shift', 'Jenis', 'Status', 'Keterangan'].map((col) => (
                   <th key={col} style={{
-                    textAlign: 'left',
+                    textAlign: col === 'Jenis' || col === 'Status' ? 'center' : 'left',
                     padding: '14px 20px',
                     fontSize: '11px',
                     fontWeight: 600,
@@ -1045,7 +1053,7 @@ export default function AttendanceHistoryPage() {
                         </div>
                       </td>
 
-                      {/* NIM */}
+                      {/* NIP */}
                       <td style={{ padding: '12px 20px' }}>
                         <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>
                           {log.employee_id || '-'}
@@ -1070,7 +1078,7 @@ export default function AttendanceHistoryPage() {
                       <td style={{ padding: '12px 20px' }}>
                         {log.status === 'dinas' || log.event_type === 'DINAS' ? (
                           <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                            {log.shift_label || 'Seharian'}
+                            {log.shift_label || 'Full'}
                           </span>
                         ) : (
                           <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
@@ -1080,12 +1088,14 @@ export default function AttendanceHistoryPage() {
                       </td>
 
                       {/* Jenis */}
-                      <td style={{ padding: '12px 20px' }}>
+                      <td style={{ padding: '12px 20px', textAlign: 'center' }}>
                         {log.status === 'dinas' || log.event_type === 'DINAS' ? (
                           <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            padding: '4px 12px',
+                            justifyContent: 'center',
+                            width: '70px',
+                            padding: '4px 0',
                             borderRadius: '20px',
                             fontSize: '11px',
                             fontWeight: 600,
@@ -1099,7 +1109,9 @@ export default function AttendanceHistoryPage() {
                           <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            padding: '4px 12px',
+                            justifyContent: 'center',
+                            width: '70px',
+                            padding: '4px 0',
                             borderRadius: '20px',
                             fontSize: '11px',
                             fontWeight: 600,
@@ -1121,12 +1133,14 @@ export default function AttendanceHistoryPage() {
                       </td>
 
                       {/* Status */}
-                      <td style={{ padding: '12px 20px' }}>
+                      <td style={{ padding: '12px 20px', textAlign: 'center' }}>
                         {log.status === 'dinas' || log.event_type === 'DINAS' ? (
                           <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            padding: '4px 12px',
+                            justifyContent: 'center',
+                            width: '90px',
+                            padding: '4px 0',
                             borderRadius: '20px',
                             fontSize: '11px',
                             fontWeight: 600,
@@ -1134,13 +1148,15 @@ export default function AttendanceHistoryPage() {
                             color: '#9333ea',
                             border: '1px solid #d8b4fe',
                           }}>
-                            Izin Resmi
+                            Izin
                           </span>
                         ) : log.event_type === 'IN' ? (
                           <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            padding: '4px 12px',
+                            justifyContent: 'center',
+                            width: '90px',
+                            padding: '4px 0',
                             borderRadius: '20px',
                             fontSize: '11px',
                             fontWeight: 600,
@@ -1159,7 +1175,7 @@ export default function AttendanceHistoryPage() {
                             {log.late ? 'Terlambat' : 'Tepat Waktu'}
                           </span>
                         ) : (
-                          <span style={{ fontSize: '13px', color: '#94a3b8' }}>-</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '90px', fontSize: '13px', color: '#94a3b8' }}>-</span>
                         )}
                       </td>
 
@@ -1170,7 +1186,7 @@ export default function AttendanceHistoryPage() {
                             <span style={{ fontSize: '13px', color: '#4f46e5', fontWeight: 600 }}>
                               {log.device_id || 'Perizinan'}
                             </span>
-                            {log.attachment_path && (
+                            {log.attachment_path && log.attachment_path !== 'null' && log.attachment_path.trim() !== '' && (
                               <button
                                 onClick={(e) => {
                                   e.preventDefault();
@@ -1603,7 +1619,7 @@ export default function AttendanceHistoryPage() {
                     boxSizing: 'border-box',
                   }}
                 >
-                  <option value="Seharian">Seharian</option>
+                  <option value="Seharian">Full</option>
                   <option value="Pagi">Shift Pagi</option>
                   <option value="Sore">Shift Sore</option>
                 </select>
