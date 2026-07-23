@@ -139,58 +139,78 @@ async def recognize_attendance(
 
             is_update = False
 
-            if not in_logs:
-                # Absen pertama kali hari ini -> Masuk (IN)
-                calculated_event_type = "IN"
-                # Cek batas waktu toleransi 20 menit dari jam masuk active_shift
-                try:
-                    sh, sm = map(int, active_shift.start_time.split(":"))
-                    shift_start_dt = now_wib.replace(hour=sh, minute=sm, second=0, microsecond=0)
-                    late_threshold_dt = shift_start_dt + timedelta(minutes=15)
-                    if now_wib > late_threshold_dt:
-                        calculated_is_late = True
-                        status_text = "late"
-                        diff_minutes_late = int((now_wib - shift_start_dt).total_seconds() / 60.0)
-                        if diff_minutes_late < 0:
-                            diff_minutes_late = 0
-                        hours = diff_minutes_late // 60
-                        mins = diff_minutes_late % 60
-                        if hours > 0 and mins > 0:
-                            late_duration_str = f"{hours} jam {mins} menit"
-                        elif hours > 0:
-                            late_duration_str = f"{hours} jam"
-                        else:
-                            late_duration_str = f"{mins} menit" if mins > 0 else "1 menit"
-                    else:
-                        calculated_is_late = False
-                        status_text = "present"
-                except Exception:
-                    calculated_is_late = bool(face.get("is_late", False))
-                    status_text = "late" if calculated_is_late else "present"
-            else:
-                # Sudah pernah absen IN hari ini
-                last_in_time = in_logs[-1].timestamp
-                if last_in_time.tzinfo is None:
-                    last_in_time = last_in_time.replace(tzinfo=timezone.utc)
-                diff_minutes = (now_utc - last_in_time).total_seconds() / 60.0
+            if len(in_logs) > len(out_logs):
+                # Sedang berada di dalam shift, mencoba OUT
+                unclosed_in_time = in_logs[-1].timestamp
+                if unclosed_in_time.tzinfo is None:
+                    unclosed_in_time = unclosed_in_time.replace(tzinfo=timezone.utc)
+                diff_minutes = (now_utc - unclosed_in_time).total_seconds() / 60.0
+                
+                calculated_event_type = "OUT"
+                calculated_is_late = False
 
-                if not out_logs and diff_minutes < 15.0:
-                    # Terlalu cepat setelah absen IN (kurang dari 15 menit), abaikan agar tidak duplikat
+                if diff_minutes < 15.0:
+                    # Cegah duplikasi spam dalam 15 menit setelah IN
+                    skip_log = True
+                    status_text = "cooldown"
+                else:
+                    # Validasi Time Window untuk OUT
+                    unclosed_wib = unclosed_in_time.astimezone(wib_tz)
+                    is_pagi = unclosed_wib.hour < 14  # Anggap IN sebelum 14:00 adalah Pagi
+                    now_time = now_wib.time()
+                    
+                    if is_pagi and now_time < datetime.strptime("12:00", "%H:%M").time():
+                        skip_log = True
+                        status_text = "early_out"
+                    elif not is_pagi and now_time < datetime.strptime("21:00", "%H:%M").time():
+                        skip_log = True
+                        status_text = "early_out"
+                    else:
+                        status_text = "present"
+            else:
+                # Sedang di luar shift, mencoba IN
+                if len(in_logs) >= 2:
+                    # Sudah memenuhi kuota 2 shift per hari
                     skip_log = True
                     calculated_event_type = "IN"
-                    calculated_is_late = in_logs[0].late
-                    status_text = "cooldown"
-                elif not out_logs:
-                    # Absen kedua kalinya hari ini (setelah > 15 menit) -> Pulang (OUT)
-                    calculated_event_type = "OUT"
                     calculated_is_late = False
-                    status_text = "present"
+                    status_text = "max_shifts"
                 else:
-                    # Sudah pernah absen IN dan OUT hari ini -> Abaikan duplikat agar tidak bertabrakan
-                    skip_log = True
-                    calculated_event_type = "OUT"
-                    calculated_is_late = False
-                    status_text = "cooldown"
+                    calculated_event_type = "IN"
+                    if out_logs:
+                        last_out = out_logs[-1].timestamp
+                        if last_out.tzinfo is None:
+                            last_out = last_out.replace(tzinfo=timezone.utc)
+                        if (now_utc - last_out).total_seconds() / 60.0 < 15.0:
+                            skip_log = True
+                            status_text = "cooldown"
+                            calculated_is_late = False
+                    
+                    if not skip_log:
+                        # Logika keterlambatan IN
+                        try:
+                            sh, sm = map(int, active_shift.start_time.split(":"))
+                            shift_start_dt = now_wib.replace(hour=sh, minute=sm, second=0, microsecond=0)
+                            late_threshold_dt = shift_start_dt + timedelta(minutes=15)
+                            if now_wib > late_threshold_dt:
+                                calculated_is_late = True
+                                status_text = "late"
+                                diff_minutes_late = int((now_wib - shift_start_dt).total_seconds() / 60.0)
+                                diff_minutes_late = max(0, diff_minutes_late)
+                                hours = diff_minutes_late // 60
+                                mins = diff_minutes_late % 60
+                                if hours > 0 and mins > 0:
+                                    late_duration_str = f"{hours} jam {mins} menit"
+                                elif hours > 0:
+                                    late_duration_str = f"{hours} jam"
+                                else:
+                                    late_duration_str = f"{mins} menit" if mins > 0 else "1 menit"
+                            else:
+                                calculated_is_late = False
+                                status_text = "present"
+                        except Exception:
+                            calculated_is_late = bool(face.get("is_late", False))
+                            status_text = "late" if calculated_is_late else "present"
 
             if not skip_log:
                 log = AttendanceLog(
