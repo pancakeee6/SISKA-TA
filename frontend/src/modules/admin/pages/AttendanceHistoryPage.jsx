@@ -68,19 +68,23 @@ const PER_PAGE = 10
 const normalizeAttendanceLogs = (logs) => {
   if (!logs || !Array.isArray(logs)) return [];
   
-  // Pass 1: Catat shift saat absen Masuk (IN) untuk setiap user per hari
-  const userInShifts = {};
+  // Pass 1: Catat shift saat absen Masuk (IN) untuk setiap user per hari (urut terbaru ke terlama)
+  const userInShiftsStack = {};
   
   logs.forEach(log => {
     if (log.event_type === 'IN' && log.timestamp) {
+      const dateStr = log.timestamp.split('T')[0];
+      const userId = log.user_name || log.user_id || log.employee_id || log.full_name || 'unknown';
+      const key = `${userId}_${dateStr}`;
+      if (!userInShiftsStack[key]) userInShiftsStack[key] = [];
+      
       const dt = new Date(log.timestamp);
+      let defaultLabel = 'Shift Pagi';
       if (!isNaN(dt.getTime())) {
-        const dateStr = log.timestamp.split('T')[0];
         const hour = dt.getHours() + (dt.getMinutes() / 60);
-        const shiftLabel = hour < 15 ? 'Shift Pagi' : 'Shift Sore';
-        const userId = log.user_name || log.user_id || log.employee_id || log.full_name || 'unknown';
-        userInShifts[`${userId}_${dateStr}`] = shiftLabel;
+        defaultLabel = hour < 15 ? 'Shift Pagi' : 'Shift Sore';
       }
+      userInShiftsStack[key].push(log.shift_label || defaultLabel);
     }
   });
   
@@ -96,23 +100,26 @@ const normalizeAttendanceLogs = (logs) => {
     
     if (!log.timestamp) return log;
     
-    const dt = new Date(log.timestamp);
-    if (isNaN(dt.getTime())) return log;
-    
     const dateStr = log.timestamp.split('T')[0];
     const userId = log.user_name || log.user_id || log.employee_id || log.full_name || 'unknown';
+    const key = `${userId}_${dateStr}`;
     
-    let shiftLabel;
+    let shiftLabel = log.shift_label;
     
-    // Jika event Pulang (OUT) dan user sudah pernah IN di hari yang sama, gunakan shift dari absen IN tersebut
-    if (log.event_type === 'OUT' && userInShifts[`${userId}_${dateStr}`]) {
-      shiftLabel = userInShifts[`${userId}_${dateStr}`];
-    } else {
-      const hour = dt.getHours() + (dt.getMinutes() / 60);
-      shiftLabel = hour < 15 ? 'Shift Pagi' : 'Shift Sore';
+    // Jika event Pulang (OUT), ambil pasangannya dari stack IN terbaru (shift())
+    if (log.event_type === 'OUT') {
+      if (userInShiftsStack[key] && userInShiftsStack[key].length > 0) {
+        shiftLabel = userInShiftsStack[key].shift();
+      } else {
+        // Fallback jika tidak ada pasangan IN
+        const dt = new Date(log.timestamp);
+        if (!isNaN(dt.getTime())) {
+          const hour = dt.getHours() + (dt.getMinutes() / 60);
+          shiftLabel = hour < 15 ? 'Shift Pagi' : 'Shift Sore';
+        }
+      }
     }
     
-    // Gunakan event_type asli dari server
     return {
       ...log,
       shift_label: shiftLabel
