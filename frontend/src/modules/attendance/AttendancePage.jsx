@@ -96,7 +96,9 @@ async function speakCombinedGreeting(faces) {
   
   // Pisahkan berdasarkan status
   const successFaces = faces.filter(f => f.status === 'ok' || f.status === 'recognized');
-  const cooldownFaces = faces.filter(f => f.status !== 'ok' && f.status !== 'recognized');
+  const cooldownFaces = faces.filter(f => f.status === 'cooldown');
+  const earlyOutFaces = faces.filter(f => f.status === 'early_out');
+  const maxShiftsFaces = faces.filter(f => f.status === 'max_shifts');
 
   let textId = "";
 
@@ -142,6 +144,16 @@ async function speakCombinedGreeting(faces) {
       `Halo, ${joinNames(cooldownNames)}. Absenmu sudah tercatat sebelumnya.`
     ];
     textId += cooldownGreetings[Math.floor(Math.random() * cooldownGreetings.length)] + " ";
+  }
+
+  if (earlyOutFaces.length > 0) {
+    const earlyOutNames = earlyOutFaces.map(f => f.user_name || 'Karyawan');
+    textId += `Maaf, ${joinNames(earlyOutNames)}. Belum waktunya pulang untuk shift Anda. `;
+  }
+
+  if (maxShiftsFaces.length > 0) {
+    const maxShiftsNames = maxShiftsFaces.map(f => f.user_name || 'Karyawan');
+    textId += `Terima kasih, ${joinNames(maxShiftsNames)}. Seluruh shift Anda hari ini sudah selesai. `;
   }
 
   const combinedText = textId.trim();
@@ -805,6 +817,8 @@ export default function AttendancePage() {
                       <p style={{ color: '#fff', fontSize: '15px', fontWeight: 700, margin: 0 }}>{res.user_name}</p>
                       <p style={{ color: '#94a3b8', fontSize: '11px', margin: '2px 0 0 0' }}>
                         {res.status === 'cooldown' ? 'Cooldown' : 
+                         res.status === 'early_out' ? 'Belum Waktunya Pulang' :
+                         res.status === 'max_shifts' ? 'Batas Shift Tercapai' :
                          res.status === 'duplicate' ? 'Sudah Lengkap' :
                          res.status !== 'ok' ? 'Ditolak' :
                          res.event_type === 'IN' ? 'Check In' : 'Check Out'} — {timeStr}
