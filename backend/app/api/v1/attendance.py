@@ -557,9 +557,9 @@ async def export_attendance(
                 keterangan = log.device_id or "Izin Resmi"
                 shift_label = "Seharian"
             
-            group["in_time"] = "Izin"
-            group["out_time"] = "Izin"
-            group["status"] = "Izin Resmi"
+            group["in_time"] = "-"
+            group["out_time"] = "-"
+            group["status"] = "Izin"
             group["keterangan"] = keterangan
             group["device_id"] = "-"
             group["shift"] = shift_label
