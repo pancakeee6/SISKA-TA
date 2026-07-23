@@ -10,7 +10,7 @@ import {
   Settings,
   Calendar,
   Clock,
-  } from 'lucide-react'
+} from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '@shared/store/authStore'
 import siskaLogo from '@/assets/siska-logo.png'
@@ -89,17 +89,17 @@ export default function AdminLayout() {
       setIsDarkMode(isDark)
       document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light')
     }
-    
+
     applyTheme()
     window.addEventListener('theme-change', applyTheme)
-    
+
     // Listen for OS theme changes if set to system
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     const handleOsChange = () => {
       if (localStorage.getItem('theme') === 'system') applyTheme()
     }
     mediaQuery.addEventListener('change', handleOsChange)
-    
+
     return () => {
       window.removeEventListener('theme-change', applyTheme)
       mediaQuery.removeEventListener('change', handleOsChange)
@@ -271,9 +271,9 @@ export default function AdminLayout() {
 
         {/* Profile & Logout (Desktop Sidebar Bottom) */}
         <div style={{ position: 'relative' }}
-             onMouseEnter={() => setIsProfileOpen(true)}
-             onMouseLeave={() => setIsProfileOpen(false)}>
-          <div 
+          onMouseEnter={() => setIsProfileOpen(true)}
+          onMouseLeave={() => setIsProfileOpen(false)}>
+          <div
             onClick={() => {
               navigate('/admin/settings')
               setIsProfileOpen(false)
@@ -321,24 +321,26 @@ export default function AdminLayout() {
           {isProfileOpen && (
             <div style={{
               position: 'absolute', bottom: '100%', left: sidebarCollapsed ? '16px' : '20px',
-              paddingBottom: '8px', width: '200px', zIndex: 100,
+              paddingBottom: '8px', width: sidebarCollapsed ? '56px' : '200px', zIndex: 100,
             }}>
               <div style={{
-                background: 'var(--color-bg-surface)', 
-                border: '1px solid var(--color-border)', borderRadius: '12px', 
+                background: 'var(--color-bg-surface)',
+                border: '1px solid var(--color-border)', borderRadius: '12px',
                 boxShadow: '0 8px 30px rgba(0,0,0,0.15)', padding: '8px',
                 animation: 'slideUp 0.2s ease-out'
               }}>
                 <button onClick={handleLogout} style={{
-                  display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
-                  padding: '10px 12px', background: 'transparent', border: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                  gap: '10px', width: '100%',
+                  padding: sidebarCollapsed ? '10px 0' : '10px 12px', background: 'transparent', border: 'none',
                   borderRadius: '8px', color: '#ef4444', fontWeight: 600, cursor: 'pointer',
                   textAlign: 'left', transition: 'background 0.2s', fontSize: '13px'
                 }}
                   onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  title="Keluar (Log Out)"
                 >
-                  <LogOut size={16} /> Keluar (Log Out)
+                  <LogOut size={16} /> {!sidebarCollapsed && <span>Keluar (Log Out)</span>}
                 </button>
               </div>
             </div>
@@ -401,9 +403,9 @@ export default function AdminLayout() {
 
         {/* Profile & Logout (Mobile Sidebar Bottom) */}
         <div style={{ position: 'relative' }}
-             onMouseEnter={() => setIsProfileOpen(true)}
-             onMouseLeave={() => setIsProfileOpen(false)}>
-          <div 
+          onMouseEnter={() => setIsProfileOpen(true)}
+          onMouseLeave={() => setIsProfileOpen(false)}>
+          <div
             onClick={() => {
               navigate('/admin/settings')
               setMobileSidebarOpen(false)
@@ -444,7 +446,7 @@ export default function AdminLayout() {
               </div>
             </div>
           </div>
-          
+
           {/* Mobile Profile Popup Menu */}
           {isProfileOpen && (
             <div style={{
@@ -452,8 +454,8 @@ export default function AdminLayout() {
               paddingBottom: '8px', width: '220px', zIndex: 100,
             }}>
               <div style={{
-                background: 'var(--color-bg-surface)', 
-                border: '1px solid var(--color-border)', borderRadius: '12px', 
+                background: 'var(--color-bg-surface)',
+                border: '1px solid var(--color-border)', borderRadius: '12px',
                 boxShadow: '0 8px 30px rgba(0,0,0,0.15)', padding: '8px',
                 animation: 'slideUp 0.2s ease-out'
               }}>
@@ -476,18 +478,18 @@ export default function AdminLayout() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col relative" style={{ background: 'var(--color-bg-base)', transition: 'background 0.3s ease' }}>
-        
+
         {/* Sticky Top Bar */}
-        <div style={{ 
-          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-          padding: isDashboard ? '24px 24px 16px 24px' : '20px 24px',
-          position: 'sticky', top: 0, zIndex: 40,
-          background: 'var(--color-bg-base)',
-          borderBottom: '1px solid var(--color-border)',
-        }}>
-          {/* Left Side: Greeting (Hanya pada Dashboard) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {isDashboard && (
+        {isDashboard && (
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+            padding: '24px 24px 16px 24px',
+            position: 'sticky', top: 0, zIndex: 40,
+            background: 'var(--color-bg-base)',
+            borderBottom: '1px solid var(--color-border)',
+          }}>
+            {/* Left Side: Greeting (Hanya pada Dashboard) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div>
                 <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.5px' }}>
                   {getGreeting()}, {admin?.full_name?.split(' ')[0] || 'Administrator'}! 👋
@@ -496,18 +498,18 @@ export default function AdminLayout() {
                   Pantau statistik kehadiran pegawai dan aktivitas sistem
                 </p>
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Right Side: Tools (Hanya LiveClock) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ background: 'var(--color-bg-surface)', borderRadius: '24px', padding: '6px 16px', border: '1px solid var(--color-border)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }} className="hidden xl:flex">
-              <LiveClock textColor="var(--color-text)" iconColor="var(--color-text-secondary)" />
+            {/* Right Side: Tools (Hanya LiveClock) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ background: 'var(--color-bg-surface)', borderRadius: '24px', padding: '6px 16px', border: '1px solid var(--color-border)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }} className="hidden xl:flex">
+                <LiveClock textColor="var(--color-text)" iconColor="var(--color-text-secondary)" />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1">
           <div style={{ padding: '0 24px 24px 24px', paddingTop: isDashboard ? '24px' : '20px', width: '100%', display: 'flex', flexDirection: 'column' }}>
             <Outlet />
           </div>
