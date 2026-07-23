@@ -178,134 +178,140 @@ export default function FaceManagementPage() {
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Header */}
-      <div style={{ 
-        background: 'var(--color-bg-surface)', 
-        border: '1px solid var(--color-border)', 
-        borderRadius: '24px', 
-        padding: '24px 28px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '20px'
+      {/* Sticky Header Wrapper */}
+      <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 40,
+        background: 'var(--color-bg-base)',
+        margin: '-20px -24px -24px -24px',
+        padding: '20px 24px 24px 24px',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{
-            width: '52px', height: '52px', borderRadius: '16px',
-            background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <ScanFace size={26} />
+        <div style={{ 
+          background: '#ffffff', 
+          border: '1px solid #e2e8f0', 
+          borderRadius: '16px', 
+          padding: '16px 24px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '20px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{
+              width: '48px', height: '48px', borderRadius: '12px',
+              background: '#e0e7ff', color: '#4f46e5',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <ScanFace size={24} strokeWidth={2} />
+            </div>
+            <div>
+              <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>
+                Manajemen Wajah
+              </h1>
+              <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}>
+                Kelola data embedding wajah pengguna untuk verifikasi AI
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
-              Manajemen Wajah
-            </h1>
-            <p style={{ fontSize: '13.5px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
-              Kelola data embedding wajah pengguna untuk verifikasi AI
-            </p>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={() => {
+                if (!selectedUser) {
+                  toast.error('Pilih pengguna terlebih dahulu!')
+                } else {
+                  setShowCamera(true)
+                }
+              }}
+              disabled={uploading}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '10px 16px',
+                borderRadius: '8px',
+                background: '#eff6ff',
+                color: '#2563eb',
+                fontWeight: 600,
+                fontSize: '13px',
+                border: '1px solid #bfdbfe',
+                cursor: uploading ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: uploading ? 0.7 : 1,
+              }}
+              onMouseEnter={(e) => {
+                if (!uploading) {
+                  e.currentTarget.style.background = '#dbeafe';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!uploading) {
+                  e.currentTarget.style.background = '#eff6ff';
+                }
+              }}
+            >
+              <Camera size={16} strokeWidth={2.5} />
+              <span>Ambil Foto</span>
+            </button>
+            
+            <button
+              onClick={() => {
+                if (!selectedUser) {
+                  toast.error('Pilih pengguna terlebih dahulu!')
+                } else {
+                  fileInputRef.current?.click()
+                }
+              }}
+              disabled={uploading}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '10px 16px',
+                borderRadius: '8px',
+                background: '#2563eb',
+                color: '#ffffff',
+                fontWeight: 600,
+                fontSize: '13px',
+                border: 'none',
+                cursor: uploading ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: uploading ? 0.7 : 1,
+              }}
+              onMouseEnter={(e) => {
+                if (!uploading) {
+                  e.currentTarget.style.background = '#1d4ed8';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!uploading) {
+                  e.currentTarget.style.background = '#2563eb';
+                }
+              }}
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{uploadProgress || 'Mengunggah...'}</span>
+                </>
+              ) : (
+                <>
+                  <Plus size={16} strokeWidth={2.5} />
+                  <span>Upload Wajah</span>
+                </>
+              )}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleUpload}
+              className="hidden"
+              id="face-upload"
+            />
           </div>
-        </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button
-            onClick={() => {
-              if (!selectedUser) {
-                toast.error('Pilih pengguna terlebih dahulu!')
-              } else {
-                setShowCamera(true)
-              }
-            }}
-            disabled={uploading}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 18px',
-              borderRadius: '10px',
-              background: '#eff6ff',
-              color: '#2563eb',
-              fontWeight: 600,
-              fontSize: '14px',
-              border: '1px solid #bfdbfe',
-              cursor: uploading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s',
-              opacity: uploading ? 0.7 : 1,
-            }}
-            onMouseEnter={(e) => {
-              if (!uploading) {
-                e.currentTarget.style.background = '#dbeafe';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!uploading) {
-                e.currentTarget.style.background = '#eff6ff';
-              }
-            }}
-          >
-            <Camera size={16} />
-            <span>Ambil Foto</span>
-          </button>
-          
-          <button
-            onClick={() => {
-              if (!selectedUser) {
-                toast.error('Pilih pengguna terlebih dahulu!')
-              } else {
-                fileInputRef.current?.click()
-              }
-            }}
-            disabled={uploading}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 18px',
-              borderRadius: '10px',
-              background: '#2563eb',
-              color: '#ffffff',
-              fontWeight: 600,
-              fontSize: '14px',
-              border: 'none',
-              cursor: uploading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s',
-              opacity: uploading ? 0.7 : 1,
-              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
-            }}
-            onMouseEnter={(e) => {
-              if (!uploading) {
-                e.currentTarget.style.background = '#1d4ed8';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!uploading) {
-                e.currentTarget.style.background = '#2563eb';
-                e.currentTarget.style.transform = 'none';
-              }
-            }}
-          >
-            {uploading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>{uploadProgress || 'Mengunggah...'}</span>
-              </>
-            ) : (
-              <>
-                <Plus size={16} />
-                <span>Upload Wajah</span>
-              </>
-            )}
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleUpload}
-            className="hidden"
-            id="face-upload"
-          />
         </div>
       </div>
 
