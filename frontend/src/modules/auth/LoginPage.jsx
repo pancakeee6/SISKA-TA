@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@shared/store/authStore'
 import authApi from './services/authApi'
 import toast from 'react-hot-toast'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, X } from 'lucide-react'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -40,214 +40,87 @@ export default function LoginPage() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      height: '100vh',
+      width: '100vw',
+      overflow: 'hidden',
       display: 'flex',
-      background: '#080e1e',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+      padding: '24px 4%',
+      position: 'relative',
       fontFamily: "'Inter', 'Segoe UI', sans-serif",
+      boxSizing: 'border-box',
     }}>
+      {/* Background Image Layer (Zoomed) */}
+      <div style={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: 'linear-gradient(rgba(15, 23, 42, 0.25), rgba(15, 23, 42, 0.45)), url("/kampus.jpg") center/cover no-repeat',
+        transform: 'scale(1.25)',
+        zIndex: 1,
+      }} />
+
+      {/* Top Left Institution Logos */}
+      <div style={{
+        position: 'absolute',
+        top: '32px',
+        left: '48px',
+        zIndex: 2,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+      }}>
+        <img src="/logo-poltek.png" alt="Poltek Logo" style={{ height: '56px', objectFit: 'contain', filter: 'drop-shadow(0 0 12px rgba(255,255,255,0.6))' }} />
+        <img src="/logo-siska2.png?v=2" alt="SISKA Logo 2" style={{ height: '72px', objectFit: 'contain', filter: 'drop-shadow(0 0 12px rgba(255,255,255,0.6))' }} />
+      </div>
+
       {/* Inline keyframes */}
       <style>{`
-        @keyframes loginFloat {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-12px); }
-        }
-        @keyframes loginPulseGlow {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
-          50% { opacity: 0.8; transform: scale(1.1); }
-        }
-        @keyframes loginFadeUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes loginParticle {
-          0% { opacity: 0; transform: translateY(0) scale(0); }
-          50% { opacity: 1; }
-          100% { opacity: 0; transform: translateY(-60px) scale(1); }
-        }
         .login-input:focus {
-          border-color: rgba(56, 189, 248, 0.4) !important;
-          box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.08);
-        }
-        .login-input:-webkit-autofill,
-        .login-input:-webkit-autofill:hover, 
-        .login-input:-webkit-autofill:focus, 
-        .login-input:-webkit-autofill:active {
-          -webkit-box-shadow: 0 0 0 30px #ffffff inset !important;
-          -webkit-text-fill-color: #0f172a !important;
-          transition: background-color 5000s ease-in-out 0s;
+          border-color: #3b82f6 !important;
+          background: #ffffff !important;
         }
         .login-btn:hover:not(:disabled) {
-          box-shadow: 0 6px 25px rgba(56, 189, 248, 0.4) !important;
-          transform: translateY(-1px);
+          background: #1d4ed8 !important;
+          box-shadow: 0 6px 12px -2px rgba(37,99,235,0.3) !important;
         }
         .login-btn:active:not(:disabled) {
-          transform: translateY(0) scale(0.98);
+          transform: translateY(1px);
         }
       `}</style>
 
-      {/* LEFT SIDE — Branding */}
+      {/* LOGIN FORM CARD */}
       <div style={{
-        flex: '1',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-        position: 'relative',
-        overflow: 'hidden',
-        background: 'linear-gradient(160deg, rgba(11, 22, 40, 0.15) 0%, rgba(13, 31, 60, 0.3) 40%, rgba(9, 20, 40, 0.5) 100%), url("/kampus2.jpg") center/cover no-repeat',
-        padding: '60px 100px',
-      }}>
-        {/* Decorative glowing orbs */}
-        <div style={{
-          position: 'absolute',
-          width: '350px',
-          height: '350px',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(56,189,248,0.12) 0%, transparent 70%)',
-          top: '-80px',
-          right: '-60px',
-          animation: 'loginPulseGlow 6s ease-in-out infinite',
-        }} />
-        <div style={{
-          position: 'absolute',
-          width: '250px',
-          height: '250px',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)',
-          bottom: '5%',
-          left: '-40px',
-          animation: 'loginPulseGlow 8s ease-in-out infinite',
-          animationDelay: '2s',
-        }} />
-        <div style={{
-          position: 'absolute',
-          width: '200px',
-          height: '200px',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(56,189,248,0.06) 0%, transparent 70%)',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          animation: 'loginPulseGlow 7s ease-in-out infinite',
-          animationDelay: '4s',
-        }} />
-
-        {/* Tiny star dots */}
-        {[
-          { top: '10%', left: '15%', size: 3, delay: '0s' },
-          { top: '20%', left: '75%', size: 2, delay: '1s' },
-          { top: '55%', left: '8%', size: 2, delay: '2s' },
-          { top: '80%', left: '85%', size: 3, delay: '0.5s' },
-          { top: '35%', left: '90%', size: 2, delay: '3s' },
-          { top: '90%', left: '25%', size: 2, delay: '1.5s' },
-          { top: '12%', left: '55%', size: 3, delay: '2.5s' },
-          { top: '70%', left: '45%', size: 2, delay: '4s' },
-          { top: '45%', left: '20%', size: 2, delay: '0.8s' },
-          { top: '30%', left: '60%', size: 3, delay: '3.5s' },
-        ].map((star, i) => (
-          <div key={i} style={{
-            position: 'absolute',
-            top: star.top,
-            left: star.left,
-            width: `${star.size}px`,
-            height: `${star.size}px`,
-            borderRadius: '50%',
-            background: '#38bdf8',
-            animation: `loginPulseGlow 3s ease-in-out infinite`,
-            animationDelay: star.delay,
-          }} />
-        ))}
-
-        {/* Clean layout for Internal Admin */}
-        <div style={{
-          position: 'relative',
-          zIndex: 2,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'flex-start',
-          textAlign: 'left',
-          maxWidth: '540px',
-          animation: 'loginFadeUp 0.8s ease-out',
-        }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '6px 14px',
-            borderRadius: '9999px',
-            background: 'rgba(56, 189, 248, 0.1)',
-            border: '1px solid rgba(56, 189, 248, 0.2)',
-            marginBottom: '24px',
-            width: 'fit-content',
-          }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#38bdf8', display: 'inline-block' }} />
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#38bdf8', letterSpacing: '0.5px' }}>Internal Admin Access</span>
-          </div>
-          
-          <h1 style={{
-            fontSize: '48px',
-            fontWeight: 800,
-            color: '#ffffff',
-            letterSpacing: '2px',
-            margin: '0 0 12px 0',
-            textShadow: '0 4px 20px rgba(0,0,0,0.8)',
-            lineHeight: 1.1,
-          }}>
-            Portal Administrator
-          </h1>
-          
-          <p style={{
-            fontSize: '18px',
-            color: '#f8fafc',
-            margin: '0 0 32px 0',
-            letterSpacing: '0.5px',
-            fontWeight: 500,
-            lineHeight: 1.6,
-            textShadow: '0 2px 8px rgba(0,0,0,0.8)'
-          }}>
-            Sistem Informasi Manajemen Kehadiran Berbasis AI (SISKA). Terbatas hanya untuk staf akademik dan administrator.
-          </p>
-
-          {/* Divider line */}
-          <div style={{
-            width: '60px',
-            height: '4px',
-            borderRadius: '2px',
-            background: 'linear-gradient(90deg, #38bdf8, #2563eb)',
-          }} />
-        </div>
-      </div>
-
-      {/* RIGHT SIDE — Login Form */}
-      <div style={{
-        width: '460px',
-        minWidth: '400px',
+        width: '360px',
+        maxWidth: '100%',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
-        padding: '60px 50px',
-        background: '#f8fafc',
-        borderLeft: '1px solid rgba(0, 0, 0, 0.06)',
+        padding: '48px 32px',
+        background: '#ffffff',
+        borderRadius: '8px',
+        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5), 0 0 15px rgba(0,0,0,0.1)',
         position: 'relative',
         zIndex: 3,
       }}>
-        <div style={{ maxWidth: '340px', margin: '0 auto', width: '100%' }}>
-          {/* Header */}
-          <div style={{ marginBottom: '36px' }}>
+        <div style={{ margin: '0 auto', width: '100%' }}>
+          {/* Header & Logo */}
+          <div style={{ marginBottom: '28px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+            <img src="/logo-siska.png?v=2" alt="SISKA Logo" style={{ height: '64px', marginBottom: '16px', objectFit: 'contain' }} />
             <h2 style={{
-              fontSize: '26px',
+              fontSize: '18px',
               fontWeight: 700,
-              color: '#0f172a',
-              margin: '0 0 8px 0',
+              color: '#1e293b',
+              margin: '0 0 4px 0',
             }}>
-              Masuk ke Admin
+              Masuk ke Dashboard Admin
             </h2>
             <p style={{
-              fontSize: '14px',
-              color: '#475569',
+              fontSize: '11px',
+              color: '#64748b',
               margin: 0,
             }}>
-              Kelola data absensi dan manajemen wajah
+              Kelola data absensi
             </p>
           </div>
 
@@ -257,10 +130,10 @@ export default function LoginPage() {
             <div style={{ marginBottom: '20px' }}>
               <label htmlFor="login-username" style={{
                 display: 'block',
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#475569',
-                marginBottom: '8px',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: '#334155',
+                marginBottom: '6px',
               }}>
                 Username / Email
               </label>
@@ -270,17 +143,17 @@ export default function LoginPage() {
                 value={form.username}
                 onChange={(e) => setForm({ ...form, username: e.target.value })}
                 className="login-input"
-                placeholder="admin@siska.ai"
+                placeholder="admin"
                 required
                 autoFocus
                 style={{
                   width: '100%',
-                  padding: '12px 16px',
-                  borderRadius: '10px',
-                  background: '#ffffff',
-                  border: '1px solid #94a3b8',
-                  color: '#0f172a',
-                  fontSize: '14px',
+                  padding: '10px 12px',
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '4px',
+                  color: '#1e293b',
+                  fontSize: '12px',
                   outline: 'none',
                   transition: 'all 0.2s',
                   boxSizing: 'border-box',
@@ -289,13 +162,13 @@ export default function LoginPage() {
             </div>
 
             {/* Password */}
-            <div style={{ marginBottom: '28px' }}>
+            <div style={{ marginBottom: '20px' }}>
               <label htmlFor="login-password" style={{
                 display: 'block',
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#475569',
-                marginBottom: '8px',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: '#334155',
+                marginBottom: '6px',
               }}>
                 Password
               </label>
@@ -306,16 +179,16 @@ export default function LoginPage() {
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   className="login-input"
-                  placeholder="••••••••••••"
+                  placeholder="••••••••"
                   required
                   style={{
                     width: '100%',
-                    padding: '12px 44px 12px 16px',
-                    borderRadius: '10px',
-                    background: '#ffffff',
-                    border: '1px solid #94a3b8',
-                    color: '#0f172a',
-                    fontSize: '14px',
+                    padding: '10px 36px 10px 12px',
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '4px',
+                    color: '#1e293b',
+                    fontSize: '12px',
                     outline: 'none',
                     transition: 'all 0.2s',
                     boxSizing: 'border-box',
@@ -327,24 +200,32 @@ export default function LoginPage() {
                   tabIndex={-1}
                   style={{
                     position: 'absolute',
-                    right: '12px',
+                    right: '4px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    color: '#64748b',
+                    color: '#94a3b8',
                     cursor: 'pointer',
                     padding: '4px',
                     display: 'flex',
                     alignItems: 'center',
-                    transition: 'color 0.15s',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = '#38bdf8'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = '#64748b'; }}
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
+            </div>
+
+            {/* Remember me & Forgot Password */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#334155', cursor: 'pointer' }}>
+                <input type="checkbox" style={{ width: '12px', height: '12px', cursor: 'pointer' }} />
+                Ingat Saya
+              </label>
+              <a href="#" style={{ fontSize: '11px', color: '#334155', textDecoration: 'none' }}>
+                Lupa Kata Sandi?
+              </a>
             </div>
 
             {/* Submit Button */}
@@ -355,43 +236,34 @@ export default function LoginPage() {
               className="login-btn"
               style={{
                 width: '100%',
-                padding: '13px',
-                borderRadius: '10px',
-                fontSize: '15px',
+                padding: '10px',
+                borderRadius: '4px',
+                fontSize: '13px',
                 fontWeight: 600,
                 color: '#ffffff',
-                background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                background: '#2563eb',
                 border: 'none',
+                boxShadow: '0 4px 6px -1px rgba(37,99,235,0.2), 0 2px 4px -1px rgba(37,99,235,0.1)',
                 cursor: loading ? 'wait' : 'pointer',
-                opacity: loading ? 0.6 : 1,
                 transition: 'all 0.2s',
-                boxShadow: '0 4px 15px rgba(37, 99, 235, 0.3)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
               }}
             >
-              {loading ? (
-                <>
-                  <svg style={{ animation: 'spin 1s linear infinite', width: '16px', height: '16px' }} viewBox="0 0 24 24">
-                    <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Memproses...
-                </>
-              ) : 'Masuk'}
+              {loading ? 'Memproses...' : 'Masuk'}
             </button>
           </form>
 
           {/* Footer */}
           <p style={{
             textAlign: 'center',
-            fontSize: '12px',
-            color: '#475569',
-            marginTop: '40px',
+            fontSize: '10px',
+            color: '#64748b',
+            marginTop: '32px',
           }}>
-            © 2026 SISKA. All rights reserved.
+            © 2026 SISKA. Politeknik Baja Tegal. All rights reserved.
           </p>
         </div>
       </div>
