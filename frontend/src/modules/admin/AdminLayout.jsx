@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '@shared/store/authStore'
-import siskaLogo from '@/assets/siska-logo.png'
+
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
@@ -363,7 +363,6 @@ export default function AdminLayout() {
         <div style={{ padding: '24px 20px 20px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <img src={siskaLogo} alt="SISKA Logo" style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--color-sidebar-text)', padding: '4px' }} />
               <div>
                 <h1 className="sidebar-brand-text" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-sidebar-text)', margin: 0 }}>SISKA</h1>
                 <p className="sidebar-brand-text" style={{ fontSize: '11px', color: 'var(--color-sidebar-text)', opacity: 0.8, margin: 0 }}>Sistem Kehadiran AI</p>
