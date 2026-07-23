@@ -136,66 +136,73 @@ export default function UsersPage() {
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Header */}
+      {/* Sticky Header Wrapper */}
       <div style={{
-        background: 'var(--color-bg-surface)',
-        border: '1px solid var(--color-border)',
-        borderRadius: '24px',
-        padding: '24px 28px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '20px'
+        position: 'sticky',
+        top: 0,
+        zIndex: 40,
+        background: 'var(--color-bg-base)',
+        margin: '-20px -24px -24px -24px',
+        padding: '20px 24px 24px 24px',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{
-            width: '52px', height: '52px', borderRadius: '16px',
-            background: 'rgba(37, 99, 235, 0.1)', color: '#2563eb',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <Users size={26} />
+        {/* Header Content */}
+        <div style={{
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          borderRadius: '16px',
+          padding: '16px 24px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '20px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{
+              width: '48px', height: '48px', borderRadius: '12px',
+              background: '#eff6ff', color: '#3b82f6',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <Users size={24} strokeWidth={2} />
+            </div>
+            <div>
+              <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>
+                Pengguna
+              </h1>
+              <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}>
+                Kelola seluruh data pengguna dan akun pegawai SISKA
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
-              Pengguna
-            </h1>
-            <p style={{ fontSize: '13.5px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
-              Kelola seluruh data pengguna dan akun pegawai SISKA
-            </p>
-          </div>
+          <button
+            id="btn-add-user"
+            onClick={openCreate}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '10px 16px',
+              borderRadius: '8px',
+              background: '#2563eb',
+              color: '#ffffff',
+              fontWeight: 600,
+              fontSize: '13px',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#1d4ed8';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#2563eb';
+            }}
+          >
+            <Plus size={16} strokeWidth={2.5} />
+            Tambah Pengguna
+          </button>
         </div>
-        <button
-          id="btn-add-user"
-          onClick={openCreate}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 18px',
-            borderRadius: '10px',
-            background: '#2563eb',
-            color: '#ffffff',
-            fontWeight: 600,
-            fontSize: '14px',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#1d4ed8';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#2563eb';
-            e.currentTarget.style.transform = 'none';
-          }}
-        >
-          <Plus size={16} />
-          Tambah Pengguna
-        </button>
       </div>
 
       {/* Mini Stats Row */}
@@ -299,7 +306,7 @@ export default function UsersPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari nama, email, atau NIM..."
+                placeholder="Cari nama, email, atau NIP..."
                 style={{
                   width: '100%',
                   padding: '10px 14px 10px 40px',
@@ -328,18 +335,17 @@ export default function UsersPage() {
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-base)' }}>
                 <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Pengguna</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>NIM</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Email</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Program Studi</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Wajah</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none', textAlign: 'right' }}>Aksi</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>NIP/NIDN</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Jabatan</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Data Wajah</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none', textAlign: 'center' }}>Aksi</th>
               </tr>
             </thead>
             <tbody style={{ divideY: '1px solid #f1f5f9' }}>
               {loading ? (
                 [...Array(5)].map((_, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    {[...Array(6)].map((_, j) => (
+                    {[...Array(5)].map((_, j) => (
                       <td key={j} style={{ padding: '16px 20px' }}>
                         <div className="h-4 bg-slate-100 rounded animate-pulse" />
                       </td>
@@ -348,7 +354,7 @@ export default function UsersPage() {
                 ))
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: '64px 20px', textAlign: 'center' }}>
+                  <td colSpan={5} style={{ padding: '64px 20px', textAlign: 'center' }}>
                     <div className="text-4xl mb-3">🐱</div>
                     <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', fontWeight: 600, margin: 0 }}>
                       {search ? 'Tidak ada pengguna yang cocok' : 'Belum ada pengguna'}
@@ -433,21 +439,14 @@ export default function UsersPage() {
                       </div>
                     </td>
 
-                    {/* NIM */}
+                    {/* NIP */}
                     <td style={{ padding: '16px 20px' }}>
                       <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)', fontFamily: 'monospace', fontWeight: 500 }}>
                         {user.employee_id}
                       </span>
                     </td>
 
-                    {/* Email */}
-                    <td style={{ padding: '16px 20px' }}>
-                      <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-                        {user.email || '—'}
-                      </span>
-                    </td>
-
-                    {/* Program Studi */}
+                    {/* Jabatan */}
                     <td style={{ padding: '16px 20px' }}>
                       <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                         {user.department || '—'}
@@ -462,8 +461,8 @@ export default function UsersPage() {
                     </td>
 
                     {/* Aksi */}
-                    <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                         {/* Face Scan Action */}
                         <button
                           onClick={() => navigate(`/admin/faces?userId=${user.id}`)}
@@ -475,9 +474,9 @@ export default function UsersPage() {
                             width: '32px',
                             height: '32px',
                             borderRadius: '8px',
-                            background: 'var(--color-bg-base)',
-                            border: '1px solid var(--color-border)',
-                            color: 'var(--color-text-secondary)',
+                            background: '#eff6ff',
+                            border: '1px solid #bfdbfe',
+                            color: '#3b82f6',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
                           }}
@@ -487,9 +486,9 @@ export default function UsersPage() {
                             e.currentTarget.style.background = '#2563eb';
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.border = '1px solid var(--color-border)';
-                            e.currentTarget.style.color = 'var(--color-text-secondary)';
-                            e.currentTarget.style.background = 'var(--color-bg-base)';
+                            e.currentTarget.style.border = '1px solid #bfdbfe';
+                            e.currentTarget.style.color = '#3b82f6';
+                            e.currentTarget.style.background = '#eff6ff';
                           }}
                         >
                           <ScanFace size={16} />
@@ -506,9 +505,9 @@ export default function UsersPage() {
                             width: '32px',
                             height: '32px',
                             borderRadius: '8px',
-                            background: 'var(--color-bg-base)',
-                            border: '1px solid var(--color-border)',
-                            color: 'var(--color-text-secondary)',
+                            background: '#f3e8ff',
+                            border: '1px solid #e9d5ff',
+                            color: '#a855f7',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
                           }}
@@ -518,9 +517,9 @@ export default function UsersPage() {
                             e.currentTarget.style.background = '#7c3aed';
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.border = '1px solid var(--color-border)';
-                            e.currentTarget.style.color = 'var(--color-text-secondary)';
-                            e.currentTarget.style.background = 'var(--color-bg-base)';
+                            e.currentTarget.style.border = '1px solid #e9d5ff';
+                            e.currentTarget.style.color = '#a855f7';
+                            e.currentTarget.style.background = '#f3e8ff';
                           }}
                         >
                           <Edit2 size={15} />
@@ -537,9 +536,9 @@ export default function UsersPage() {
                             width: '32px',
                             height: '32px',
                             borderRadius: '8px',
-                            background: 'var(--color-bg-base)',
-                            border: '1px solid var(--color-border)',
-                            color: 'var(--color-text-secondary)',
+                            background: '#fef2f2',
+                            border: '1px solid #fecaca',
+                            color: '#ef4444',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
                           }}
@@ -549,9 +548,9 @@ export default function UsersPage() {
                             e.currentTarget.style.background = '#ef4444';
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.border = '1px solid var(--color-border)';
-                            e.currentTarget.style.color = 'var(--color-text-secondary)';
-                            e.currentTarget.style.background = 'var(--color-bg-base)';
+                            e.currentTarget.style.border = '1px solid #fecaca';
+                            e.currentTarget.style.color = '#ef4444';
+                            e.currentTarget.style.background = '#fef2f2';
                           }}
                         >
                           <Trash2 size={15} />
@@ -699,7 +698,7 @@ export default function UsersPage() {
               border: '1px solid var(--color-border)',
             }}
           >
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between" style={{ marginBottom: '24px' }}>
               <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>
                 {modalMode === 'create' ? 'Tambah Pengguna Baru' : 'Edit Pengguna'}
               </h2>
@@ -712,33 +711,6 @@ export default function UsersPage() {
             </div>
 
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '6px' }}>
-                  NIP / Employee ID
-                </label>
-                <input
-                  type="text"
-                  value={form.employee_id}
-                  onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    color: 'var(--color-text)',
-                    background: 'var(--color-bg-base)',
-                    border: '1px solid var(--color-border)',
-                    outline: 'none',
-                    transition: 'all 0.2s',
-                    boxSizing: 'border-box'
-                  }}
-                  onFocus={(e) => { e.target.style.borderColor = '#38bdf8'; e.target.style.boxShadow = '0 0 0 3px rgba(56, 189, 248, 0.15)' }}
-                  onBlur={(e) => { e.target.style.borderColor = 'var(--color-border)'; e.target.style.boxShadow = 'none' }}
-                  placeholder="Contoh: NIP001"
-                  required
-                />
-              </div>
-
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '6px' }}>
                   Nama Lengkap
@@ -768,12 +740,12 @@ export default function UsersPage() {
 
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '6px' }}>
-                  Email (opsional)
+                  NIP/NIDN
                 </label>
                 <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  type="text"
+                  value={form.employee_id}
+                  onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -788,13 +760,14 @@ export default function UsersPage() {
                   }}
                   onFocus={(e) => { e.target.style.borderColor = '#38bdf8'; e.target.style.boxShadow = '0 0 0 3px rgba(56, 189, 248, 0.15)' }}
                   onBlur={(e) => { e.target.style.borderColor = 'var(--color-border)'; e.target.style.boxShadow = 'none' }}
-                  placeholder="email@contoh.com"
+                  placeholder="Contoh: NIP001"
+                  required
                 />
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '6px' }}>
-                  Departemen (opsional)
+                  Jabatan (opsional)
                 </label>
                 <input
                   type="text"
@@ -814,7 +787,7 @@ export default function UsersPage() {
                   }}
                   onFocus={(e) => { e.target.style.borderColor = '#38bdf8'; e.target.style.boxShadow = '0 0 0 3px rgba(56, 189, 248, 0.15)' }}
                   onBlur={(e) => { e.target.style.borderColor = 'var(--color-border)'; e.target.style.boxShadow = 'none' }}
-                  placeholder="IT, HRD, Finance, dll"
+                  placeholder="Dosen, Staf IT, dll"
                 />
               </div>
 
