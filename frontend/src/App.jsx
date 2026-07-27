@@ -1,6 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { Toaster } from 'react-hot-toast'
 import authApi from '@modules/auth/services/authApi'
 import { useAuthStore } from '@shared/store/authStore'
 
@@ -54,7 +53,6 @@ export default function App() {
 
   return (
     <>
-      <Toaster position="top-right" />
       <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Public Routes */}

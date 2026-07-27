@@ -18,7 +18,6 @@ class AttendanceLog(Base):
     late = Column(Boolean, default=False)
     device_id = Column(String(100), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
     # Relationships
     user = relationship("User", back_populates="attendance_logs")
 

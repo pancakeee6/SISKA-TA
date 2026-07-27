@@ -23,6 +23,12 @@ const dashboardApi = {
    * Get all dashboard data in a single high-speed summary call.
    */
   getSummary: () => api.get('/api/v1/dashboard/summary'),
+
+  /**
+   * Get daily (hourly) attendance statistics.
+   * @returns {Promise<Array<{ day: string, present: number, late: number, absent: number }>>}
+   */
+  getDaily: () => api.get('/api/v1/dashboard/daily'),
 }
 
 export default dashboardApi

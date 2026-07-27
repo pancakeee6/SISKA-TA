@@ -96,7 +96,9 @@ async function speakCombinedGreeting(faces) {
   
   // Pisahkan berdasarkan status
   const successFaces = faces.filter(f => f.status === 'ok' || f.status === 'recognized');
-  const cooldownFaces = faces.filter(f => f.status !== 'ok' && f.status !== 'recognized');
+  const cooldownFaces = faces.filter(f => f.status === 'cooldown');
+  const earlyOutFaces = faces.filter(f => f.status === 'early_out');
+  const maxShiftsFaces = faces.filter(f => f.status === 'max_shifts');
 
   let textId = "";
 
@@ -142,6 +144,16 @@ async function speakCombinedGreeting(faces) {
       `Halo, ${joinNames(cooldownNames)}. Absenmu sudah tercatat sebelumnya.`
     ];
     textId += cooldownGreetings[Math.floor(Math.random() * cooldownGreetings.length)] + " ";
+  }
+
+  if (earlyOutFaces.length > 0) {
+    const earlyOutNames = earlyOutFaces.map(f => f.user_name || 'Karyawan');
+    textId += `Maaf, ${joinNames(earlyOutNames)}. Belum waktunya pulang untuk shift Anda. `;
+  }
+
+  if (maxShiftsFaces.length > 0) {
+    const maxShiftsNames = maxShiftsFaces.map(f => f.user_name || 'Karyawan');
+    textId += `Terima kasih, ${joinNames(maxShiftsNames)}. Seluruh shift Anda hari ini sudah selesai. `;
   }
 
   const combinedText = textId.trim();
@@ -205,7 +217,6 @@ export default function AttendancePage() {
   const [greetingText, setGreetingText] = useState('')
   const [isMirrored, setIsMirrored] = useState(true)
 
-  const [greetingStyle, setGreetingStyle] = useState(localStorage.getItem('siska_greeting_style') || 'ava')
   const [isLightMode, setIsLightMode] = useState(() => localStorage.getItem('siska_theme') === 'light')
 
   // Theme observer
@@ -675,55 +686,12 @@ export default function AttendancePage() {
           {/* Camera Card Container */}
           <div className="att-camera-card">
             
-            {/* Card Header (Voice Selector) */}
+            {/* Card Header */}
             <div className="att-camera-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '14px' }}>🎙️</span>
-                <select
-                  value={greetingStyle}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setGreetingStyle(val);
-                    localStorage.setItem('siska_greeting_style', val);
-
-                    let voice = 'en-US-AvaMultilingualNeural';
-                    let r = "+0%", p = "+0Hz";
-
-                    if (val === 'emma') { voice = 'en-US-EmmaMultilingualNeural'; }
-                    else if (val === 'andrew') { voice = 'en-US-AndrewMultilingualNeural'; }
-                    else if (val === 'brian') { voice = 'en-US-BrianMultilingualNeural'; }
-
-                    // Only play test voice if camera is disabled to prevent overlapping with actual scans
-                    if (!isCameraEnabled) {
-                      let testText = "Halo, suara saya telah berhasil diganti. Voice check complete.";
-
-                      fetch('/api/v1/tts/synthesize', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text: testText, voice: voice, rate: r, pitch: p })
-                      }).then(res => res.blob()).then(blob => {
-                        const url = URL.createObjectURL(blob);
-                        queueAudio(url);
-                      });
-                    }
-                  }}
-                  style={{
-                    background: 'transparent',
-                    color: 'var(--color-primary)',
-                    border: 'none',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    outline: 'none',
-                    textAlign: 'left'
-                  }}
-                  title="Pilih Karakter Suara"
-                >
-                  <option value="ava">Ava (Wanita - Multilingual)</option>
-                  <option value="emma">Emma (Wanita - Ramah)</option>
-                  <option value="andrew">Andrew (Pria - Profesional)</option>
-                  <option value="brian">Brian (Pria - Kasual)</option>
-                </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                  📹 Live Camera Feed
+                </span>
               </div>
               
               <div className={`att-status-dot ${cameraReady ? 'active' : 'inactive'}`} title={cameraReady ? 'Kamera Sedang Aktif' : 'Kamera Mati'} />
@@ -752,6 +720,7 @@ export default function AttendancePage() {
                     width: 640,
                     height: 480,
                     facingMode: 'user',
+                    frameRate: { ideal: 15, max: 20 },
                   }}
                   onUserMedia={() => setCameraReady(true)}
                   onUserMediaError={() => setStatus(STATUS.NO_CAMERA)}
@@ -848,6 +817,8 @@ export default function AttendancePage() {
                       <p style={{ color: '#fff', fontSize: '15px', fontWeight: 700, margin: 0 }}>{res.user_name}</p>
                       <p style={{ color: '#94a3b8', fontSize: '11px', margin: '2px 0 0 0' }}>
                         {res.status === 'cooldown' ? 'Cooldown' : 
+                         res.status === 'early_out' ? 'Belum Waktunya Pulang' :
+                         res.status === 'max_shifts' ? 'Batas Shift Tercapai' :
                          res.status === 'duplicate' ? 'Sudah Lengkap' :
                          res.status !== 'ok' ? 'Ditolak' :
                          res.event_type === 'IN' ? 'Check In' : 'Check Out'} — {timeStr}

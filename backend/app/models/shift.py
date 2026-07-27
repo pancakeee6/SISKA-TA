@@ -9,3 +9,4 @@ class WorkShift(Base):
     name = Column(String, nullable=False)
     start_time = Column(String, nullable=False)  # e.g., "08:00"
     end_time = Column(String, nullable=False)    # e.g., "15:00"
+    late_tolerance = Column(Integer, default=15) # minutes
