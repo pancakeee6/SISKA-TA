@@ -92,6 +92,12 @@ export default function FaceManagementPage() {
   const uploadFile = useCallback(async (file) => {
     if (!file || !selectedUser) return
 
+    // Check max 3 photos
+    if (faces.length >= 3) {
+      toast.error('Maksimal 3 foto wajah per pengguna. Hapus foto lama terlebih dahulu.')
+      return
+    }
+
     // Validate file type
     const validTypes = ['image/jpeg', 'image/png', 'image/webp']
     if (!validTypes.includes(file.type)) {
@@ -128,7 +134,7 @@ export default function FaceManagementPage() {
       setUploadProgress('')
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
-  }, [selectedUser, fetchFaces])
+  }, [selectedUser, fetchFaces, faces])
 
   const captureFace = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot()
@@ -146,7 +152,7 @@ export default function FaceManagementPage() {
   // File input change handler
   const handleUpload = (e) => {
     const file = e.target.files?.[0]
-    if (file) uploadFile(file)
+    if (file && !uploading) uploadFile(file)
   }
 
   // Delete face
