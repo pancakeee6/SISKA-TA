@@ -130,6 +130,12 @@ async def recognize_attendance(
             in_logs = [l for l in today_logs if l.event_type == "IN"]
             out_logs = [l for l in today_logs if l.event_type == "OUT"]
 
+            # Jika sudah menyelesaikan 1 shift hari ini (1 IN, 1 OUT lengkap) dan mencoba IN lagi, 
+            # pastikan shiftnya berlanjut ke shift ke-2 (Sore) tanpa peduli jam awal.
+            if len(in_logs) == len(out_logs) and len(in_logs) == 1:
+                if len(shifts) > 1:
+                    active_shift = shifts[1]
+
             skip_log = False
             calculated_event_type = "IN"
             calculated_is_late = False
@@ -164,7 +170,10 @@ async def recognize_attendance(
                         except Exception:
                             pass
                             
-                    # Gunakan original_shift.end_time sebagai batas minimal waktu Pulang
+                    # Terapkan label shift berdasarkan shift awal (saat IN)
+                    active_shift = original_shift
+                            
+                    # Gunakan original_shift.end_time secara mutlak sebagai batas minimal waktu Pulang
                     now_time = now_wib.time()
                     try:
                         end_h, end_m = map(int, original_shift.end_time.split(":"))
