@@ -19,6 +19,7 @@ class RefreshRequest(BaseModel):
 class AdminUpdate(BaseModel):
     full_name: str | None = None
     username: str | None = None
+    email: str | None = None
     avatar: str | None = None
     current_password: str | None = None
     new_password: str | None = None
