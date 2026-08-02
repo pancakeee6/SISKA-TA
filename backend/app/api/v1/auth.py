@@ -124,17 +124,29 @@ async def update_current_admin_info(
         raise HTTPException(status_code=404, detail="Admin tidak ditemukan")
 
     # Update basic info if provided
-    if request.full_name is not None:
-        admin.full_name = request.full_name
-    if request.username is not None:
+    update_data = request.model_dump(exclude_unset=True)
+    
+    if "full_name" in update_data:
+        admin.full_name = update_data["full_name"]
+        
+    if "username" in update_data:
         # Check if username is already taken
-        if request.username != admin.username:
-            check_username = await db.execute(select(Admin).where(Admin.username == request.username))
+        if update_data["username"] != admin.username:
+            check_username = await db.execute(select(Admin).where(Admin.username == update_data["username"]))
             if check_username.scalar_one_or_none():
                 raise HTTPException(status_code=400, detail="Username sudah digunakan")
-        admin.username = request.username
-    if request.avatar is not None:
-        admin.avatar = request.avatar
+        admin.username = update_data["username"]
+        
+    if "email" in update_data:
+        # Check if email is already taken
+        if update_data["email"] != admin.email:
+            check_email = await db.execute(select(Admin).where(Admin.email == update_data["email"]))
+            if check_email.scalar_one_or_none():
+                raise HTTPException(status_code=400, detail="Email sudah digunakan")
+        admin.email = update_data["email"]
+        
+    if "avatar" in update_data:
+        admin.avatar = update_data["avatar"]
 
     # Update password if provided
     if request.current_password and request.new_password:
