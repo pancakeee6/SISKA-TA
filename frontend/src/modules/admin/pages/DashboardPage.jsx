@@ -356,33 +356,7 @@ export default function DashboardPage() {
       sBg = '#e0e7ff'
     } else if (isCheckIn) {
       actionText = `Berhasil melakukan presensi masuk${act.shift_label ? ` (${act.shift_label})` : ''}`
-      if (isLate) {
-        let lateInfo = act.late_duration
-        if (!lateInfo) {
-          try {
-            const d = new Date(act.timestamp)
-            const hour = d.getHours()
-            const min = d.getMinutes()
-            let shiftHour = 8
-            if (hour >= 15) shiftHour = 15
-            const diffMins = Math.max(1, (hour - shiftHour) * 60 + min)
-            const hours = Math.floor(diffMins / 60)
-            const mins = diffMins % 60
-            if (hours > 0 && mins > 0) {
-              lateInfo = `${hours} jam ${mins} menit`
-            } else if (hours > 0) {
-              lateInfo = `${hours} jam`
-            } else {
-              lateInfo = `${mins} menit`
-            }
-          } catch {
-            lateInfo = ''
-          }
-        }
-        if (lateInfo) {
-          actionText = `Berhasil melakukan presensi masuk${act.shift_label ? ` (${act.shift_label})` : ''} (Terlambat ${lateInfo})`
-        }
-      }
+
       statusText = isLate ? 'Terlambat' : 'Hadir'
       sColor = isLate ? '#d97706' : '#059669'
       sBg = isLate ? '#fef3c7' : '#d1fae5'
@@ -484,8 +458,8 @@ export default function DashboardPage() {
         {/* 1. QUICK ACCESS (icon-only, 3 in a row) */}
         <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
           {[
-            { label: 'Export Laporan', icon: Download, color: '#4f46e5', bg: '#e0e7ff', path: '/admin/attendance' },
-            { label: 'Tambah Pengguna', icon: UserPlus, color: '#10b981', bg: '#d1fae5', path: '/admin/users' },
+            { label: 'Export Laporan', icon: Download, color: '#4f46e5', bg: '#e0e7ff', path: '/admin/attendance?action=export' },
+            { label: 'Tambah Pengguna', icon: UserPlus, color: '#10b981', bg: '#d1fae5', path: '/admin/users?action=add' },
             { label: 'Catat Perizinan', icon: Briefcase, color: '#6366f1', bg: '#e0e7ff', path: '/admin/attendance?action=dinas' },
           ].map((action, idx) => (
             <div
