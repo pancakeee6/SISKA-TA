@@ -134,18 +134,9 @@ export default function AttendanceHistoryPage() {
   const [loading, setLoading] = useState(true)
 
   // Filters
-  const getFirstDayOfMonth = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
-  }
-  const getLastDayOfMonth = () => {
-    const d = new Date();
-    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${lastDay}`;
-  }
-
-  const [dateFrom, setDateFrom] = useState(getFirstDayOfMonth())
-  const [dateTo, setDateTo] = useState(getLastDayOfMonth())
+  const currentDate = new Date()
+  const [filterMonth, setFilterMonth] = useState(String(currentDate.getMonth() + 1).padStart(2, '0'))
+  const [filterYear, setFilterYear] = useState(String(currentDate.getFullYear()))
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all') // all | present | late
   const [shiftFilter, setShiftFilter] = useState('all')
@@ -199,8 +190,11 @@ export default function AttendanceHistoryPage() {
         page,
         per_page: PER_PAGE,
       }
-      if (dateFrom) params.date_from = dateFrom
-      if (dateTo) params.date_to = dateTo
+      if (filterMonth && filterYear && filterMonth !== 'all' && filterYear !== 'all') {
+        const lastDay = new Date(filterYear, parseInt(filterMonth), 0).getDate();
+        params.date_from = `${filterYear}-${filterMonth}-01`;
+        params.date_to = `${filterYear}-${filterMonth}-${String(lastDay).padStart(2, '0')}`;
+      }
       if (statusFilter !== 'all') params.status = statusFilter
       if (shiftFilter !== 'all') params.shift = shiftFilter
       if (search) params.search = search
@@ -213,7 +207,7 @@ export default function AttendanceHistoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, dateFrom, dateTo, statusFilter, shiftFilter, search])
+  }, [page, filterMonth, filterYear, statusFilter, shiftFilter, search])
 
   useEffect(() => {
     // eslint-disable-next-line
@@ -221,6 +215,8 @@ export default function AttendanceHistoryPage() {
     fetchStats()
     if (window.location.search.includes('action=dinas')) {
       openDinasModal()
+    } else if (window.location.search.includes('action=export')) {
+      setShowExport(true)
     }
   }, [fetchLogs, fetchStats])
 
@@ -276,23 +272,23 @@ export default function AttendanceHistoryPage() {
   useEffect(() => {
     // eslint-disable-next-line
     setPage(1)
-  }, [dateFrom, dateTo, statusFilter, shiftFilter, search])
+  }, [filterMonth, filterYear, statusFilter, shiftFilter, search])
 
   // Count active filters
   useEffect(() => {
     let count = 0
-    if (dateFrom) count++
-    if (dateTo) count++
+    if (filterMonth || filterYear) count++
     if (statusFilter !== 'all') count++
     if (shiftFilter !== 'all') count++
     if (search) count++
     // eslint-disable-next-line
     setActiveFilters(count)
-  }, [dateFrom, dateTo, statusFilter, shiftFilter, search])
+  }, [filterMonth, filterYear, statusFilter, shiftFilter, search])
 
   const clearFilters = () => {
-    setDateFrom('')
-    setDateTo('')
+    const d = new Date()
+    setFilterMonth(String(d.getMonth() + 1).padStart(2, '0'))
+    setFilterYear(String(d.getFullYear()))
     setStatusFilter('all')
     setShiftFilter('all')
     setSearch('')
@@ -735,7 +731,7 @@ export default function AttendanceHistoryPage() {
         gap: '12px',
         flexWrap: 'wrap',
       }}>
-        {/* Date Range Picker */}
+        {/* Date Range Picker -> Month/Year Picker */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -746,35 +742,43 @@ export default function AttendanceHistoryPage() {
           border: '1px solid var(--color-border)',
           boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
         }}>
-          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Dari:</span>
-          <CustomDateInput
-            value={dateFrom}
-            max={today}
-            onChange={(e) => setDateFrom(e.target.value)}
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Periode:</span>
+          <select
+            value={filterMonth}
+            onChange={(e) => setFilterMonth(e.target.value)}
             style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--color-text)',
-              fontSize: '12px',
-              outline: 'none',
-              width: '110px',
+              background: 'transparent', border: 'none', color: 'var(--color-text)',
+              fontSize: '12px', outline: 'none', cursor: 'pointer'
             }}
-          />
-          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', marginLeft: '4px' }}>Sampai:</span>
-          <CustomDateInput
-            value={dateTo}
-            min={dateFrom}
-            max={today}
-            onChange={(e) => setDateTo(e.target.value)}
+          >
+            <option value="all">Semua Bulan</option>
+            <option value="01">Januari</option>
+            <option value="02">Februari</option>
+            <option value="03">Maret</option>
+            <option value="04">April</option>
+            <option value="05">Mei</option>
+            <option value="06">Juni</option>
+            <option value="07">Juli</option>
+            <option value="08">Agustus</option>
+            <option value="09">September</option>
+            <option value="10">Oktober</option>
+            <option value="11">November</option>
+            <option value="12">Desember</option>
+          </select>
+          <select
+            value={filterYear}
+            onChange={(e) => setFilterYear(e.target.value)}
             style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--color-text)',
-              fontSize: '12px',
-              outline: 'none',
-              width: '110px',
+              background: 'transparent', border: 'none', color: 'var(--color-text)',
+              fontSize: '12px', outline: 'none', cursor: 'pointer', marginLeft: '4px'
             }}
-          />
+          >
+            <option value="all">Semua Tahun</option>
+            {Array.from({ length: 5 }).map((_, i) => {
+              const year = new Date().getFullYear() - i;
+              return <option key={year} value={year}>{year}</option>
+            })}
+          </select>
         </div>
 
 
@@ -905,7 +909,7 @@ export default function AttendanceHistoryPage() {
       {activeFilters > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '-8px' }}>
           <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Filter Aktif:</span>
-          {(dateFrom || dateTo) && (
+          {((filterMonth !== String(new Date().getMonth() + 1).padStart(2, '0')) || (filterYear !== String(new Date().getFullYear()))) && (
             <span style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -918,11 +922,11 @@ export default function AttendanceHistoryPage() {
               color: '#2563eb',
               fontWeight: 500,
             }}>
-              {formatFilterDate(dateFrom) || '...'} - {formatFilterDate(dateTo) || '...'}
+              Periode {filterMonth} / {filterYear}
               <X
                 size={12}
                 style={{ cursor: 'pointer', opacity: 0.7 }}
-                onClick={() => { setDateFrom(''); setDateTo(''); }}
+                onClick={() => { const d = new Date(); setFilterMonth(String(d.getMonth() + 1).padStart(2, '0')); setFilterYear(String(d.getFullYear())); }}
               />
             </span>
           )}
