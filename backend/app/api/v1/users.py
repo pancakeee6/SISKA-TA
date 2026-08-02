@@ -170,6 +170,17 @@ async def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="User tidak ditemukan")
 
+    # Check duplicate employee_id if it's being updated
+    if data.employee_id and data.employee_id != user.employee_id:
+        existing = await db.execute(
+            select(User).where(User.employee_id == data.employee_id)
+        )
+        if existing.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Employee ID '{data.employee_id}' sudah terdaftar",
+            )
+
     # Update only provided fields
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
