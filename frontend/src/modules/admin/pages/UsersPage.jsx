@@ -69,6 +69,12 @@ export default function UsersPage() {
   useEffect(() => {
     // eslint-disable-next-line
     fetchUsers()
+    if (window.location.search.includes('action=add')) {
+      setForm(INITIAL_FORM)
+      setModalMode('create')
+      setEditingId(null)
+      setModalOpen(true)
+    }
   }, [fetchUsers])
 
   // Reset page when search changes
