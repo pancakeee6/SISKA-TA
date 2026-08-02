@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.db.database import get_db
 from app.api.deps import get_current_admin
@@ -32,6 +32,17 @@ async def upload_face(
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User tidak ditemukan")
+
+    # Check max 3 face photos per user
+    face_count_result = await db.execute(
+        select(func.count(FaceData.id)).where(FaceData.user_id == user_id)
+    )
+    face_count = face_count_result.scalar() or 0
+    if face_count >= 3:
+        raise HTTPException(
+            status_code=400,
+            detail="Maksimal 3 foto wajah per pengguna. Hapus foto lama terlebih dahulu."
+        )
 
     # Check user has ML person mapping
     if not user.ml_person_id:
