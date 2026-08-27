@@ -583,9 +583,14 @@ export default function DashboardPage() {
                   <div style={{
                     width: '30px', height: '30px', borderRadius: '8px', background: act.avatarBg,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: act.avatarColor, fontSize: '13px', fontWeight: 700, flexShrink: 0
+                    color: act.avatarColor, fontSize: '13px', fontWeight: 700, flexShrink: 0,
+                    overflow: 'hidden'
                   }}>
-                    {act.user_name?.[0]?.toUpperCase() || '?'}
+                    {act.avatar ? (
+                      <img src={`http://localhost:8000${act.avatar}`} alt={act.user_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      act.user_name?.[0]?.toUpperCase() || '?'
+                    )}
                   </div>
                   <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0, gap: '6px' }}>
                     <div style={{ minWidth: 0 }}>

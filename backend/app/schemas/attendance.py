@@ -44,6 +44,7 @@ class AttendanceLogResponse(BaseModel):
     late_duration: Optional[str] = None
     late_minutes: Optional[int] = None
     attachment_path: Optional[str] = None
+    avatar: Optional[str] = None
 
     class Config:
         from_attributes = True

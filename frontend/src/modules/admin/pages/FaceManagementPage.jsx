@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   ScanFace, Search, Trash2, Loader2, AlertCircle, User,
-  Plus, Check, Camera, X, FlipHorizontal
+  Plus, Check, Camera, X, FlipHorizontal, Star
 } from 'lucide-react'
 import Webcam from 'react-webcam'
 import userApi from '../services/userApi'
@@ -399,26 +399,28 @@ export default function FaceManagementPage() {
                     }}
                   >
                     <div style={{ position: 'relative', width: '36px', height: '36px', flexShrink: 0 }}>
-                      <img
-                        src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user.full_name)}`}
-                        alt={user.full_name}
-                        style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '50%',
-                          objectFit: 'cover',
-                          background: 'var(--color-border)',
-                        }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          if (e.currentTarget.nextSibling) {
-                            e.currentTarget.nextSibling.style.display = 'flex';
-                          }
-                        }}
-                      />
+                      {user.avatar ? (
+                        <img
+                          src={`http://localhost:8000${user.avatar}`}
+                          alt={user.full_name}
+                          style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            background: 'var(--color-border)',
+                          }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            if (e.currentTarget.nextSibling) {
+                              e.currentTarget.nextSibling.style.display = 'flex';
+                            }
+                          }}
+                        />
+                      ) : null}
                       <div
                         style={{
-                          display: 'none',
+                          display: user.avatar ? 'none' : 'flex',
                           width: '36px',
                           height: '36px',
                           borderRadius: '50%',
@@ -664,33 +666,38 @@ export default function FaceManagementPage() {
                           <ScanFace size={32} />
                         </div>
 
-                        {/* Delete Button overlay */}
-                        <button
-                          onClick={() => setDeleteTarget(face)}
-                          title="Hapus foto"
-                          style={{
-                            position: 'absolute',
-                            bottom: '8px',
-                            right: '8px',
-                            width: '28px',
-                            height: '28px',
-                            borderRadius: '50%',
-                            background: '#ef4444',
-                            border: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#ffffff',
-                            cursor: 'pointer',
-                            boxShadow: '0 2px 6px rgba(239, 68, 68, 0.4)',
-                            transition: 'all 0.2s',
-                            zIndex: 10,
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = '#dc2626'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = '#ef4444'}
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                        {/* Actions overlay */}
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '8px',
+                          right: '8px',
+                          display: 'flex',
+                          gap: '8px',
+                          zIndex: 10,
+                        }}>
+                          <button
+                            onClick={() => setDeleteTarget(face)}
+                            title="Hapus foto"
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '50%',
+                              background: '#ef4444',
+                              border: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#ffffff',
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 6px rgba(239, 68, 68, 0.4)',
+                              transition: 'all 0.2s',
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = '#dc2626'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = '#ef4444'}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

@@ -305,29 +305,21 @@ async def get_recent_activities(
 ):
     """Get unified recent activities fast via lightweight joins without heavy ORM object hydration."""
     att_query = (
-        select(
-            AttendanceLog.id,
-            AttendanceLog.event_type,
-            AttendanceLog.status,
-            AttendanceLog.device_id,
-            AttendanceLog.timestamp,
-            AttendanceLog.created_at,
-            AttendanceLog.late,
-            User.full_name.label("user_name")
-        )
-        .outerjoin(User, AttendanceLog.user_id == User.id)
+        select(AttendanceLog)
+        .options(selectinload(AttendanceLog.user).selectinload(User.face_data))
         .order_by(AttendanceLog.created_at.desc())
         .limit(limit)
     )
     att_result = await db.execute(att_query)
-    attendance_rows = att_result.all()
+    attendance_rows = att_result.scalars().all()
     
     act_query = (
         select(
             ActivityLog.id,
             ActivityLog.action,
             ActivityLog.created_at,
-            Admin.full_name.label("admin_name")
+            Admin.full_name.label("admin_name"),
+            Admin.avatar.label("admin_avatar")
         )
         .outerjoin(Admin, ActivityLog.admin_id == Admin.id)
         .order_by(ActivityLog.created_at.desc())
@@ -337,16 +329,17 @@ async def get_recent_activities(
     activity_rows = act_result.all()
     
     unified = []
-    for row in attendance_rows:
+    for log in attendance_rows:
         unified.append({
-            "id": f"att-{row.id}",
-            "user_name": row.user_name or "Unknown",
-            "event_type": row.event_type,
-            "status": row.status,
-            "device_id": row.device_id,
-            "timestamp": row.timestamp.isoformat() if row.timestamp else None,
-            "created_at": row.created_at.isoformat() if row.created_at else None,
-            "late": row.late,
+            "id": f"att-{log.id}",
+            "user_name": log.user.full_name if log.user else "Unknown",
+            "avatar": log.user.avatar if log.user else None,
+            "event_type": log.event_type,
+            "status": log.status,
+            "device_id": log.device_id,
+            "timestamp": log.timestamp.isoformat() if log.timestamp else None,
+            "created_at": log.created_at.isoformat() if log.created_at else None,
+            "late": log.late,
             "category": "ATTENDANCE"
         })
         
@@ -354,6 +347,7 @@ async def get_recent_activities(
         unified.append({
             "id": f"act-{row.id}",
             "user_name": row.admin_name or "Administrator",
+            "avatar": row.admin_avatar,
             "event_type": row.action,
             "timestamp": row.created_at.isoformat() if row.created_at else None,
             "created_at": row.created_at.isoformat() if row.created_at else None,

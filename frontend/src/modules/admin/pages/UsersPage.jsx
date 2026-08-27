@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Users, Plus, Search, Edit2, Trash2, X,
   ChevronLeft, ChevronRight, Loader2,
-  ScanFace, ChevronDown
+  ScanFace, Camera, Upload
 } from 'lucide-react'
 import userApi from '../services/userApi'
+import faceApi from '../services/faceApi'
 import toast from 'react-hot-toast'
 
 const INITIAL_FORM = {
@@ -23,7 +24,8 @@ export default function UsersPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('aktif') // all | aktif | nonaktif
+  const [statusFilter] = useState('aktif') // all | aktif | nonaktif
+  const [sortBy, setSortBy] = useState('newest') // newest | name | department
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
     total: 0,
@@ -39,6 +41,11 @@ export default function UsersPage() {
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
 
+  // Photo upload states
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [photoPreview, setPhotoPreview] = useState(null)
+  const fileInputRef = useRef(null)
+
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
@@ -52,19 +59,21 @@ export default function UsersPage() {
       const res = await userApi.list({
         page,
         limit,
-        search: search || undefined
+        search,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        sort_by: sortBy,
       })
-      setUsers(res.data.items || res.data)
-      setTotal(res.data.total || (res.data.items || res.data).length)
+      setUsers(res.data.items || res.data.users || (Array.isArray(res.data) ? res.data : []))
+      setTotal(res.data.total || 0)
       if (res.data.stats) {
         setStats(res.data.stats)
       }
     } catch {
-      toast.error('Gagal memuat data user')
+      toast.error('Gagal memuat daftar pengguna')
     } finally {
       setLoading(false)
     }
-  }, [page, search])
+  }, [page, limit, search, statusFilter, sortBy])
 
   useEffect(() => {
     // eslint-disable-next-line
@@ -88,6 +97,8 @@ export default function UsersPage() {
     setForm(INITIAL_FORM)
     setModalMode('create')
     setEditingId(null)
+    setSelectedFile(null)
+    setPhotoPreview(null)
     setModalOpen(true)
   }
 
@@ -100,20 +111,56 @@ export default function UsersPage() {
     })
     setEditingId(user.id)
     setModalMode('edit')
+    setSelectedFile(null)
+    setPhotoPreview(user.avatar ? `http://localhost:8000${user.avatar}` : null)
     setModalOpen(true)
+  }
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Ukuran file maksimal 5MB')
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Hanya file gambar yang diperbolehkan')
+      return
+    }
+
+    setSelectedFile(file)
+    const reader = new FileReader()
+    reader.onload = (e) => setPhotoPreview(e.target.result)
+    reader.readAsDataURL(file)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving(true)
     try {
+      let savedUser;
       if (modalMode === 'create') {
-        await userApi.create(form)
+        const res = await userApi.create(form)
+        savedUser = res.data
         toast.success('User berhasil ditambahkan')
       } else {
-        await userApi.update(editingId, form)
+        const res = await userApi.update(editingId, form)
+        savedUser = res.data || { id: editingId }
         toast.success('User berhasil diupdate')
       }
+      
+      // If there is a selected file, upload it
+      if (selectedFile && savedUser?.id) {
+        try {
+          await userApi.uploadAvatar(savedUser.id, selectedFile)
+          toast.success('Foto profil berhasil diunggah')
+        } catch (err) {
+          toast.error('Gagal mengunggah foto profil')
+        }
+      }
+      
       setModalOpen(false)
       fetchUsers()
     } catch (err) {
@@ -312,7 +359,7 @@ export default function UsersPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari nama, email, atau NIP..."
+                placeholder="Cari nama, email, atau NIY..."
                 style={{
                   width: '100%',
                   padding: '10px 14px 10px 40px',
@@ -326,6 +373,28 @@ export default function UsersPage() {
               />
             </div>
 
+            {/* Sort Dropdown */}
+            <div style={{ position: 'relative' }}>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  background: 'var(--color-bg-base)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text)',
+                  fontSize: '13px',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="newest">Baru Ditambahkan</option>
+                <option value="name">Berdasarkan Nama</option>
+                <option value="department">Berdasarkan Jabatan</option>
+              </select>
+            </div>
+
           </div>
 
           {!loading && (
@@ -337,13 +406,13 @@ export default function UsersPage() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full" style={{ borderCollapse: 'collapse', textAlign: 'left' }}>
+          <table className="w-full" style={{ borderCollapse: 'collapse', textAlign: 'center' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-base)' }}>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Pengguna</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>NIP/NIDN</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Jabatan</th>
-                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none' }}>Data Wajah</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none', textAlign: 'center' }}>Pengguna</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none', textAlign: 'center' }}>NIY</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none', textAlign: 'center' }}>Jabatan</th>
+                <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none', textAlign: 'center' }}>Data Wajah</th>
                 <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'none', textAlign: 'center' }}>Aksi</th>
               </tr>
             </thead>
@@ -405,26 +474,28 @@ export default function UsersPage() {
                     <td style={{ padding: '16px 20px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{ position: 'relative', width: '36px', height: '36px', flexShrink: 0 }}>
-                          <img
-                            src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(user.full_name)}`}
-                            alt={user.full_name}
-                            style={{
-                              width: '36px',
-                              height: '36px',
-                              borderRadius: '50%',
-                              objectFit: 'cover',
-                              background: '#f1f5f9',
-                            }}
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                              if (e.currentTarget.nextSibling) {
-                                e.currentTarget.nextSibling.style.display = 'flex';
-                              }
-                            }}
-                          />
+                          {user.avatar ? (
+                            <img
+                              src={`http://localhost:8000${user.avatar}`}
+                              alt={user.full_name}
+                              style={{
+                                width: '36px',
+                                height: '36px',
+                                borderRadius: '50%',
+                                objectFit: 'cover',
+                                background: '#f1f5f9',
+                              }}
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                if (e.currentTarget.nextSibling) {
+                                  e.currentTarget.nextSibling.style.display = 'flex';
+                                }
+                              }}
+                            />
+                          ) : null}
                           <div
                             style={{
-                              display: 'none',
+                              display: user.avatar ? 'none' : 'flex',
                               width: '36px',
                               height: '36px',
                               borderRadius: '50%',
@@ -445,22 +516,22 @@ export default function UsersPage() {
                       </div>
                     </td>
 
-                    {/* NIP */}
-                    <td style={{ padding: '16px 20px' }}>
+                    {/* NIY */}
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                       <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)', fontFamily: 'monospace', fontWeight: 500 }}>
                         {user.employee_id}
                       </span>
                     </td>
 
                     {/* Jabatan */}
-                    <td style={{ padding: '16px 20px' }}>
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                       <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                         {user.department || '—'}
                       </span>
                     </td>
 
                     {/* Wajah */}
-                    <td style={{ padding: '16px 20px' }}>
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                       <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
                         {user.face_count || 0} foto
                       </span>
@@ -717,6 +788,63 @@ export default function UsersPage() {
             </div>
 
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Photo Upload Area */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '8px' }}>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  style={{ display: 'none' }}
+                />
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    width: '80px',
+                    height: '80px',
+                    borderRadius: '50%',
+                    background: 'var(--color-bg-base)',
+                    border: '2px dashed var(--color-border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--color-primary)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--color-border)'
+                  }}
+                >
+                  {photoPreview ? (
+                    <>
+                      <img src={photoPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <div style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        background: 'rgba(0,0,0,0.5)',
+                        padding: '4px',
+                        display: 'flex',
+                        justifyContent: 'center',
+                      }}>
+                        <Camera size={14} color="white" />
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#94a3b8' }}>
+                      <Upload size={20} style={{ marginBottom: '4px' }} />
+                      <span style={{ fontSize: '10px', fontWeight: 600 }}>Foto Profil</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '6px' }}>
                   Nama Lengkap
@@ -746,7 +874,7 @@ export default function UsersPage() {
 
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '6px' }}>
-                  NIP/NIDN
+                  NIY
                 </label>
                 <input
                   type="text"
@@ -766,7 +894,7 @@ export default function UsersPage() {
                   }}
                   onFocus={(e) => { e.target.style.borderColor = '#38bdf8'; e.target.style.boxShadow = '0 0 0 3px rgba(56, 189, 248, 0.15)' }}
                   onBlur={(e) => { e.target.style.borderColor = 'var(--color-border)'; e.target.style.boxShadow = 'none' }}
-                  placeholder="Contoh: NIP001"
+                  placeholder="Contoh: NIY001"
                   required
                 />
               </div>

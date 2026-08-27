@@ -28,6 +28,12 @@ const faceApi = {
    * @param {string} faceId
    */
   delete: (faceId) => api.delete(`/api/v1/faces/${faceId}`),
+
+  /**
+   * Set a specific face as the user's profile picture.
+   * @param {string} faceId
+   */
+  setProfile: (faceId) => api.put(`/api/v1/faces/${faceId}/set-profile`),
 }
 
 export default faceApi

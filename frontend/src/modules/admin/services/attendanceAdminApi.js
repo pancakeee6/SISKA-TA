@@ -7,11 +7,19 @@ const attendanceAdminApi = {
    */
   getLogs: (params = {}) => api.get('/api/v1/attendance/logs', { params }),
 
-  /**
-   * Export attendance data.
-   * @param {{ date_from?: string, date_to?: string }} params
-   */
   export: (params = {}) => api.get('/api/v1/attendance/export', { params, responseType: 'blob' }),
+
+  /**
+   * Get attendance report recap (JSON)
+   * @param {{ date_from?: string, date_to?: string, user_id?: string }} params
+   */
+  getReportData: (params = {}) => api.get('/api/v1/attendance/report', { params }),
+
+  /**
+   * Export attendance data as Word (DOCX).
+   * @param {{ date_from?: string, date_to?: string, user_id?: string }} params
+   */
+  exportWord: (params = {}) => api.get('/api/v1/attendance/report/word', { params, responseType: 'blob' }),
 
   /**
    * Record out-of-town official duty or permit (Perizinan).

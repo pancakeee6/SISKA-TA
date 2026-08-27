@@ -1,6 +1,8 @@
 import logging
+import os
+import uuid as uuid_lib
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, case
 from sqlalchemy.orm import selectinload
@@ -12,6 +14,7 @@ from app.models.face import FaceData
 from app.models.activity_log import ActivityLog
 from app.schemas.user import UserCreate, UserUpdate, UserResponse, UserListResponse
 from app.services import ai_service
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +28,7 @@ async def list_users(
     limit: int = Query(None, ge=1, le=100),
     search: str = Query(None),
     status: str = Query(None),
+    sort_by: str = Query("newest"),
     db: AsyncSession = Depends(get_db),
     _admin=Depends(get_current_admin),
 ):
@@ -54,8 +58,24 @@ async def list_users(
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
 
+    # Sorting
+    if sort_by == "name":
+        query = query.order_by(User.full_name.asc())
+    elif sort_by == "department":
+        dept_order = case(
+            (User.department.ilike('%Wadir%') | User.department.ilike('%Wakil Direktur%'), 2),
+            (User.department.ilike('%Direktur%'), 1),
+            (User.department.ilike('%Kaprodi%') | User.department.ilike('%Ketua Program%'), 3),
+            (User.department.ilike('%Dosen%'), 4),
+            (User.department.ilike('%Staf%') | User.department.ilike('%Staff%'), 5),
+            else_=6
+        )
+        query = query.order_by(dept_order, User.department.asc(), User.full_name.asc())
+    else:
+        query = query.order_by(User.created_at.desc())
+
     # Paginate
-    query = query.offset((page - 1) * actual_limit).limit(actual_limit).order_by(User.created_at.desc())
+    query = query.offset((page - 1) * actual_limit).limit(actual_limit)
     result = await db.execute(query)
     users = result.scalars().all()
 
@@ -246,3 +266,57 @@ async def delete_user(
     await db.commit()
 
     return {"message": f"User '{user.full_name}' berhasil dihapus"}
+
+
+@router.post("/{user_id}/avatar")
+async def upload_avatar(
+    user_id: UUID,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    _admin=Depends(get_current_admin),
+):
+    """Upload a simple profile picture for a user without face embedding."""
+    user_result = await db.execute(select(User).where(User.id == user_id))
+    user = user_result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+
+    ext = os.path.splitext(file.filename)[1]
+    if not ext:
+        ext = ".jpg"
+
+    filename = f"{uuid_lib.uuid4().hex}{ext}"
+    upload_dir = os.path.join(settings.UPLOAD_DIR)
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, filename)
+
+    contents = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    rel_path = f"uploads/{filename}"
+    user.avatar_path = rel_path
+    
+    # Log Activity
+    try:
+        activity = ActivityLog(
+            admin_id=_admin["id"],
+            action="UPDATE",
+            target_type="user",
+            target_id=user.id,
+            details={"employee_id": user.employee_id, "name": user.full_name, "action": "Upload Avatar"}
+        )
+        db.add(activity)
+    except Exception as e:
+        logger.warning(f"Failed to log avatar activity: {e}")
+
+    await db.commit()
+    await db.refresh(user)
+
+    return {
+        "message": "Avatar berhasil diunggah",
+        "avatar_path": rel_path
+    }

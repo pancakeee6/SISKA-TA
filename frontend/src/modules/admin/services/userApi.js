@@ -31,6 +31,17 @@ const userApi = {
    * @param {string} id
    */
   delete: (id) => api.delete(`/api/v1/users/${id}`),
+
+  /**
+   * Upload user avatar.
+   * @param {string} id
+   * @param {File} file
+   */
+  uploadAvatar: (id, file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post(`/api/v1/users/${id}/avatar`, formData)
+  },
 }
 
 export default userApi

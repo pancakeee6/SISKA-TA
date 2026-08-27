@@ -2,10 +2,11 @@ import logging
 import os
 import uuid as uuid_lib
 from uuid import UUID
+import httpx
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 
 from app.db.database import get_db
 from app.api.deps import get_current_admin
@@ -28,12 +29,12 @@ async def upload_face(
 ):
     """Upload face image, enroll via ML API, store record in SISKA DB."""
     # Validate user exists
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
+    user_result = await db.execute(select(User).where(User.id == user_id))
+    user = user_result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail="User tidak ditemukan")
+        raise HTTPException(status_code=404, detail="Pengguna tidak ditemukan")
 
-    # Check max 3 face photos per user
+    # Max 3 faces per user
     face_count_result = await db.execute(
         select(func.count(FaceData.id)).where(FaceData.user_id == user_id)
     )
@@ -78,6 +79,24 @@ async def upload_face(
     # Enroll face via ML API (embedding managed by ML)
     try:
         await ai_service.enroll_face(user.ml_person_id, file)
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            # Person ID might have been deleted or invalid in ML API; re-create and retry
+            logger.warning(f"Person id {user.ml_person_id} not found in ML API, recreating person for '{user.full_name}'...")
+            try:
+                ml_person_id = await ai_service.create_person(user.full_name)
+                user.ml_person_id = ml_person_id
+                await db.commit()
+                await file.seek(0)
+                await ai_service.enroll_face(user.ml_person_id, file)
+            except Exception as retry_err:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                raise HTTPException(status_code=502, detail=f"ML API enrollment retry error: {str(retry_err)}")
+        else:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            raise HTTPException(status_code=502, detail=f"ML API enrollment error: {str(e)}")
     except Exception as e:
         # Clean up saved file on error
         if os.path.exists(filepath):
@@ -146,3 +165,29 @@ async def delete_face(
     await db.commit()
 
     return {"message": "Data wajah berhasil dihapus"}
+
+@router.put("/{face_id}/set-profile")
+async def set_profile_face(
+    face_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _admin=Depends(get_current_admin),
+):
+    """Set a specific face as the user's profile picture."""
+    result = await db.execute(select(FaceData).where(FaceData.id == face_id))
+    face = result.scalar_one_or_none()
+
+    if not face:
+        raise HTTPException(status_code=404, detail="Data wajah tidak ditemukan")
+
+    # Set all other faces for this user to False
+    await db.execute(
+        update(FaceData)
+        .where(FaceData.user_id == face.user_id)
+        .values(is_profile=False)
+    )
+
+    # Set this face to True
+    face.is_profile = True
+    await db.commit()
+
+    return {"message": "Foto profil berhasil diatur"}

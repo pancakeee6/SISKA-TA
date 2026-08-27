@@ -33,6 +33,7 @@ class UserResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     face_count: int = 0
+    avatar: Optional[str] = None
 
     class Config:
         from_attributes = True

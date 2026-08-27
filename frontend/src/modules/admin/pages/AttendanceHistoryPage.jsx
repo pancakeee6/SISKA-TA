@@ -12,6 +12,7 @@ import api from '@shared/services/api'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import { id as localeID } from 'date-fns/locale'
+import AttendanceReportPrint from '../components/AttendanceReportPrint'
 
 const CustomDateInput = ({ value, onChange, min, max, id, style }) => {
   const padLeft = style?.padding?.split(' ')[1] || '14px'
@@ -170,7 +171,19 @@ export default function AttendanceHistoryPage() {
   const [showExport, setShowExport] = useState(false)
   const [exportFrom, setExportFrom] = useState('')
   const [exportTo, setExportTo] = useState('')
+  const [exportTarget, setExportTarget] = useState('all') // all | single
+  const [exportUserId, setExportUserId] = useState('')
+  const [exportFormat, setExportFormat] = useState('pdf') // pdf | word | excel
   const [exporting, setExporting] = useState(false)
+  const [isPrinting, setIsPrinting] = useState(false)
+  const [printData, setPrintData] = useState(null)
+
+  // Recap Tab states
+  const [activeTab, setActiveTab] = useState('logs') // 'logs' | 'recap'
+  const [recapMode, setRecapMode] = useState('all') // 'all' | 'single'
+  const [recapUserId, setRecapUserId] = useState('')
+  const [recapData, setRecapData] = useState(null)
+  const [loadingRecap, setLoadingRecap] = useState(false)
 
   // Fetch stats (global today)
   const fetchStats = useCallback(async () => {
@@ -181,6 +194,34 @@ export default function AttendanceHistoryPage() {
       // Silent catch
     }
   }, [])
+
+  // Fetch recap
+  const fetchRecap = useCallback(async () => {
+    setLoadingRecap(true)
+    try {
+      const params = {}
+      if (recapMode === 'single' && recapUserId) {
+        params.user_id = recapUserId
+      }
+      if (filterMonth && filterYear && filterMonth !== 'all' && filterYear !== 'all') {
+        const lastDay = new Date(filterYear, parseInt(filterMonth), 0).getDate();
+        params.date_from = `${filterYear}-${filterMonth}-01`;
+        params.date_to = `${filterYear}-${filterMonth}-${String(lastDay).padStart(2, '0')}`;
+      }
+      const res = await attendanceAdminApi.getReportData(params)
+      setRecapData(res.data)
+    } catch {
+      toast.error('Gagal memuat data rekapitulasi')
+    } finally {
+      setLoadingRecap(false)
+    }
+  }, [recapMode, recapUserId, filterMonth, filterYear])
+
+  useEffect(() => {
+    if (activeTab === 'recap') {
+      fetchRecap()
+    }
+  }, [activeTab, fetchRecap])
 
   // Fetch logs
   const fetchLogs = useCallback(async () => {
@@ -208,6 +249,19 @@ export default function AttendanceHistoryPage() {
       setLoading(false)
     }
   }, [page, filterMonth, filterYear, statusFilter, shiftFilter, search])
+
+  useEffect(() => {
+    async function initUserList() {
+      try {
+        const res = await userApi.list({ status: 'aktif', limit: 100 })
+        const list = res.data?.items || res.data?.users || (Array.isArray(res.data) ? res.data : [])
+        setUserList(list)
+      } catch (err) {
+        console.error('Failed to init user list', err)
+      }
+    }
+    initUserList()
+  }, [])
 
   useEffect(() => {
     // eslint-disable-next-line
@@ -294,34 +348,47 @@ export default function AttendanceHistoryPage() {
     setSearch('')
   }
 
-  // Export Excel handler
+  // Export handler (PDF / Word)
   const handleExport = async () => {
+    if (exportTarget === 'single' && !exportUserId) {
+      toast.error('Pilih pegawai terlebih dahulu')
+      return
+    }
+
     setExporting(true)
     try {
       const params = {}
       if (exportFrom) params.date_from = exportFrom
       if (exportTo) params.date_to = exportTo
-
-      const res = await attendanceAdminApi.export(params)
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
-      const link = document.createElement('a')
-      link.href = url
-      let filename = 'Laporan_Kehadiran_SISKA.xlsx'
-      const disposition = res.headers['content-disposition']
-      if (disposition && disposition.includes('filename=')) {
-        filename = disposition.split('filename=')[1].replace(/"/g, '')
+      if (exportTarget === 'single' && exportUserId) {
+        params.user_id = exportUserId
       }
-      link.setAttribute('download', filename)
-      document.body.appendChild(link)
-      link.click()
-      
-      setTimeout(() => {
-        link.remove()
-        window.URL.revokeObjectURL(url)
-      }, 200)
 
-      toast.success('Laporan Kehadiran berhasil diunduh')
-      setShowExport(false)
+      if (exportFormat === 'pdf') {
+        const res = await attendanceAdminApi.getReportData(params)
+        setPrintData(res.data)
+        setIsPrinting(true)
+        setShowExport(false)
+      } else if (exportFormat === 'word') {
+        const res = await attendanceAdminApi.exportWord(params)
+        const url = window.URL.createObjectURL(new Blob([res.data]))
+        const link = document.createElement('a')
+        link.href = url
+        let filename = 'Laporan_Rekapitulasi_Kehadiran.docx'
+        const disposition = res.headers['content-disposition']
+        if (disposition && disposition.includes('filename=')) {
+          filename = disposition.split('filename=')[1].replace(/"/g, '')
+        }
+        link.setAttribute('download', filename)
+        document.body.appendChild(link)
+        link.click()
+        setTimeout(() => {
+          link.remove()
+          window.URL.revokeObjectURL(url)
+        }, 200)
+        toast.success('Laporan Kehadiran (Word) berhasil diunduh')
+        setShowExport(false)
+      }
     } catch (err) {
       console.error('Export Error:', err)
       toast.error(err.response?.data?.detail || err.message || 'Gagal mengunduh laporan')
@@ -565,6 +632,40 @@ export default function AttendanceHistoryPage() {
           </div>
         </div>
       </div>
+
+      {/* TAB NAVIGATION */}
+      <div style={{
+        display: 'flex', gap: '8px', marginBottom: '24px',
+        borderBottom: '1px solid var(--color-border)', paddingBottom: '16px'
+      }}>
+        <button
+          onClick={() => setActiveTab('logs')}
+          style={{
+            padding: '10px 20px', borderRadius: '8px', fontWeight: 600, fontSize: '14px',
+            cursor: 'pointer', border: 'none', transition: 'all 0.2s',
+            background: activeTab === 'logs' ? '#2563eb' : 'transparent',
+            color: activeTab === 'logs' ? '#fff' : 'var(--color-text-secondary)',
+            boxShadow: activeTab === 'logs' ? '0 4px 12px rgba(37, 99, 235, 0.2)' : 'none'
+          }}
+        >
+          Log Harian
+        </button>
+        <button
+          onClick={() => setActiveTab('recap')}
+          style={{
+            padding: '10px 20px', borderRadius: '8px', fontWeight: 600, fontSize: '14px',
+            cursor: 'pointer', border: 'none', transition: 'all 0.2s',
+            background: activeTab === 'recap' ? '#2563eb' : 'transparent',
+            color: activeTab === 'recap' ? '#fff' : 'var(--color-text-secondary)',
+            boxShadow: activeTab === 'recap' ? '0 4px 12px rgba(37, 99, 235, 0.2)' : 'none'
+          }}
+        >
+          Dasbor Rekapitulasi
+        </button>
+      </div>
+
+      {/* LOGS TAB */}
+      <div style={{ display: activeTab === 'logs' ? 'flex' : 'none', flexDirection: 'column', gap: '20px' }}>
 
       {/* Summary Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '16px' }}>
@@ -1047,7 +1148,7 @@ export default function AttendanceHistoryPage() {
                             height: '32px',
                             borderRadius: '50%',
                             background: avatarColors.bg,
-                            border: `1.5px solid ${avatarColors.border}`,
+                            border: log.avatar ? 'none' : `1.5px solid ${avatarColors.border}`,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -1055,8 +1156,13 @@ export default function AttendanceHistoryPage() {
                             fontWeight: 700,
                             color: avatarColors.text,
                             flexShrink: 0,
+                            overflow: 'hidden',
                           }}>
-                            {log.user_name?.[0]?.toUpperCase() || '?'}
+                            {log.avatar ? (
+                              <img src={`http://localhost:8000${log.avatar}`} alt={log.user_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              log.user_name?.[0]?.toUpperCase() || '?'
+                            )}
                           </div>
                           <span style={{ fontSize: '13px', color: 'var(--color-text)', fontWeight: 600 }}>
                             {log.user_name || 'Unknown'}
@@ -1335,6 +1441,213 @@ export default function AttendanceHistoryPage() {
           </div>
         )}
       </div>
+      </div>
+      {/* END LOGS TAB */}
+
+      {/* RECAP TAB */}
+      {activeTab === 'recap' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          {/* Controls */}
+          <div style={{
+            background: 'var(--color-bg-base)', borderRadius: '16px', padding: '20px',
+            border: '1px solid var(--color-border)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+            display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end'
+          }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Tipe Rekap</label>
+              <select 
+                value={recapMode} onChange={(e) => setRecapMode(e.target.value)}
+                style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg-surface)', color: 'var(--color-text)', outline: 'none', fontSize: '14px', minWidth: '180px' }}
+              >
+                <option value="all">Seluruh Pegawai</option>
+                <option value="single">Satu Pegawai</option>
+              </select>
+            </div>
+
+            {recapMode === 'single' && (
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Pilih Pegawai</label>
+                <select 
+                  value={recapUserId} onChange={(e) => setRecapUserId(e.target.value)}
+                  style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg-surface)', color: 'var(--color-text)', outline: 'none', fontSize: '14px', minWidth: '220px' }}
+                >
+                  <option value="">-- Pilih Pegawai --</option>
+                  {userList.map(u => (
+                    <option key={u.id} value={u.id}>{u.full_name} ({u.employee_id})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Periode</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <select 
+                  value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}
+                  style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg-surface)', color: 'var(--color-text)', outline: 'none', fontSize: '14px' }}
+                >
+                  <option value="all">Semua Bulan</option>
+                  <option value="01">Januari</option>
+                  <option value="02">Februari</option>
+                  <option value="03">Maret</option>
+                  <option value="04">April</option>
+                  <option value="05">Mei</option>
+                  <option value="06">Juni</option>
+                  <option value="07">Juli</option>
+                  <option value="08">Agustus</option>
+                  <option value="09">September</option>
+                  <option value="10">Oktober</option>
+                  <option value="11">November</option>
+                  <option value="12">Desember</option>
+                </select>
+                <select 
+                  value={filterYear} onChange={(e) => setFilterYear(e.target.value)}
+                  style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg-surface)', color: 'var(--color-text)', outline: 'none', fontSize: '14px' }}
+                >
+                  <option value="all">Semua Tahun</option>
+                  {Array.from({ length: 5 }).map((_, i) => {
+                    const year = new Date().getFullYear() - i;
+                    return <option key={year} value={year}>{year}</option>
+                  })}
+                </select>
+              </div>
+            </div>
+            
+            <button 
+              onClick={fetchRecap}
+              disabled={loadingRecap}
+              style={{ padding: '10px 20px', borderRadius: '8px', background: loadingRecap ? '#94a3b8' : '#2563eb', color: '#fff', border: 'none', fontWeight: 600, cursor: loadingRecap ? 'not-allowed' : 'pointer', height: '40px', transition: 'all 0.2s' }}
+            >
+              {loadingRecap ? 'Memuat...' : 'Terapkan'}
+            </button>
+          </div>
+
+          {/* Results */}
+          {loadingRecap ? (
+            <div style={{ textAlign: 'center', padding: '60px' }}>
+              <Loader2 size={32} style={{ margin: '0 auto', animation: 'spin 1s linear infinite', color: 'var(--color-primary)' }} />
+              <p style={{ marginTop: '16px', color: 'var(--color-text-secondary)', fontSize: '14px' }}>Memuat rekapitulasi...</p>
+            </div>
+          ) : !recapData ? (
+             <div style={{ textAlign: 'center', padding: '60px', background: 'var(--color-bg-base)', borderRadius: '16px', border: '1px solid var(--color-border)' }}>
+               <ClipboardList size={48} style={{ color: '#cbd5e1', margin: '0 auto 16px' }} />
+               <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>Klik Terapkan untuk memuat data rekapitulasi</p>
+             </div>
+          ) : recapMode === 'single' && (!recapUserId || recapData.recap.length === 0) ? (
+             <div style={{ textAlign: 'center', padding: '60px', background: 'var(--color-bg-base)', borderRadius: '16px', border: '1px solid var(--color-border)' }}>
+               <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>Silakan pilih pegawai terlebih dahulu atau data tidak ditemukan.</p>
+             </div>
+          ) : recapMode === 'all' ? (
+            <div style={{ background: 'var(--color-bg-base)', borderRadius: '16px', border: '1px solid var(--color-border)', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid var(--color-border)' }}>
+                <h3 style={{ margin: 0, fontSize: '16px' }}>Rekapitulasi Kehadiran: {recapData.period}</h3>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead style={{ background: 'var(--color-bg-surface)' }}>
+                    <tr>
+                      <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>No</th>
+                      <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Nama Pegawai</th>
+                      <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>NIY</th>
+                      <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', textAlign: 'center', fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Hadir</th>
+                      <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', textAlign: 'center', fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Terlambat</th>
+                      <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', textAlign: 'center', fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Izin/Dinas</th>
+                      <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', textAlign: 'center', fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Alpha</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recapData.recap.map((item, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '14px 20px', fontSize: '14px' }}>{idx + 1}</td>
+                        <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: 500 }}>{item.user_name}</td>
+                        <td style={{ padding: '14px 20px', fontSize: '13px', fontFamily: 'monospace', color: 'var(--color-text-secondary)' }}>{item.employee_id}</td>
+                        <td style={{ padding: '14px 20px', fontSize: '15px', textAlign: 'center', color: '#059669', fontWeight: 600 }}>{item.hadir}</td>
+                        <td style={{ padding: '14px 20px', fontSize: '15px', textAlign: 'center', color: '#d97706', fontWeight: 600 }}>{item.terlambat}</td>
+                        <td style={{ padding: '14px 20px', fontSize: '15px', textAlign: 'center', color: '#4f46e5', fontWeight: 600 }}>{item.izin}</td>
+                        <td style={{ padding: '14px 20px', fontSize: '15px', textAlign: 'center', color: '#dc2626', fontWeight: 600 }}>{item.alpha}</td>
+                      </tr>
+                    ))}
+                    {recapData.recap.length === 0 && (
+                      <tr><td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: 'var(--color-text-secondary)' }}>Belum ada data untuk periode ini</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div>
+              {/* Profile Card */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                <div style={{ background: '#d1fae5', padding: '24px', borderRadius: '16px', border: '1px solid #a7f3d0' }}>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#047857', fontWeight: 600 }}>Total Hadir</p>
+                  <h3 style={{ margin: '8px 0 0', fontSize: '36px', color: '#065f46' }}>{recapData.recap[0].hadir} <span style={{fontSize:'14px', fontWeight: 500}}>hari</span></h3>
+                </div>
+                <div style={{ background: '#fef3c7', padding: '24px', borderRadius: '16px', border: '1px solid #fde68a' }}>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#b45309', fontWeight: 600 }}>Terlambat</p>
+                  <h3 style={{ margin: '8px 0 0', fontSize: '36px', color: '#92400e' }}>{recapData.recap[0].terlambat} <span style={{fontSize:'14px', fontWeight: 500}}>hari</span></h3>
+                </div>
+                <div style={{ background: '#e0e7ff', padding: '24px', borderRadius: '16px', border: '1px solid #c7d2fe' }}>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#4338ca', fontWeight: 600 }}>Izin/Dinas</p>
+                  <h3 style={{ margin: '8px 0 0', fontSize: '36px', color: '#3730a3' }}>{recapData.recap[0].izin} <span style={{fontSize:'14px', fontWeight: 500}}>hari</span></h3>
+                </div>
+                <div style={{ background: '#fee2e2', padding: '24px', borderRadius: '16px', border: '1px solid #fecaca' }}>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#b91c1c', fontWeight: 600 }}>Alpha</p>
+                  <h3 style={{ margin: '8px 0 0', fontSize: '36px', color: '#991b1b' }}>{recapData.recap[0].alpha} <span style={{fontSize:'14px', fontWeight: 500}}>hari</span></h3>
+                </div>
+              </div>
+
+              {/* Detail Table */}
+              <div style={{ background: 'var(--color-bg-base)', borderRadius: '16px', border: '1px solid var(--color-border)', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '16px' }}>Detail Harian: {recapData.recap[0].user_name}</h3>
+                    <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>NIY: {recapData.recap[0].employee_id}</p>
+                  </div>
+                  <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)', background: 'var(--color-bg-surface)', padding: '6px 12px', borderRadius: '20px', border: '1px solid var(--color-border)' }}>Periode: {recapData.period}</span>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead style={{ background: 'var(--color-bg-surface)' }}>
+                      <tr>
+                        <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Tanggal</th>
+                        <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Shift</th>
+                        <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Jam Masuk</th>
+                        <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Jam Pulang</th>
+                        <th style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recapData.recap[0].detail && recapData.recap[0].detail.map((data, idx) => (
+                        <tr key={data.date || idx} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                          <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: 500 }}>{data.date}</td>
+                          <td style={{ padding: '14px 20px', fontSize: '14px' }}>{data.shift || '-'}</td>
+                          <td style={{ padding: '14px 20px', fontSize: '14px', color: data.status === 'Terlambat' ? '#d97706' : 'inherit' }}>
+                            {data.in || '-'} {data.status === 'Terlambat' && <span style={{fontSize:'10px', background:'#fef3c7', color:'#d97706', padding:'2px 6px', borderRadius:'4px', marginLeft:'6px', fontWeight: 600}}>Telat</span>}
+                          </td>
+                          <td style={{ padding: '14px 20px', fontSize: '14px' }}>{data.out || '-'}</td>
+                          <td style={{ padding: '14px 20px', fontSize: '14px' }}>
+                            {data.status === 'Hadir' ? <span style={{ color: '#059669', fontWeight: 600 }}>Hadir</span> : 
+                             data.status === 'Terlambat' ? <span style={{ color: '#d97706', fontWeight: 600 }}>Terlambat</span> :
+                             data.status === 'Izin' ? <span style={{ color: '#4f46e5', fontWeight: 600 }}>Izin/Dinas</span> :
+                             data.status === 'Alpha' ? <span style={{ color: '#dc2626', fontWeight: 600 }}>Alpha</span> :
+                             <span style={{ color: 'var(--color-text-secondary)' }}>-</span>
+                            }
+                          </td>
+                        </tr>
+                      ))}
+                      {(!recapData.recap[0].detail || recapData.recap[0].detail.length === 0) && (
+                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: 'var(--color-text-secondary)' }}>Belum ada data untuk periode ini</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      )}
 
       {/* Export Modal */}
       {showExport && (
@@ -1378,75 +1691,129 @@ export default function AttendanceHistoryPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+              
+              {/* Export Target Option */}
               <div>
-                <label style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '6px', display: 'block', fontWeight: 600 }}>Dari Tanggal</label>
-                <CustomDateInput
-                  value={exportFrom}
-                  onChange={(e) => setExportFrom(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '10px',
-                  }}
-                />
+                <label style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '6px', display: 'block', fontWeight: 600 }}>Tipe Rekap</label>
+                <div style={{ display: 'flex', gap: '8px', background: 'var(--color-bg-base)', padding: '4px', borderRadius: '8px' }}>
+                  <button
+                    onClick={() => setExportTarget('all')}
+                    style={{
+                      flex: 1, padding: '8px', fontSize: '12px', fontWeight: 600, border: 'none', borderRadius: '6px',
+                      background: exportTarget === 'all' ? '#eff6ff' : 'transparent',
+                      color: exportTarget === 'all' ? '#2563eb' : 'var(--color-text-secondary)',
+                      boxShadow: exportTarget === 'all' ? '0 1px 3px rgba(37,99,235,0.2)' : 'none',
+                      cursor: 'pointer'
+                    }}
+                  >Seluruh Pegawai</button> 
+                  <button
+                    onClick={() => setExportTarget('single')}
+                    style={{
+                      flex: 1, padding: '8px', fontSize: '12px', fontWeight: 600, border: 'none', borderRadius: '6px',
+                      background: exportTarget === 'single' ? '#eff6ff' : 'transparent',
+                      color: exportTarget === 'single' ? '#2563eb' : 'var(--color-text-secondary)',
+                      boxShadow: exportTarget === 'single' ? '0 1px 3px rgba(37,99,235,0.2)' : 'none',
+                      cursor: 'pointer'
+                    }}
+                  >Satu Pegawai</button>
+                </div>
               </div>
+
+              {exportTarget === 'single' && (
+                <div>
+                  <label style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '6px', display: 'block', fontWeight: 600 }}>Pilih Pegawai</label>
+                  <select
+                    value={exportUserId}
+                    onChange={(e) => setExportUserId(e.target.value)}
+                    style={{
+                      width: '100%', padding: '10px 14px', borderRadius: '10px',
+                      background: 'var(--color-bg-base)', border: '1px solid var(--color-border)',
+                      color: 'var(--color-text)', fontSize: '12px', outline: 'none'
+                    }}
+                  >
+                    <option value="">-- Pilih Pegawai --</option>
+                    {userList.map(u => (
+                      <option key={u.id} value={u.id}>{u.full_name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Date Filters */}
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '6px', display: 'block', fontWeight: 600 }}>Dari Tanggal</label>
+                  <CustomDateInput
+                    value={exportFrom}
+                    onChange={(e) => setExportFrom(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '6px', display: 'block', fontWeight: 600 }}>Sampai Tanggal</label>
+                  <CustomDateInput
+                    value={exportTo}
+                    onChange={(e) => setExportTo(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px' }}
+                  />
+                </div>
+              </div>
+              
+              {/* Format Laporan */}
               <div>
-                <label style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '6px', display: 'block', fontWeight: 600 }}>Sampai Tanggal</label>
-                <CustomDateInput
-                  value={exportTo}
-                  onChange={(e) => setExportTo(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '10px',
-                  }}
-                />
+                <label style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '6px', display: 'block', fontWeight: 600 }}>Format Laporan</label>
+                <div style={{ display: 'flex', gap: '8px', background: 'var(--color-bg-base)', padding: '4px', borderRadius: '8px' }}>
+                  <button
+                    onClick={() => setExportFormat('pdf')}
+                    style={{
+                      flex: 1, padding: '8px', fontSize: '12px', fontWeight: 600, border: 'none', borderRadius: '6px',
+                      background: exportFormat === 'pdf' ? '#fef2f2' : 'transparent',
+                      color: exportFormat === 'pdf' ? '#dc2626' : 'var(--color-text-secondary)',
+                      boxShadow: exportFormat === 'pdf' ? '0 1px 3px rgba(220,38,38,0.2)' : 'none',
+                      cursor: 'pointer'
+                    }}
+                  >Cetak (PDF)</button> 
+                  <button
+                    onClick={() => setExportFormat('word')}
+                    style={{
+                      flex: 1, padding: '8px', fontSize: '12px', fontWeight: 600, border: 'none', borderRadius: '6px',
+                      background: exportFormat === 'word' ? '#eff6ff' : 'transparent',
+                      color: exportFormat === 'word' ? '#2563eb' : 'var(--color-text-secondary)',
+                      boxShadow: exportFormat === 'word' ? '0 1px 3px rgba(37,99,235,0.2)' : 'none',
+                      cursor: 'pointer'
+                    }}
+                  >Word (.docx)</button>
+                </div>
               </div>
-              <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)', margin: 0 }}>Kosongkan untuk export semua data</p>
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>
               <button
                 onClick={() => setShowExport(false)}
                 style={{
-                  flex: 1,
-                  padding: '10px',
-                  borderRadius: '10px',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: '#475569',
-                  background: '#f8fafc',
-                  border: '1px solid #cbd5e1',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
+                  flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: 600,
+                  color: '#475569', background: '#f8fafc', border: '1px solid #cbd5e1', cursor: 'pointer', transition: 'all 0.15s',
                 }}
               >
                 Batal
               </button>
               <button
                 onClick={handleExport}
-                disabled={exporting}
+                disabled={exporting || (exportTarget === 'single' && !exportUserId)}
                 style={{
-                  flex: 1,
-                  padding: '10px',
-                  borderRadius: '10px',
-                  fontSize: '13px',
-                  fontWeight: 600,
+                  flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: 600,
                   color: '#fff',
-                  background: '#2563eb',
+                  background: exportFormat === 'pdf' ? '#dc2626' : '#2563eb',
                   border: 'none',
-                  cursor: exporting ? 'wait' : 'pointer',
-                  opacity: exporting ? 0.7 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
+                  cursor: (exporting || (exportTarget === 'single' && !exportUserId)) ? 'not-allowed' : 'pointer',
+                  opacity: (exporting || (exportTarget === 'single' && !exportUserId)) ? 0.6 : 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  boxShadow: (exporting || (exportTarget === 'single' && !exportUserId)) ? 'none' : `0 4px 12px ${exportFormat === 'pdf' ? 'rgba(220, 38, 38, 0.2)' : 'rgba(37, 99, 235, 0.2)'}`,
                   transition: 'all 0.15s',
                 }}
               >
                 {exporting && <Loader2 size={14} className="animate-spin" />}
-                {exporting ? 'Mengunduh...' : 'Download'}
+                {exporting ? 'Memproses...' : (exportFormat === 'pdf' ? 'Tampilkan Laporan' : 'Unduh File')}
               </button>
             </div>
           </div>
@@ -1814,6 +2181,24 @@ export default function AttendanceHistoryPage() {
                   style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px' }}
                 />
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Preview Mode */}
+      {isPrinting && printData && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#e2e8f0', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '16px 24px', background: '#fff', borderBottom: '1px solid #cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Cetak Laporan</h2>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => setIsPrinting(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer', fontWeight: 600 }}>Batal</button>
+              <button onClick={() => window.print()} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>Cetak Sekarang</button>
+            </div>
+          </div>
+          <div style={{ flex: 1, overflow: 'auto', padding: '32px' }}>
+            <div className="print-content" style={{ margin: '0 auto', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
+              <AttendanceReportPrint data={printData} />
             </div>
           </div>
         </div>
