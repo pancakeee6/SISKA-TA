@@ -1,0 +1,28 @@
+services:
+  backend:
+    image: "${REGISTRY}/siska-backend:${VERSION}"
+    env_file: ./deploy/backend.env
+    environment:
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - "${UPLOADS_DIR:-/opt/siska/uploads}:/app/uploads"
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  frontend:
+    image: "${REGISTRY}/siska-frontend:${VERSION}"
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  migrate:
+    image: "${REGISTRY}/siska-backend:${VERSION}"
+    env_file: ./deploy/backend.env
+    command: python -m alembic upgrade head
+    profiles:
+      - tools
+    restart: "no"
