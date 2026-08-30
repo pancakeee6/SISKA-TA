@@ -124,7 +124,11 @@ temp/
 *.swo
 *.swn
 .gemini/
+.omo/
+.playwright-mcp/
+.sisyphus/
 .DS_Store
 Thumbs.db
 ehthumbs.db
-Desktop.ini
+Desktop.ini
+AGENTS.md
