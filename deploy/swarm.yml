@@ -1,6 +1,6 @@
 services:
   backend:
-    image: siska-backend:swarm
+    image: mizzcode/siska-backend:1.0.1
     env_file: ./backend.env
     environment:
       UPLOAD_DIR: /app/uploads
@@ -19,7 +19,7 @@ services:
         condition: on-failure
 
   frontend:
-    image: siska-frontend:swarm
+    image: mizzcode/siska-frontend:1.0.1
     networks:
       - front-tier
     deploy:
