@@ -1,0 +1,35 @@
+services:
+  backend:
+    image: siska-backend:swarm
+    env_file: ./backend.env
+    environment:
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - /opt/siska/uploads:/app/uploads
+    networks:
+      front-tier:
+        aliases:
+          - backend
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == swarm-manager
+      restart_policy:
+        condition: on-failure
+
+  frontend:
+    image: siska-frontend:swarm
+    networks:
+      - front-tier
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == swarm-manager
+      restart_policy:
+        condition: on-failure
+
+networks:
+  front-tier:
+    external: true
