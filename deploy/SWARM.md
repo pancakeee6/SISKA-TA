@@ -9,9 +9,9 @@ Place this `deploy/` directory at `/opt/siska/deploy`. Create `/opt/siska/deploy
 ```bash
 sudo install -d -o 10001 -g 10001 -m 0750 /opt/siska/uploads
 sudo chmod 600 /opt/siska/deploy/backend.env
-docker pull mizzcode/siska-backend:1.0.1
+docker pull mizzcode/siska-backend:1.0.2
 docker pull mizzcode/siska-frontend:1.0.1
-docker image inspect mizzcode/siska-backend:1.0.1 --format '{{.Architecture}}'
+docker image inspect mizzcode/siska-backend:1.0.2 --format '{{.Architecture}}'
 docker image inspect mizzcode/siska-frontend:1.0.1 --format '{{.Architecture}}'
 ```
 
@@ -23,7 +23,7 @@ Back up the external database and `/opt/siska/uploads` first. Alembic runs as a 
 
 ```bash
 docker run --rm --env-file /opt/siska/deploy/backend.env \
-  --network front-tier mizzcode/siska-backend:1.0.1 \
+  --network front-tier mizzcode/siska-backend:1.0.2 \
   python -m alembic upgrade head
 
 cd /opt/siska
