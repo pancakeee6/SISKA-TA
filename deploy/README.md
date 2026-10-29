@@ -63,9 +63,9 @@ sudo install -d -o 10001 -g 10001 -m 0750 /opt/siska/uploads
 From the repository root in WSL, copy only the deployment files to the VM:
 
 ```bash
-scp compose.yml deploy/backend.env.example VM_USER@VM_HOST:/opt/siska/
+scp compose.yml deploy/.env.example VM_USER@VM_HOST:/opt/siska/
 ssh VM_USER@VM_HOST \
-  'mv /opt/siska/backend.env.example /opt/siska/deploy/backend.env.example'
+  'mv /opt/siska/.env.example /opt/siska/deploy/.env.example'
 ```
 
 Replace `VM_USER` and `VM_HOST`. The VM does not need the source tree.
@@ -77,8 +77,8 @@ The resulting layout is:
 ├── compose.yml
 ├── .env
 ├── deploy/
-│   ├── backend.env.example
-│   └── backend.env
+│   ├── .env.example
+│   └── .env
 └── uploads/
 ```
 
@@ -109,11 +109,11 @@ Create the backend environment file from the supplied template, edit it only on 
 
 ```bash
 cd /opt/siska
-test -e deploy/backend.env || install -m 0600 deploy/backend.env.example deploy/backend.env
-chmod 0600 deploy/backend.env
+test -e deploy/.env || install -m 0600 deploy/.env.example deploy/.env
+chmod 0600 deploy/.env
 ```
 
-Set these values in `deploy/backend.env`:
+Set these values in `deploy/.env`:
 
 - `DATABASE_URL`: the external PostgreSQL or Aiven connection URL, including the required TLS option
 - `SECRET_KEY`: a new, long random value
@@ -121,7 +121,7 @@ Set these values in `deploy/backend.env`:
 - `ML_ADMIN_USERNAME` and `ML_ADMIN_PASSWORD`: ML API administrator credentials
 - `CORS_ORIGINS`: a JSON array containing the public HTTPS origin, for example `https://siska.example.com` as `CORS_ORIGINS=["https://siska.example.com"]`
 
-The public `AI_API_URL` from the example can stay unchanged when that service is used. Keep real secrets only in `/opt/siska/deploy/backend.env`. Never place them in `.env`, copy them back to a workstation, or commit them.
+The public `AI_API_URL` from the example can stay unchanged when that service is used. Keep real secrets only in `/opt/siska/deploy/.env`. Never place them in `.env`, copy them back to a workstation, or commit them.
 
 The uploads bind mount maps `/opt/siska/uploads` to `/app/uploads`. Keep it owned by UID and GID `10001` so the non-root backend process can write to it:
 

@@ -1,13 +1,27 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-siska_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-siska_password}
+      POSTGRES_DB: ${POSTGRES_DB:-siska_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
   backend:
     image: "${REGISTRY}/siska-backend:${VERSION}"
-    env_file: ./deploy/backend.env
+    env_file: ./deploy/.env
     environment:
       UPLOAD_DIR: /app/uploads
     volumes:
       - "${UPLOADS_DIR:-/opt/siska/uploads}:/app/uploads"
     expose:
       - "8000"
+    depends_on:
+      - db
     restart: unless-stopped
 
   frontend:
@@ -21,8 +35,11 @@ services:
 
   migrate:
     image: "${REGISTRY}/siska-backend:${VERSION}"
-    env_file: ./deploy/backend.env
+    env_file: ./deploy/.env
     command: python -m alembic upgrade head
     profiles:
       - tools
     restart: "no"
+
+volumes:
+  postgres_data:
