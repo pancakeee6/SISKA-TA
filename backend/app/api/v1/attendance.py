@@ -9,9 +9,12 @@ import uuid
 import io
 import json
 
+from PIL import Image
+
 from app.db.database import get_db
 from app.api.deps import get_current_admin
 from app.models.attendance import AttendanceLog
+from app.models.face import FaceData
 from app.models.user import User
 from app.models.shift import WorkShift
 from app.schemas.attendance import AttendanceLogResponse, AttendanceListResponse, AttendanceDinasCreate
@@ -39,7 +42,81 @@ def count_working_days(start_date, end_date):
 # Threshold untuk filter confidence/distance dari AI
 # Jika AI mengembalikan confidence < threshold, dianggap tidak yakin
 MIN_CONFIDENCE = 0.6
-MAX_DISTANCE = 0.7
+MAX_DISTANCE = 0.85
+
+# Frame kiosk sering berisi banyak orang dan minim cahaya, jadi preview hanya
+# diambil saat yakin tinggi dan frame berisi tepat satu wajah.
+# distance = L2 norm embedding 512-dim (skala 0-2); makin kecil makin mirip.
+AUTO_PREVIEW_MAX_DISTANCE = 0.80
+AUTO_PREVIEW_PADDING = 0.25
+AUTO_PREVIEW_MIN_SIZE = 60
+
+
+def _crop_face_image(image_bytes: bytes, bbox) -> bytes | None:
+    if not bbox or len(bbox) != 4:
+        return None
+    try:
+        x1, y1, x2, y2 = (int(round(float(v))) for v in bbox)
+    except (TypeError, ValueError):
+        return None
+
+    with Image.open(io.BytesIO(image_bytes)) as img:
+        img = img.convert("RGB")
+        width, height = img.size
+        pad_x = int((x2 - x1) * AUTO_PREVIEW_PADDING)
+        pad_y = int((y2 - y1) * AUTO_PREVIEW_PADDING)
+        left = max(0, x1 - pad_x)
+        top = max(0, y1 - pad_y)
+        right = min(width, x2 + pad_x)
+        bottom = min(height, y2 + pad_y)
+        if right <= left or bottom <= top:
+            return None
+
+        cropped = img.crop((left, top, right, bottom))
+        if cropped.width < AUTO_PREVIEW_MIN_SIZE or cropped.height < AUTO_PREVIEW_MIN_SIZE:
+            return None
+
+        buffer = io.BytesIO()
+        cropped.save(buffer, format="JPEG", quality=88)
+        return buffer.getvalue()
+
+
+async def _store_attendance_preview(db, user, image_bytes: bytes, face: dict, total_faces: int):
+    if not image_bytes or total_faces != 1:
+        return
+
+    distance = face.get("distance")
+    if distance is not None:
+        try:
+            if float(distance) > AUTO_PREVIEW_MAX_DISTANCE:
+                logger.info(f"[AUTO PREVIEW] Distance {distance} > {AUTO_PREVIEW_MAX_DISTANCE}, skipped for '{user.full_name}'")
+                return
+        except (TypeError, ValueError):
+            pass
+
+    existing = await db.execute(
+        select(func.count(FaceData.id)).where(FaceData.user_id == user.id)
+    )
+    if (existing.scalar() or 0) > 0:
+        return
+
+    cropped = _crop_face_image(image_bytes, face.get("bbox") or face.get("box") or face.get("location"))
+    if not cropped:
+        return
+
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    filepath = os.path.join(settings.UPLOAD_DIR, f"auto_preview_{uuid.uuid4().hex}.jpg")
+    with open(filepath, "wb") as out_file:
+        out_file.write(cropped)
+
+    db.add(FaceData(
+        user_id=user.id,
+        embedding_json=None,
+        image_path=filepath,
+        is_profile=True,
+    ))
+    await db.commit()
+    logger.info(f"[AUTO PREVIEW] Saved face preview for '{user.full_name}' → {filepath}")
 
 
 @router.post("/recognize")
@@ -57,12 +134,17 @@ async def recognize_attendance(
     # ─── LOG RAW AI RESPONSE untuk debugging salah deteksi ───
     logger.info(f"[AI RAW RESPONSE] {ai_result}")
 
+    await file.seek(0)
+    image_bytes = await file.read()
+
     if not ai_result.get("faces") or ai_result.get("status") in ("error", "failed", "unrecognized"):
         return {
             "status": "unrecognized",
             "message": "Wajah tidak dikenali",
             "faces": [],
         }
+
+    total_faces = len(ai_result["faces"])
 
     # Process each recognized face
     results = []
@@ -102,6 +184,11 @@ async def recognize_attendance(
             user = user_result.scalars().first()
 
         if user:
+            try:
+                await _store_attendance_preview(db, user, image_bytes, face, total_faces)
+            except Exception as preview_err:
+                logger.warning(f"[AUTO PREVIEW] Skipped for '{user.full_name}': {preview_err}")
+
             # ─── Evaluasi Shift, Waktu WIB, Toleransi 20 Menit, & Mencegah Duplikasi ───
             now_utc = datetime.now(timezone.utc)
             wib_tz = timezone(timedelta(hours=7))
